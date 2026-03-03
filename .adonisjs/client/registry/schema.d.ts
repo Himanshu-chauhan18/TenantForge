@@ -128,6 +128,39 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/location_controller').default['cities']>>>
     }
   }
+  'api.currencies': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/currencies'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/location_controller').default['currencies']>>>
+    }
+  }
+  'api.timezones': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/timezones'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/location_controller').default['timezones']>>>
+    }
+  }
+  'api.modules': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/modules'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/location_controller').default['modules']>>>
+    }
+  }
   'dashboard': {
     methods: ["GET","HEAD"]
     pattern: '/dashboard'

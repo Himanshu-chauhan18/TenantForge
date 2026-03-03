@@ -17,6 +17,8 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
   const [dropUp, setDropUp] = useState(false)
   const [viewYear, setViewYear] = useState(0)
   const [viewMonth, setViewMonth] = useState(0)
+  const [viewMode, setViewMode] = useState<'month' | 'year'>('month')
+  const [yearRangeStart, setYearRangeStart] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
   const today = fmtDate(new Date())
 
@@ -39,8 +41,11 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
   useEffect(() => {
     if (open) {
       const base = value ? new Date(value + 'T00:00:00') : new Date()
-      setViewYear(base.getFullYear())
+      const y = base.getFullYear()
+      setViewYear(y)
       setViewMonth(base.getMonth())
+      setViewMode('month')
+      setYearRangeStart(Math.floor(y / 12) * 12)
     }
   }, [open])
 
@@ -74,8 +79,14 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
     else setViewMonth((m) => m + 1)
   }
 
+  function selectYear(y: number) {
+    setViewYear(y)
+    setViewMode('month')
+  }
+
   const daysInMonth = getDaysInMonth(viewYear, viewMonth)
   const firstDay = getFirstDay(viewYear, viewMonth)
+  const years = Array.from({ length: 12 }, (_, i) => yearRangeStart + i)
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -112,56 +123,110 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
         }}>
           {/* Month / Year header */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <button type="button" onClick={prevMonth}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
-              <ChevronLeft size={13} />
-            </button>
-            <span style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--text1)', letterSpacing: '.01em' }}>
-              {CAL_MONTHS[viewMonth]} {viewYear}
-            </span>
-            <button type="button" onClick={nextMonth}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
-              <ChevronRight size={13} />
-            </button>
-          </div>
-
-          {/* Weekday labels */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-            {CAL_DAYS.map((d) => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '.64rem', color: 'var(--text3)', fontWeight: 700, padding: '2px 0' }}>{d}</div>
-            ))}
-          </div>
-
-          {/* Day cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-            {Array.from({ length: firstDay }).map((_, i) => <div key={`_${i}`} />)}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1
-              const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const isSel = dateStr === value
-              const isToday = dateStr === today
-              const disabled = isDisabled(dateStr)
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => selectDay(day)}
-                  style={{
-                    textAlign: 'center', fontSize: '.78rem', padding: '6px 2px', border: 'none',
-                    borderRadius: 7,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    background: isSel ? 'var(--p)' : isToday ? 'var(--p-lt)' : 'transparent',
-                    color: isSel ? '#fff' : disabled ? 'var(--text4)' : isToday ? 'var(--p)' : 'var(--text1)',
-                    fontWeight: isSel || isToday ? 700 : 400,
-                    transition: 'background .12s, color .12s',
-                  }}
-                >
-                  {day}
+            {viewMode === 'month' ? (
+              <>
+                <button type="button" onClick={prevMonth}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
+                  <ChevronLeft size={13} />
                 </button>
-              )
-            })}
+                <button
+                  type="button"
+                  onClick={() => setViewMode('year')}
+                  style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--text1)', letterSpacing: '.01em', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', padding: '3px 10px', transition: 'background .15s' }}
+                >
+                  {CAL_MONTHS[viewMonth]} {viewYear}
+                </button>
+                <button type="button" onClick={nextMonth}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
+                  <ChevronRight size={13} />
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" onClick={() => setYearRangeStart((s) => s - 12)}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
+                  <ChevronLeft size={13} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('month')}
+                  style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--p)', letterSpacing: '.01em', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', borderRadius: 7, cursor: 'pointer', padding: '3px 10px', transition: 'background .15s' }}
+                >
+                  {yearRangeStart} – {yearRangeStart + 11}
+                </button>
+                <button type="button" onClick={() => setYearRangeStart((s) => s + 12)}
+                  style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
+                  <ChevronRight size={13} />
+                </button>
+              </>
+            )}
           </div>
+
+          {viewMode === 'year' ? (
+            /* Year grid */
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
+              {years.map((y) => {
+                const isCur = y === viewYear
+                const isNow = y === new Date().getFullYear()
+                return (
+                  <button
+                    key={y}
+                    type="button"
+                    onClick={() => selectYear(y)}
+                    style={{
+                      padding: '7px 4px', border: 'none', borderRadius: 7, cursor: 'pointer',
+                      fontSize: '.78rem', fontWeight: isCur ? 700 : isNow ? 600 : 400,
+                      background: isCur ? 'var(--p)' : isNow ? 'var(--p-lt)' : 'transparent',
+                      color: isCur ? '#fff' : isNow ? 'var(--p)' : 'var(--text1)',
+                      transition: 'background .12s, color .12s',
+                    }}
+                  >
+                    {y}
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <>
+              {/* Weekday labels */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+                {CAL_DAYS.map((d) => (
+                  <div key={d} style={{ textAlign: 'center', fontSize: '.64rem', color: 'var(--text3)', fontWeight: 700, padding: '2px 0' }}>{d}</div>
+                ))}
+              </div>
+
+              {/* Day cells */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                {Array.from({ length: firstDay }).map((_, i) => <div key={`_${i}`} />)}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1
+                  const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  const isSel = dateStr === value
+                  const isToday = dateStr === today
+                  const disabled = isDisabled(dateStr)
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => selectDay(day)}
+                      style={{
+                        textAlign: 'center', fontSize: '.78rem', padding: '6px 2px', border: 'none',
+                        borderRadius: 7,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        background: isSel ? 'var(--p)' : isToday ? 'var(--p-lt)' : 'transparent',
+                        color: isSel ? '#fff' : disabled ? 'var(--text4)' : isToday ? 'var(--p)' : 'var(--text1)',
+                        fontWeight: isSel || isToday ? 700 : 400,
+                        transition: 'background .12s, color .12s',
+                      }}
+                    >
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+            </>
+          )}
 
           {/* Footer shortcuts */}
           <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>

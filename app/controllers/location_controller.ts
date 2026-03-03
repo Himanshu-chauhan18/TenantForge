@@ -1,7 +1,29 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import db from '@adonisjs/lucid/services/db'
+import Module from '#models/module'
 
 export default class LocationController {
+  async modules({ response }: HttpContext) {
+    const mods = await Module.query()
+      .where('is_active', true)
+      .preload('addons', (q) => q.where('is_active', true).orderBy('sort_order', 'asc'))
+      .orderBy('sort_order', 'asc')
+
+    return response.json(
+      mods.map((m) => ({
+        id: m.id,
+        key: m.key,
+        label: m.label,
+        description: m.description,
+        isMandatory: m.isMandatory,
+        isComingSoon: m.isComingSoon,
+        sortOrder: m.sortOrder,
+        addons: m.addons.map((a) => ({ id: a.id, name: a.name })),
+      }))
+    )
+  }
+
+
   async countries({ request, response }: HttpContext) {
     const search = (request.input('search', '') as string).trim()
 
@@ -53,6 +75,57 @@ export default class LocationController {
         }
       })
     )
+  }
+
+  async currencies({ response }: HttpContext) {
+    const rows = await db
+      .from('countries')
+      .whereNotNull('currency')
+      .where('flag', 1)
+      .select(['currency', 'currency_name', 'currency_symbol'])
+      .orderBy('currency', 'asc')
+
+    // Deduplicate by currency code
+    const seen = new Set<string>()
+    const result: { code: string; name: string; symbol: string }[] = []
+    for (const r of rows) {
+      if (r.currency && !seen.has(r.currency)) {
+        seen.add(r.currency)
+        result.push({ code: r.currency, name: r.currency_name || r.currency, symbol: r.currency_symbol || '' })
+      }
+    }
+
+    return response.json(result)
+  }
+
+  async timezones({ response }: HttpContext) {
+    const rows = await db
+      .from('countries')
+      .where('flag', 1)
+      .whereNotNull('timezones')
+      .select(['timezones'])
+
+    const seen = new Set<string>()
+    const result: { value: string; label: string }[] = []
+
+    for (const r of rows) {
+      try {
+        const tzs = JSON.parse(r.timezones || '[]')
+        if (!Array.isArray(tzs)) continue
+        for (const tz of tzs) {
+          if (!tz.zoneName || seen.has(tz.zoneName)) continue
+          seen.add(tz.zoneName)
+          const offset = tz.gmtOffsetName || tz.gmtOffset || ''
+          const abbr = tz.abbreviation || ''
+          const label = abbr ? `${tz.zoneName} — ${abbr} (${offset})` : `${tz.zoneName} (${offset})`
+          result.push({ value: tz.zoneName, label })
+        }
+      } catch {}
+    }
+
+    result.sort((a, b) => a.value.localeCompare(b.value))
+
+    return response.json(result)
   }
 
   async cities({ request, response }: HttpContext) {

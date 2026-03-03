@@ -36,6 +36,9 @@ router.post('logout', [AuthController, 'logout']).as('auth.logout').use(middlewa
 // Location API (public - used by dropdowns on create/edit forms)
 router.get('/api/countries', [LocationController, 'countries']).as('api.countries')
 router.get('/api/cities', [LocationController, 'cities']).as('api.cities')
+router.get('/api/currencies', [LocationController, 'currencies']).as('api.currencies')
+router.get('/api/timezones', [LocationController, 'timezones']).as('api.timezones')
+router.get('/api/modules', [LocationController, 'modules']).as('api.modules')
 
 // Authenticated routes
 router

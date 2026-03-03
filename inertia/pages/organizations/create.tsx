@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { router } from '@inertiajs/react'
 import {
   Building2, MapPin, Settings2, User, ChevronRight, ChevronLeft,
-  Check, Globe, Calendar, Shield, Eye, EyeOff, Copy, RefreshCw, Mail, Lock, Minus, Plus,
+  Check, Globe, Calendar, Shield, Eye, EyeOff, Copy, RefreshCw, Mail, Lock, Minus, Plus, Upload,
 } from 'lucide-react'
 import { SelectSearch } from '~/components/select-search'
 import { DatePicker, fmtDate } from '~/components/date-picker'
@@ -11,6 +11,7 @@ import { Checkbox } from '~/components/checkbox'
 import { Toggle } from '~/components/toggle'
 import { CountrySelect, type CountryOption } from '~/components/country-select'
 import { CitySelect, type CityOption } from '~/components/city-select'
+import { INDUSTRIES, COMPANY_SIZES, DATE_FORMATS } from '~/data/org-options'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function fiscalDefaults() {
@@ -53,140 +54,23 @@ function generatePassword() {
 // ─── types ────────────────────────────────────────────────────────────────────
 interface UserOption { id: number; email: string; full_name?: string }
 interface OrgOption { id: number; name: string; orgId: string }
+interface ModuleAddonOption { id: number; name: string }
+interface ModuleOption {
+  id: number
+  key: string
+  label: string
+  description: string | null
+  isMandatory: boolean
+  isComingSoon: boolean
+  sortOrder: number
+  addons: ModuleAddonOption[]
+}
 interface Props {
   users: UserOption[]
   organizations: OrgOption[]
   flash?: { success?: string; errors?: Record<string, string> }
 }
 
-// ─── static data ──────────────────────────────────────────────────────────────
-const MODULES = [
-  { key: 'employee', label: 'Employee', desc: 'Manage employees, profiles, documents', locked: true,
-    addons: ['Employee Self Service', 'Document Management', 'Onboarding Workflow'] },
-  { key: 'organization', label: 'Organization', desc: 'Organization structure, branches, departments', locked: true,
-    addons: ['Branch Management', 'Department Structure', 'Role Management'] },
-  { key: 'attendance', label: 'Attendance', desc: 'Track daily attendance, shifts, overtime',
-    addons: ['Biometric Integration', 'Geo-fencing', 'Shift Management', 'Overtime Tracking'] },
-  { key: 'leave', label: 'Leave', desc: 'Leave requests, approvals, policies', disabled: true,
-    addons: ['Leave Encashment', 'Comp Off', 'Holiday Calendar'] },
-  { key: 'payroll', label: 'Payroll', desc: 'Salary processing, payslips, compliance', disabled: true,
-    addons: ['Tax Computation', 'PF & ESI', 'Payslip Generation', 'Bank Transfer'] },
-  { key: 'performance', label: 'Performance', desc: 'KPIs, appraisals, goals', disabled: true,
-    addons: ['360 Feedback', 'Goal Tracking', 'Appraisal Cycles'] },
-]
-
-const INDUSTRIES = [
-  'Technology', 'Healthcare', 'Finance & Banking', 'Education', 'Manufacturing',
-  'Retail & E-commerce', 'Real Estate', 'Hospitality', 'Logistics & Transport',
-  'Media & Entertainment', 'Legal', 'Non-profit', 'Government', 'Other',
-]
-
-const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1001+']
-
-const CURRENCIES = [
-  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
-  { code: 'USD', name: 'US Dollar', symbol: '$' },
-  { code: 'EUR', name: 'Euro', symbol: '€' },
-  { code: 'GBP', name: 'British Pound', symbol: '£' },
-  { code: 'AED', name: 'UAE Dirham', symbol: 'د.إ' },
-  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
-  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
-  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
-  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
-  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
-  { code: 'CHF', name: 'Swiss Franc', symbol: 'Fr' },
-  { code: 'HKD', name: 'Hong Kong Dollar', symbol: 'HK$' },
-  { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
-  { code: 'MYR', name: 'Malaysian Ringgit', symbol: 'RM' },
-  { code: 'THB', name: 'Thai Baht', symbol: '฿' },
-  { code: 'IDR', name: 'Indonesian Rupiah', symbol: 'Rp' },
-  { code: 'PHP', name: 'Philippine Peso', symbol: '₱' },
-  { code: 'VND', name: 'Vietnamese Dong', symbol: '₫' },
-  { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
-  { code: 'MXN', name: 'Mexican Peso', symbol: '$' },
-  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
-  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
-  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
-  { code: 'EGP', name: 'Egyptian Pound', symbol: 'E£' },
-  { code: 'SAR', name: 'Saudi Riyal', symbol: 'SR' },
-  { code: 'QAR', name: 'Qatari Riyal', symbol: 'QR' },
-  { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'KD' },
-  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'BD' },
-  { code: 'OMR', name: 'Omani Rial', symbol: 'OMR' },
-  { code: 'LKR', name: 'Sri Lankan Rupee', symbol: 'Rs' },
-  { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳' },
-  { code: 'PKR', name: 'Pakistani Rupee', symbol: 'Rs' },
-  { code: 'NPR', name: 'Nepalese Rupee', symbol: 'Rs' },
-  { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$' },
-  { code: 'SEK', name: 'Swedish Krona', symbol: 'kr' },
-  { code: 'NOK', name: 'Norwegian Krone', symbol: 'kr' },
-  { code: 'DKK', name: 'Danish Krone', symbol: 'kr' },
-  { code: 'RUB', name: 'Russian Ruble', symbol: '₽' },
-  { code: 'TRY', name: 'Turkish Lira', symbol: '₺' },
-  { code: 'ILS', name: 'Israeli Shekel', symbol: '₪' },
-]
-
-const TIMEZONES = [
-  { value: 'UTC', label: 'UTC — Coordinated Universal Time' },
-  { value: 'Asia/Kolkata', label: 'Asia/Kolkata — IST (UTC+5:30)' },
-  { value: 'Asia/Karachi', label: 'Asia/Karachi — PKT (UTC+5:00)' },
-  { value: 'Asia/Dhaka', label: 'Asia/Dhaka — BST (UTC+6:00)' },
-  { value: 'Asia/Colombo', label: 'Asia/Colombo — SLST (UTC+5:30)' },
-  { value: 'Asia/Kathmandu', label: 'Asia/Kathmandu — NPT (UTC+5:45)' },
-  { value: 'Asia/Bangkok', label: 'Asia/Bangkok — ICT (UTC+7:00)' },
-  { value: 'Asia/Singapore', label: 'Asia/Singapore — SGT (UTC+8:00)' },
-  { value: 'Asia/Hong_Kong', label: 'Asia/Hong_Kong — HKT (UTC+8:00)' },
-  { value: 'Asia/Shanghai', label: 'Asia/Shanghai — CST (UTC+8:00)' },
-  { value: 'Asia/Tokyo', label: 'Asia/Tokyo — JST (UTC+9:00)' },
-  { value: 'Asia/Seoul', label: 'Asia/Seoul — KST (UTC+9:00)' },
-  { value: 'Asia/Dubai', label: 'Asia/Dubai — GST (UTC+4:00)' },
-  { value: 'Asia/Riyadh', label: 'Asia/Riyadh — AST (UTC+3:00)' },
-  { value: 'Asia/Kuwait', label: 'Asia/Kuwait — AST (UTC+3:00)' },
-  { value: 'Asia/Bahrain', label: 'Asia/Bahrain — AST (UTC+3:00)' },
-  { value: 'Asia/Qatar', label: 'Asia/Qatar — AST (UTC+3:00)' },
-  { value: 'Asia/Muscat', label: 'Asia/Muscat — GST (UTC+4:00)' },
-  { value: 'Asia/Jakarta', label: 'Asia/Jakarta — WIB (UTC+7:00)' },
-  { value: 'Asia/Manila', label: 'Asia/Manila — PHT (UTC+8:00)' },
-  { value: 'Asia/Kuala_Lumpur', label: 'Asia/Kuala_Lumpur — MYT (UTC+8:00)' },
-  { value: 'Asia/Taipei', label: 'Asia/Taipei — CST (UTC+8:00)' },
-  { value: 'Asia/Tehran', label: 'Asia/Tehran — IRST (UTC+3:30)' },
-  { value: 'Asia/Almaty', label: 'Asia/Almaty — ALMT (UTC+6:00)' },
-  { value: 'Europe/London', label: 'Europe/London — GMT/BST' },
-  { value: 'Europe/Paris', label: 'Europe/Paris — CET (UTC+1:00)' },
-  { value: 'Europe/Berlin', label: 'Europe/Berlin — CET (UTC+1:00)' },
-  { value: 'Europe/Rome', label: 'Europe/Rome — CET (UTC+1:00)' },
-  { value: 'Europe/Madrid', label: 'Europe/Madrid — CET (UTC+1:00)' },
-  { value: 'Europe/Amsterdam', label: 'Europe/Amsterdam — CET (UTC+1:00)' },
-  { value: 'Europe/Moscow', label: 'Europe/Moscow — MSK (UTC+3:00)' },
-  { value: 'Europe/Istanbul', label: 'Europe/Istanbul — TRT (UTC+3:00)' },
-  { value: 'Africa/Cairo', label: 'Africa/Cairo — EET (UTC+2:00)' },
-  { value: 'Africa/Lagos', label: 'Africa/Lagos — WAT (UTC+1:00)' },
-  { value: 'Africa/Nairobi', label: 'Africa/Nairobi — EAT (UTC+3:00)' },
-  { value: 'Africa/Johannesburg', label: 'Africa/Johannesburg — SAST (UTC+2:00)' },
-  { value: 'America/New_York', label: 'America/New_York — EST/EDT' },
-  { value: 'America/Chicago', label: 'America/Chicago — CST/CDT' },
-  { value: 'America/Denver', label: 'America/Denver — MST/MDT' },
-  { value: 'America/Los_Angeles', label: 'America/Los_Angeles — PST/PDT' },
-  { value: 'America/Toronto', label: 'America/Toronto — EST/EDT' },
-  { value: 'America/Mexico_City', label: 'America/Mexico_City — CST/CDT' },
-  { value: 'America/Sao_Paulo', label: 'America/Sao_Paulo — BRT (UTC-3:00)' },
-  { value: 'America/Buenos_Aires', label: 'America/Buenos_Aires — ART (UTC-3:00)' },
-  { value: 'America/Bogota', label: 'America/Bogota — COT (UTC-5:00)' },
-  { value: 'Australia/Sydney', label: 'Australia/Sydney — AEDT' },
-  { value: 'Australia/Melbourne', label: 'Australia/Melbourne — AEDT' },
-  { value: 'Australia/Perth', label: 'Australia/Perth — AWST (UTC+8:00)' },
-  { value: 'Pacific/Auckland', label: 'Pacific/Auckland — NZST (UTC+12:00)' },
-  { value: 'Pacific/Fiji', label: 'Pacific/Fiji — FJT (UTC+12:00)' },
-]
-
-const DATE_FORMATS = [
-  { value: 'DD/MM/YYYY', example: '31/12/2025' },
-  { value: 'MM/DD/YYYY', example: '12/31/2025' },
-  { value: 'YYYY/MM/DD', example: '2025/12/31' },
-  { value: 'DD-MM-YYYY', example: '31-12-2025' },
-  { value: 'MM-DD-YYYY', example: '12-31-2025' },
-  { value: 'YYYY-MM-DD', example: '2025-12-31' },
-]
 
 // ─── PhoneInput (country code prefix) ────────────────────────────────────────
 function PhoneInput({ value, onChange, phonecode, emoji }: { value: string; onChange: (v: string) => void; phonecode?: string | null; emoji?: string | null }) {
@@ -265,6 +149,9 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
   // Company details
   const [name, setName] = useState('')
+  const [logoFile, setLogoFile] = useState<File | null>(null)
+  const [logoPreview, setLogoPreview] = useState('')
+  const logoInputRef = useRef<HTMLInputElement>(null)
   const [parentOrgId, setParentOrgId] = useState('')
   const [companySize, setCompanySize] = useState('')
   const [industry, setIndustry] = useState('')
@@ -288,8 +175,34 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
   // Locale (auto-filled from country)
   const [currency, setCurrency] = useState('INR')
   const [timezone, setTimezone] = useState('Asia/Kolkata')
+  const [currencyOptions, setCurrencyOptions] = useState<{ value: string; label: string; sub: string }[]>([])
+  const [timezoneOptions, setTimezoneOptions] = useState<{ value: string; label: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/currencies')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { code: string; name: string; symbol: string }[]) => {
+        setCurrencyOptions(data.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}`, sub: c.symbol })))
+      })
+      .catch(() => {})
+    fetch('/api/timezones')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: { value: string; label: string }[]) => setTimezoneOptions(data))
+      .catch(() => {})
+    fetch('/api/modules')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: ModuleOption[]) => {
+        setModules(data)
+        if (!modulesInitialized.current) {
+          modulesInitialized.current = true
+          setEnabledModules(data.filter((m) => m.isMandatory).map((m) => m.key))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setModulesLoading(false))
+  }, [])
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY')
-  const [timeFormat, setTimeFormat] = useState('12h')
+  const [timeFormat, setTimeFormat] = useState('24h')
 
   // Plan (pre-filled with today + 15 days)
   const [planType, setPlanType] = useState<'trial' | 'premium'>('trial')
@@ -297,8 +210,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
   const [planStart, setPlanStart] = useState(planDef.start)
   const [planEnd, setPlanEnd] = useState(planDef.end)
 
-  // Modules
-  const [enabledModules, setEnabledModules] = useState<string[]>(['employee', 'organization'])
+  // Modules — fetched from /api/modules
+  const [modules, setModules] = useState<ModuleOption[]>([])
+  const [modulesLoading, setModulesLoading] = useState(true)
+  const modulesInitialized = useRef(false)
+  const [enabledModules, setEnabledModules] = useState<string[]>([])
   const [enabledAddons, setEnabledAddons] = useState<Record<string, string[]>>({})
 
   // Super admin
@@ -324,10 +240,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
     setSelectedCity(null)
     if (option) {
       if (option.currency) setCurrency(option.currency)
-      if (option.timezone) {
-        const found = TIMEZONES.find((t) => t.value === option.timezone)
-        if (found) setTimezone(option.timezone)
-      }
+      if (option.timezone) setTimezone(option.timezone)
     }
   }
 
@@ -385,6 +298,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
     setProcessing(true)
     router.post('/organizations', {
       name,
+      logo: logoFile || undefined,
       parentOrgId: parentOrgId ? Number(parentOrgId) : undefined,
       companySize: companySize || undefined,
       industry: industry || undefined,
@@ -421,12 +335,6 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
   }
 
   // Build option arrays for SelectSearch
-  const currencyOptions = CURRENCIES.map((c) => ({
-    value: c.code,
-    label: `${c.code} — ${c.name}`,
-    sub: c.symbol,
-  }))
-  const timezoneOptions = TIMEZONES.map((t) => ({ value: t.value, label: t.label }))
   const userOptions = users.map((u) => ({ value: String(u.id), label: u.full_name || u.email, sub: u.email }))
   const orgOptions = organizations.map((o) => ({ value: String(o.id), label: o.name, sub: o.orgId }))
   const sizeOptions = COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))
@@ -455,6 +363,8 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
         .step-card { animation: stepIn .22s cubic-bezier(0.4,0,0.2,1) forwards; }
         .fi-err { border-color: var(--danger) !important; }
         .err-msg { font-size: .68rem; color: var(--danger); margin-top: 3px; }
+        .logo-preview-overlay { opacity: 0; transition: opacity .2s; }
+        .logo-preview-wrap:hover .logo-preview-overlay { opacity: 1; }
       `}</style>
 
       <div className="ph">
@@ -479,6 +389,92 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
             <div className="fs">
               <SectionHead icon={<Building2 size={15} />} title="Company Details" sub="Basic information about the organization" />
               <div className="g2">
+                {/* Logo Uploader */}
+                <div className="fg col2">
+                  <label>Organization Logo</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                    <div
+                      className="logo-preview-wrap"
+                      onClick={() => logoInputRef.current?.click()}
+                      style={{
+                        width: 92, height: 92, borderRadius: 18, flexShrink: 0, cursor: 'pointer',
+                        border: `2px dashed ${logoPreview ? 'var(--p)' : 'var(--border2)'}`,
+                        background: logoPreview ? 'transparent' : 'var(--bg)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden', position: 'relative', transition: 'border-color .2s, box-shadow .2s',
+                        boxShadow: logoPreview ? '0 4px 16px rgba(0,0,0,.12)' : 'none',
+                      }}
+                    >
+                      {logoPreview ? (
+                        <>
+                          <img src={logoPreview} alt="Logo preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <div
+                            className="logo-preview-overlay"
+                            style={{
+                              position: 'absolute', inset: 0, background: 'rgba(0,0,0,.45)',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 16,
+                            }}
+                          >
+                            <Upload size={20} style={{ color: '#fff' }} />
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
+                          {name.trim() ? (
+                            <span style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--p)', lineHeight: 1, letterSpacing: '-.02em' }}>
+                              {name.trim().charAt(0).toUpperCase()}
+                            </span>
+                          ) : (
+                            <Building2 size={24} style={{ color: 'var(--text4)' }} />
+                          )}
+                          <span style={{ fontSize: '.56rem', color: 'var(--text4)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Logo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 7, padding: '7px 14px',
+                          background: 'var(--p-lt)', border: '1.5px solid var(--p-mid)', borderRadius: 8,
+                          cursor: 'pointer', fontSize: '.78rem', fontWeight: 600, color: 'var(--p)',
+                          transition: 'background .15s', marginBottom: 6,
+                        }}
+                      >
+                        <Upload size={13} />
+                        {logoPreview ? 'Change Logo' : 'Upload Logo'}
+                      </button>
+                      <div className="fg-hint">PNG, JPG or WebP · Max 5 MB</div>
+                      {logoPreview && (
+                        <button
+                          type="button"
+                          onClick={() => { setLogoFile(null); setLogoPreview(''); if (logoInputRef.current) logoInputRef.current.value = '' }}
+                          style={{ display: 'inline-block', marginTop: 4, fontSize: '.7rem', color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setLogoFile(file)
+                        const reader = new FileReader()
+                        reader.onload = (ev) => setLogoPreview(ev.target?.result as string)
+                        reader.readAsDataURL(file)
+                      }}
+                    />
+                  </div>
+                </div>
+
                 <div className="fg" data-err={errs.name ? '' : undefined}>
                   <label>Organization Name <Req /></label>
                   <input className={`fi${errs.name ? ' fi-err' : ''}`} value={name}
@@ -739,7 +735,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
             <SectionHead icon={<Settings2 size={15} />} title="Modules & Add-ons" sub="Enable the modules this organization will use" />
 
             <div className="g2" style={{ marginBottom: 24 }}>
-              {MODULES.map((mod) => {
+              {modulesLoading ? (
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: '.82rem' }}>
+                  Loading modules…
+                </div>
+              ) : modules.map((mod) => {
                 const isEnabled = enabledModules.includes(mod.key)
                 const enabledAddonList = enabledAddons[mod.key] || []
                 const totalAddons = mod.addons.length
@@ -751,26 +751,26 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                 function toggleAllAddons() {
                   setEnabledAddons((prev) => ({
                     ...prev,
-                    [mod.key]: allSelected ? [] : [...mod.addons],
+                    [mod.key]: allSelected ? [] : mod.addons.map((a) => a.name),
                   }))
                 }
 
                 return (
-                  <div key={mod.key} className={`mod-card ${isEnabled ? 'enabled' : ''}`} style={{ opacity: mod.disabled ? .5 : 1 }}>
+                  <div key={mod.key} className={`mod-card ${isEnabled ? 'enabled' : ''}`} style={{ opacity: mod.isComingSoon ? .5 : 1 }}>
                     <div className={`mod-head ${isEnabled ? 'enabled' : ''}`}>
                       <div className="mod-ico" style={{ background: isEnabled ? 'var(--p)' : 'var(--border)', color: isEnabled ? '#fff' : 'var(--text3)' }}>
                         <Building2 size={14} />
                       </div>
                       <div style={{ flex: 1 }}>
                         <div className="mod-title">{mod.label}</div>
-                        <div className="mod-sub">{mod.desc}</div>
+                        <div className="mod-sub">{mod.description}</div>
                       </div>
-                      {mod.locked ? (
+                      {mod.isMandatory ? (
                         <span className="bx bx-teal bx-no-dot">Required</span>
-                      ) : mod.disabled ? (
+                      ) : mod.isComingSoon ? (
                         <span className="bx bx-gray bx-no-dot">Coming Soon</span>
                       ) : (
-                        <Toggle checked={isEnabled} onChange={() => toggleModule(mod.key, mod.locked)} />
+                        <Toggle checked={isEnabled} onChange={() => toggleModule(mod.key, mod.isMandatory)} />
                       )}
                     </div>
 
@@ -816,14 +816,14 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                         {/* addon items */}
                         <div style={{ padding: '4px 6px 6px' }}>
                           {mod.addons.map((addon) => {
-                            const addonEnabled = enabledAddonList.includes(addon)
+                            const addonEnabled = enabledAddonList.includes(addon.name)
                             return (
                               <Checkbox
-                                key={addon}
+                                key={addon.id}
                                 checked={addonEnabled}
-                                onChange={() => toggleAddon(mod.key, addon)}
+                                onChange={() => toggleAddon(mod.key, addon.name)}
                               >
-                                {addon}
+                                {addon.name}
                               </Checkbox>
                             )
                           })}

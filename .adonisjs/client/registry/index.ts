@@ -72,6 +72,24 @@ const routes = {
     tokens: [{"old":"/api/cities","type":0,"val":"api","end":""},{"old":"/api/cities","type":0,"val":"cities","end":""}],
     types: placeholder as Registry['api.cities']['types'],
   },
+  'api.currencies': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/currencies',
+    tokens: [{"old":"/api/currencies","type":0,"val":"api","end":""},{"old":"/api/currencies","type":0,"val":"currencies","end":""}],
+    types: placeholder as Registry['api.currencies']['types'],
+  },
+  'api.timezones': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/timezones',
+    tokens: [{"old":"/api/timezones","type":0,"val":"api","end":""},{"old":"/api/timezones","type":0,"val":"timezones","end":""}],
+    types: placeholder as Registry['api.timezones']['types'],
+  },
+  'api.modules': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/modules',
+    tokens: [{"old":"/api/modules","type":0,"val":"api","end":""},{"old":"/api/modules","type":0,"val":"modules","end":""}],
+    types: placeholder as Registry['api.modules']['types'],
+  },
   'dashboard': {
     methods: ["GET","HEAD"],
     pattern: '/dashboard',

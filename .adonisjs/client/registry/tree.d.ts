@@ -22,6 +22,9 @@ export interface ApiDefinition {
   api: {
     countries: typeof routes['api.countries']
     cities: typeof routes['api.cities']
+    currencies: typeof routes['api.currencies']
+    timezones: typeof routes['api.timezones']
+    modules: typeof routes['api.modules']
   }
   dashboard: typeof routes['dashboard']
   organizations: {

@@ -1,6 +1,7 @@
 import Organization from '#models/organization'
 import OrganizationModule from '#models/organization_module'
 import OrganizationAddon from '#models/organization_addon'
+import FiscalYear from '#models/fiscal_year'
 import db from '@adonisjs/lucid/services/db'
 
 export interface OrgFilters {
@@ -131,53 +132,72 @@ export default class OrganizationRepository {
     const orgId = await this.generateOrgId()
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 
-    const org = await Organization.create({
-      orgId,
-      slug: `${slug}-${orgId.toLowerCase()}`,
-      name: data.name,
-      companySize: data.companySize,
-      industry: data.industry,
-      website: data.website,
-      about: data.about,
-      logo: data.logo,
-      gstNo: data.gstNo,
-      parentOrgId: data.parentOrgId,
-      fiscalName: data.fiscalName,
-      fiscalStart: data.fiscalStart,
-      fiscalEnd: data.fiscalEnd,
-      country: data.country,
-      city: data.city,
-      phone: data.phone,
-      email: data.email,
-      address: data.address,
-      leadOwnerId: data.leadOwnerId,
-      currency: data.currency || 'INR',
-      timezone: data.timezone || 'Asia/Kolkata',
-      dateFormat: data.dateFormat || 'dd/mm/yyyy',
-      timeFormat: data.timeFormat || '12',
-      planType: data.planType,
-      userLimit: data.userLimit,
-      planStart: data.planStart,
-      planEnd: data.planEnd,
-      status: 'active',
-    })
+    // Normalize enum values to match DB column definitions exactly
+    // DB time_format enum: ('12', '24') — strip trailing 'h' if present
+    const timeFormat = (data.timeFormat ?? '12h').startsWith('24') ? '24' : '12'
+    // DB date_format enum: all lowercase — frontend sends uppercase like 'DD/MM/YYYY'
+    const dateFormat = (data.dateFormat ?? 'dd/mm/yyyy').toLowerCase()
 
-    // Create default modules
-    const defaultModules = ['employee', 'organization']
-    if (data.modules) {
-      for (const mod of data.modules) {
-        await OrganizationModule.create({ orgId: org.id, moduleKey: mod.key, enabled: true })
+    return db.transaction(async (trx) => {
+      const org = await Organization.create({
+        orgId,
+        slug: `${slug}-${orgId.toLowerCase()}`,
+        name: data.name,
+        companySize: data.companySize,
+        industry: data.industry,
+        website: data.website,
+        about: data.about,
+        logo: data.logo,
+        gstNo: data.gstNo,
+        parentOrgId: data.parentOrgId,
+        fiscalName: data.fiscalName,
+        fiscalStart: data.fiscalStart,
+        fiscalEnd: data.fiscalEnd,
+        country: data.country,
+        city: data.city,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+        leadOwnerId: data.leadOwnerId,
+        currency: data.currency || 'INR',
+        timezone: data.timezone || 'Asia/Kolkata',
+        dateFormat,
+        timeFormat,
+        planType: data.planType,
+        userLimit: data.userLimit,
+        planStart: data.planStart,
+        planEnd: data.planEnd,
+        status: 'active',
+      }, { client: trx })
+
+      // Insert fiscal year record
+      if (data.fiscalName && data.fiscalStart && data.fiscalEnd) {
+        await FiscalYear.create({
+          orgId: org.id,
+          name: data.fiscalName,
+          startDate: data.fiscalStart,
+          endDate: data.fiscalEnd,
+          isActive: true,
+        }, { client: trx })
+      }
+
+      // Build module list — always guarantee mandatory modules are present
+      const mandatoryKeys = ['employee', 'organization']
+      const incoming = data.modules && data.modules.length > 0 ? [...data.modules] : []
+      const incomingKeys = new Set(incoming.map((m) => m.key))
+      for (const key of mandatoryKeys) {
+        if (!incomingKeys.has(key)) incoming.push({ key, addons: [] })
+      }
+
+      for (const mod of incoming) {
+        await OrganizationModule.create({ orgId: org.id, moduleKey: mod.key, enabled: true }, { client: trx })
         for (const addonKey of mod.addons) {
-          await OrganizationAddon.create({ orgId: org.id, addonKey, enabled: true })
+          await OrganizationAddon.create({ orgId: org.id, addonKey, enabled: true }, { client: trx })
         }
       }
-    } else {
-      for (const modKey of defaultModules) {
-        await OrganizationModule.create({ orgId: org.id, moduleKey: modKey, enabled: true })
-      }
-    }
 
-    return org
+      return org
+    })
   }
 
   async update(id: number, data: Partial<OrgCreateData>): Promise<Organization> {

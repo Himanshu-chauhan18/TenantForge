@@ -7,6 +7,94 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class CitySchema extends BaseModel {
+  static $columns = ['id', 'name', 'stateId', 'stateCode', 'countryId', 'countryCode', 'latitude', 'longitude', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = CitySchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare stateId: number
+  @column()
+  declare stateCode: string
+  @column()
+  declare countryId: number
+  @column()
+  declare countryCode: string
+  @column()
+  declare latitude: string
+  @column()
+  declare longitude: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
+export class CountrySchema extends BaseModel {
+  static $columns = ['id', 'name', 'iso3', 'numericCode', 'iso2', 'phonecode', 'capital', 'currency', 'currencyName', 'currencySymbol', 'tld', 'native', 'region', 'regionId', 'subregion', 'subregionId', 'nationality', 'timezones', 'translations', 'latitude', 'longitude', 'emoji', 'emojiU', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = CountrySchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare iso3: string | null
+  @column()
+  declare numericCode: string | null
+  @column()
+  declare iso2: string | null
+  @column()
+  declare phonecode: string | null
+  @column()
+  declare capital: string | null
+  @column()
+  declare currency: string | null
+  @column()
+  declare currencyName: string | null
+  @column()
+  declare currencySymbol: string | null
+  @column()
+  declare tld: string | null
+  @column()
+  declare native: string | null
+  @column()
+  declare region: string | null
+  @column()
+  declare regionId: number | null
+  @column()
+  declare subregion: string | null
+  @column()
+  declare subregionId: number | null
+  @column()
+  declare nationality: string | null
+  @column()
+  declare timezones: string | null
+  @column()
+  declare translations: string | null
+  @column()
+  declare latitude: string | null
+  @column()
+  declare longitude: string | null
+  @column()
+  declare emoji: string | null
+  @column()
+  declare emojiU: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
 export class FiscalYearSchema extends BaseModel {
   static $columns = ['id', 'orgId', 'name', 'startDate', 'endDate', 'isActive', 'createdAt', 'updatedAt'] as const
   $columns = FiscalYearSchema.$columns
@@ -22,6 +110,50 @@ export class FiscalYearSchema extends BaseModel {
   declare endDate: DateTime
   @column()
   declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class ModuleAddonSchema extends BaseModel {
+  static $columns = ['id', 'moduleId', 'name', 'sortOrder', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = ModuleAddonSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare moduleId: number
+  @column()
+  declare name: string
+  @column()
+  declare sortOrder: number
+  @column()
+  declare isActive: boolean
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class ModuleSchema extends BaseModel {
+  static $columns = ['id', 'key', 'label', 'description', 'isMandatory', 'isActive', 'isComingSoon', 'sortOrder', 'createdAt', 'updatedAt'] as const
+  $columns = ModuleSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare key: string
+  @column()
+  declare label: string
+  @column()
+  declare description: string | null
+  @column()
+  declare isMandatory: boolean
+  @column()
+  declare isActive: boolean
+  @column()
+  declare isComingSoon: boolean
+  @column()
+  declare sortOrder: number
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })
@@ -181,6 +313,77 @@ export class ProfilePermissionSchema extends BaseModel {
   declare canDelete: boolean | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
+}
+
+export class RegionSchema extends BaseModel {
+  static $columns = ['id', 'name', 'translations', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = RegionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare translations: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
+export class StateSchema extends BaseModel {
+  static $columns = ['id', 'name', 'countryId', 'countryCode', 'fipsCode', 'iso2', 'type', 'latitude', 'longitude', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = StateSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare countryId: number
+  @column()
+  declare countryCode: string
+  @column()
+  declare fipsCode: string | null
+  @column()
+  declare iso2: string | null
+  @column()
+  declare type: string | null
+  @column()
+  declare latitude: string | null
+  @column()
+  declare longitude: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
+export class SubregionSchema extends BaseModel {
+  static $columns = ['id', 'name', 'translations', 'regionId', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = SubregionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare translations: string | null
+  @column()
+  declare regionId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
 }
 
 export class SystemSettingSchema extends BaseModel {

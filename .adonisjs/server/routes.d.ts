@@ -15,6 +15,9 @@ export type ScannedRoutes = {
     'auth.logout': { paramsTuple?: []; params?: {} }
     'api.countries': { paramsTuple?: []; params?: {} }
     'api.cities': { paramsTuple?: []; params?: {} }
+    'api.currencies': { paramsTuple?: []; params?: {} }
+    'api.timezones': { paramsTuple?: []; params?: {} }
+    'api.modules': { paramsTuple?: []; params?: {} }
     'dashboard': { paramsTuple?: []; params?: {} }
     'organizations.index': { paramsTuple?: []; params?: {} }
     'organizations.create': { paramsTuple?: []; params?: {} }
@@ -34,6 +37,9 @@ export type ScannedRoutes = {
     'auth.totp.setup': { paramsTuple?: []; params?: {} }
     'api.countries': { paramsTuple?: []; params?: {} }
     'api.cities': { paramsTuple?: []; params?: {} }
+    'api.currencies': { paramsTuple?: []; params?: {} }
+    'api.timezones': { paramsTuple?: []; params?: {} }
+    'api.modules': { paramsTuple?: []; params?: {} }
     'dashboard': { paramsTuple?: []; params?: {} }
     'organizations.index': { paramsTuple?: []; params?: {} }
     'organizations.create': { paramsTuple?: []; params?: {} }
@@ -49,6 +55,9 @@ export type ScannedRoutes = {
     'auth.totp.setup': { paramsTuple?: []; params?: {} }
     'api.countries': { paramsTuple?: []; params?: {} }
     'api.cities': { paramsTuple?: []; params?: {} }
+    'api.currencies': { paramsTuple?: []; params?: {} }
+    'api.timezones': { paramsTuple?: []; params?: {} }
+    'api.modules': { paramsTuple?: []; params?: {} }
     'dashboard': { paramsTuple?: []; params?: {} }
     'organizations.index': { paramsTuple?: []; params?: {} }
     'organizations.create': { paramsTuple?: []; params?: {} }

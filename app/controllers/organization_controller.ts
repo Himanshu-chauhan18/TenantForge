@@ -1,4 +1,5 @@
 import type { HttpContext } from '@adonisjs/core/http'
+import app from '@adonisjs/core/services/app'
 import OrganizationService from '#services/organization_service'
 import UserRepository from '#repositories/user_repository'
 import Organization from '#models/organization'
@@ -51,10 +52,18 @@ export default class OrganizationController {
     const { modules } = await request.validateUsing(organizationModulesValidator)
     const superAdmin = await request.validateUsing(organizationSuperAdminValidator)
 
+    // Handle optional logo file upload
+    let logoPath: string | undefined
+    const logoFile = request.file('logo', { size: '5mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] })
+    if (logoFile && logoFile.isValid) {
+      await logoFile.move(app.publicPath('uploads/logos'))
+      logoPath = `uploads/logos/${logoFile.fileName}`
+    }
+
     try {
-      const org = await orgService.create(step1 as any, modules, superAdmin as any)
+      const org = await orgService.create({ ...step1, logo: logoPath } as any, modules, superAdmin as any)
       session.flash('success', `Organization "${org.name}" created successfully!`)
-      return response.redirect().toRoute('organizations.show', { id: org.id })
+      return response.redirect().toRoute('dashboard')
     } catch (error) {
       session.flash('errors', { create: error.message || 'Failed to create organization.' })
       return response.redirect().back()
