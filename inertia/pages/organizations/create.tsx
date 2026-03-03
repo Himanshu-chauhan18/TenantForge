@@ -1,14 +1,18 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { router } from '@inertiajs/react'
 import {
   Building2, MapPin, Settings2, User, ChevronRight, ChevronLeft,
-  Check, Globe, Calendar, Shield, ChevronDown, Search, X, Loader2,
-  Eye, EyeOff, Copy, RefreshCw, Mail, Lock, Minus, Plus,
+  Check, Globe, Calendar, Shield, Eye, EyeOff, Copy, RefreshCw, Mail, Lock, Minus, Plus,
 } from 'lucide-react'
+import { SelectSearch } from '~/components/select-search'
+import { DatePicker, fmtDate } from '~/components/date-picker'
+import { RadioGroup } from '~/components/radio-group'
+import { Checkbox } from '~/components/checkbox'
+import { Toggle } from '~/components/toggle'
+import { CountrySelect, type CountryOption } from '~/components/country-select'
+import { CitySelect, type CityOption } from '~/components/city-select'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-function fmtDate(d: Date) { return d.toISOString().slice(0, 10) }
-
 function fiscalDefaults() {
   const today = new Date()
   const m = today.getMonth() + 1
@@ -49,12 +53,6 @@ function generatePassword() {
 // ─── types ────────────────────────────────────────────────────────────────────
 interface UserOption { id: number; email: string; full_name?: string }
 interface OrgOption { id: number; name: string; orgId: string }
-interface CountryOption {
-  id: number; name: string; iso2: string | null
-  currency: string | null; currencyName: string | null; currencySymbol: string | null
-  timezone: string; emoji: string | null; phonecode: string | null
-}
-interface CityOption { id: number; name: string; countryId: number; countryCode: string }
 interface Props {
   users: UserOption[]
   organizations: OrgOption[]
@@ -189,517 +187,6 @@ const DATE_FORMATS = [
   { value: 'MM-DD-YYYY', example: '12-31-2025' },
   { value: 'YYYY-MM-DD', example: '2025-12-31' },
 ]
-const TIME_FORMATS = ['12h', '24h']
-const CAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-const CAL_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-
-// ─── SelectSearch (static list with search) ───────────────────────────────────
-function SelectSearch({
-  value, onChange, options, placeholder = 'Select...',
-}: {
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string; sub?: string }[]
-  placeholder?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false); setSearch('')
-      }
-    }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
-
-  const filtered = search
-    ? options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
-    : options
-  const selected = options.find((o) => o.value === value)
-
-  return (
-    <div ref={ref} className="combo-wrap">
-      <button
-        type="button"
-        className="fi"
-        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left' }}
-        onClick={() => { setOpen((o) => !o); setSearch('') }}
-      >
-        <span style={{ flex: 1, color: selected ? 'var(--text1)' : 'var(--text4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {selected ? selected.label : placeholder}
-        </span>
-        <ChevronDown size={13} style={{ flexShrink: 0, color: 'var(--text3)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
-      </button>
-
-      {open && (
-        <div className="combo-options" style={{ zIndex: 300, boxShadow: '0 8px 28px rgba(0,0,0,.12)' }}>
-          <div className="combo-search">
-            <div style={{ position: 'relative' }}>
-              <Search size={12} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none' }} />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search…"
-                style={{ paddingLeft: 18, color: 'var(--text1)', width: '100%', fontSize: '.82rem', background: 'none', border: 'none', outline: 'none' }}
-              />
-            </div>
-          </div>
-
-          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-            {filtered.length === 0 ? (
-              <div className="combo-empty">No results found</div>
-            ) : (
-              filtered.map((o) => {
-                const isSel = value === o.value
-                return (
-                  <div
-                    key={o.value}
-                    className="combo-option"
-                    data-selected={String(isSel)}
-                    onClick={() => { onChange(o.value); setOpen(false); setSearch('') }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div>{o.label}</div>
-                      {o.sub && <div style={{ fontSize: '.68rem', color: isSel ? 'var(--p)' : 'var(--text3)' }}>{o.sub}</div>}
-                    </div>
-                    {isSel && <Check size={13} style={{ flexShrink: 0, color: 'var(--p)' }} />}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {value && (
-            <div style={{ padding: '5px 8px', borderTop: '1px solid var(--border)' }}>
-              <button type="button"
-                style={{ fontSize: '.72rem', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                onClick={() => { onChange(''); setOpen(false) }}
-              >
-                <X size={11} /> Clear
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── CountrySelect (async) ────────────────────────────────────────────────────
-function CountrySelect({ value, onChange }: { value: CountryOption | null; onChange: (o: CountryOption | null) => void }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const [options, setOptions] = useState<CountryOption[]>([])
-  const [loading, setLoading] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
-
-  useEffect(() => {
-    if (open) { setSearch(''); setOptions([]); load('') }
-  }, [open])
-
-  async function load(q: string) {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/countries?search=${encodeURIComponent(q)}`)
-      if (res.ok) setOptions(await res.json())
-    } catch {}
-    setLoading(false)
-  }
-
-  function handleSearch(q: string) {
-    setSearch(q)
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => load(q), 300)
-  }
-
-  return (
-    <div ref={ref} className="combo-wrap">
-      <button
-        type="button"
-        className="fi"
-        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left' }}
-        onClick={() => setOpen((o) => !o)}
-      >
-        {value ? (
-          <>
-            <span style={{ fontSize: '1.05rem', lineHeight: 1, flexShrink: 0 }}>{value.emoji || '🌍'}</span>
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value.name}</span>
-            {value.iso2 && (
-              <span style={{ fontSize: '.68rem', background: 'var(--bg)', color: 'var(--text3)', padding: '1px 6px', borderRadius: 4, flexShrink: 0, border: '1px solid var(--border)' }}>
-                {value.iso2}
-              </span>
-            )}
-          </>
-        ) : (
-          <span style={{ flex: 1, color: 'var(--text4)' }}>Select country…</span>
-        )}
-        <ChevronDown size={13} style={{ flexShrink: 0, color: 'var(--text3)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
-      </button>
-
-      {open && (
-        <div className="combo-options" style={{ zIndex: 300, boxShadow: '0 8px 28px rgba(0,0,0,.12)' }}>
-          <div className="combo-search">
-            <div style={{ position: 'relative' }}>
-              <Search size={12} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none' }} />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search country…"
-                style={{ paddingLeft: 18, width: '100%', fontSize: '.82rem', background: 'none', border: 'none', outline: 'none', color: 'var(--text1)' }}
-              />
-            </div>
-          </div>
-
-          <div style={{ maxHeight: 252, overflowY: 'auto' }}>
-            {loading ? (
-              <div className="combo-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Loading countries…
-              </div>
-            ) : options.length === 0 ? (
-              <div className="combo-empty">No countries found</div>
-            ) : (
-              options.map((c) => {
-                const isSel = value?.id === c.id
-                return (
-                  <div
-                    key={c.id}
-                    className="combo-option"
-                    data-selected={String(isSel)}
-                    onClick={() => { onChange(c); setOpen(false); setSearch('') }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1 }}>
-                      <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}>{c.emoji || '🌍'}</span>
-                      <span style={{ flex: 1 }}>{c.name}</span>
-                      {c.currency && <span style={{ fontSize: '.7rem', color: isSel ? 'var(--p)' : 'var(--text4)', flexShrink: 0 }}>{c.currency}</span>}
-                    </div>
-                    {isSel && <Check size={13} style={{ color: 'var(--p)', flexShrink: 0, marginLeft: 6 }} />}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {value && (
-            <div style={{ padding: '5px 8px', borderTop: '1px solid var(--border)' }}>
-              <button type="button"
-                style={{ fontSize: '.72rem', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                onClick={() => { onChange(null); setOpen(false) }}
-              >
-                <X size={11} /> Clear selection
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── CitySelect (async, dependent on country) ─────────────────────────────────
-function CitySelect({ value, onChange, countryId }: { value: CityOption | null; onChange: (o: CityOption | null) => void; countryId: number | null }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
-  const [options, setOptions] = useState<CityOption[]>([])
-  const [loading, setLoading] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const disabled = !countryId
-
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
-
-  useEffect(() => { setOptions([]); setSearch(''); setOpen(false) }, [countryId])
-
-  useEffect(() => {
-    if (open && countryId) { setSearch(''); setOptions([]); load('') }
-  }, [open])
-
-  async function load(q: string) {
-    if (!countryId) return
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/cities?country_id=${countryId}&search=${encodeURIComponent(q)}`)
-      if (res.ok) setOptions(await res.json())
-    } catch {}
-    setLoading(false)
-  }
-
-  function handleSearch(q: string) {
-    setSearch(q)
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => load(q), 300)
-  }
-
-  return (
-    <div ref={ref} className="combo-wrap">
-      <button
-        type="button"
-        className="fi"
-        disabled={disabled}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? .55 : 1, textAlign: 'left' }}
-        onClick={() => { if (!disabled) setOpen((o) => !o) }}
-      >
-        <span style={{ flex: 1, color: value ? 'var(--text1)' : 'var(--text4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {value ? value.name : (disabled ? 'Select country first' : 'Select city…')}
-        </span>
-        <ChevronDown size={13} style={{ flexShrink: 0, color: 'var(--text3)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
-      </button>
-
-      {open && !disabled && (
-        <div className="combo-options" style={{ zIndex: 300, boxShadow: '0 8px 28px rgba(0,0,0,.12)' }}>
-          <div className="combo-search">
-            <div style={{ position: 'relative' }}>
-              <Search size={12} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none' }} />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search city…"
-                style={{ paddingLeft: 18, width: '100%', fontSize: '.82rem', background: 'none', border: 'none', outline: 'none', color: 'var(--text1)' }}
-              />
-            </div>
-          </div>
-
-          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-            {loading ? (
-              <div className="combo-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Loading cities…
-              </div>
-            ) : options.length === 0 ? (
-              <div className="combo-empty">No cities found</div>
-            ) : (
-              options.map((c) => {
-                const isSel = value?.id === c.id
-                return (
-                  <div
-                    key={c.id}
-                    className="combo-option"
-                    data-selected={String(isSel)}
-                    onClick={() => { onChange(c); setOpen(false); setSearch('') }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <span style={{ flex: 1 }}>{c.name}</span>
-                    {isSel && <Check size={13} style={{ color: 'var(--p)', flexShrink: 0 }} />}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {value && (
-            <div style={{ padding: '5px 8px', borderTop: '1px solid var(--border)' }}>
-              <button type="button"
-                style={{ fontSize: '.72rem', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                onClick={() => { onChange(null); setOpen(false) }}
-              >
-                <X size={11} /> Clear
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─── CustomDatePicker ──────────────────────────────────────────────────────────
-function CustomDatePicker({ value, onChange, min, max, placeholder }: {
-  value: string
-  onChange: (v: string) => void
-  min?: string
-  max?: string
-  placeholder?: string
-}) {
-  const [open, setOpen] = useState(false)
-  const [dropUp, setDropUp] = useState(false)
-  const [viewYear, setViewYear] = useState(0)
-  const [viewMonth, setViewMonth] = useState(0)
-  const ref = useRef<HTMLDivElement>(null)
-  const today = fmtDate(new Date())
-
-  useEffect(() => {
-    const fn = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', fn)
-    return () => document.removeEventListener('mousedown', fn)
-  }, [])
-
-  function handleToggle() {
-    if (!open && ref.current) {
-      const rect = ref.current.getBoundingClientRect()
-      setDropUp(window.innerHeight - rect.bottom < 340)
-    }
-    setOpen((o) => !o)
-  }
-
-  useEffect(() => {
-    if (open) {
-      const base = value ? new Date(value + 'T00:00:00') : new Date()
-      setViewYear(base.getFullYear())
-      setViewMonth(base.getMonth())
-    }
-  }, [open])
-
-  function formatDisplay(v: string) {
-    if (!v) return ''
-    const d = new Date(v + 'T00:00:00')
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  }
-
-  function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate() }
-  function getFirstDay(y: number, m: number) { return new Date(y, m, 1).getDay() }
-
-  function isDisabled(dateStr: string) {
-    if (min && dateStr < min) return true
-    if (max && dateStr > max) return true
-    return false
-  }
-
-  function selectDay(day: number) {
-    const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-    if (!isDisabled(dateStr)) { onChange(dateStr); setOpen(false) }
-  }
-
-  function prevMonth() {
-    if (viewMonth === 0) { setViewYear((y) => y - 1); setViewMonth(11) }
-    else setViewMonth((m) => m - 1)
-  }
-
-  function nextMonth() {
-    if (viewMonth === 11) { setViewYear((y) => y + 1); setViewMonth(0) }
-    else setViewMonth((m) => m + 1)
-  }
-
-  const daysInMonth = getDaysInMonth(viewYear, viewMonth)
-  const firstDay = getFirstDay(viewYear, viewMonth)
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <div
-        className="fi"
-        onClick={handleToggle}
-        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', minHeight: 36 }}
-      >
-        <Calendar size={14} style={{ color: 'var(--text3)', flexShrink: 0 }} />
-        <span style={{ flex: 1, color: value ? 'var(--text1)' : 'var(--text4)', fontSize: '.82rem' }}>
-          {value ? formatDisplay(value) : (placeholder || 'Select date…')}
-        </span>
-        {value ? (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onChange('') }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text3)', display: 'flex', padding: 2, borderRadius: 4 }}
-          >
-            <X size={12} />
-          </button>
-        ) : (
-          <ChevronDown size={13} style={{ color: 'var(--text3)', flexShrink: 0, transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
-        )}
-      </div>
-
-      {open && (
-        <div style={{
-          position: 'absolute',
-          ...(dropUp ? { bottom: 'calc(100% + 5px)' } : { top: 'calc(100% + 5px)' }),
-          left: 0, zIndex: 400,
-          background: 'var(--surface)', border: '1.5px solid var(--border)', borderRadius: 14,
-          boxShadow: '0 12px 40px rgba(0,0,0,.16)', padding: '14px 12px', width: '100%', minWidth: 260,
-          animation: 'calIn .15s ease',
-        }}>
-          {/* Month / Year header */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <button type="button" onClick={prevMonth}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
-              <ChevronLeft size={13} />
-            </button>
-            <span style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--text1)', letterSpacing: '.01em' }}>
-              {CAL_MONTHS[viewMonth]} {viewYear}
-            </span>
-            <button type="button" onClick={nextMonth}
-              style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, transition: 'background .15s' }}>
-              <ChevronRight size={13} />
-            </button>
-          </div>
-
-          {/* Weekday labels */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
-            {CAL_DAYS.map((d) => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '.64rem', color: 'var(--text3)', fontWeight: 700, padding: '2px 0' }}>{d}</div>
-            ))}
-          </div>
-
-          {/* Day cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
-            {Array.from({ length: firstDay }).map((_, i) => <div key={`_${i}`} />)}
-            {Array.from({ length: daysInMonth }).map((_, i) => {
-              const day = i + 1
-              const dateStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-              const isSel = dateStr === value
-              const isToday = dateStr === today
-              const disabled = isDisabled(dateStr)
-              return (
-                <button
-                  key={day}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => selectDay(day)}
-                  style={{
-                    textAlign: 'center', fontSize: '.78rem', padding: '6px 2px', border: 'none',
-                    borderRadius: 7,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                    background: isSel ? 'var(--p)' : isToday ? 'var(--p-lt)' : 'transparent',
-                    color: isSel ? '#fff' : disabled ? 'var(--text4)' : isToday ? 'var(--p)' : 'var(--text1)',
-                    fontWeight: isSel || isToday ? 700 : 400,
-                    transition: 'background .12s, color .12s',
-                  }}
-                >
-                  {day}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Footer shortcuts */}
-          <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-            <button type="button" onClick={() => { onChange(today); setOpen(false) }}
-              style={{ flex: 1, fontSize: '.72rem', color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer', borderRadius: 6, padding: '4px 8px', fontWeight: 600 }}>
-              Today
-            </button>
-            {value && (
-              <button type="button" onClick={() => { onChange(''); setOpen(false) }}
-                style={{ flex: 1, fontSize: '.72rem', color: 'var(--text3)', background: 'var(--bg)', border: '1px solid var(--border)', cursor: 'pointer', borderRadius: 6, padding: '4px 8px' }}>
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
 
 // ─── PhoneInput (country code prefix) ────────────────────────────────────────
 function PhoneInput({ value, onChange, phonecode, emoji }: { value: string; onChange: (v: string) => void; phonecode?: string | null; emoji?: string | null }) {
@@ -1051,12 +538,12 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                 </div>
                 <div className="fg" data-err={errs.fiscalStart ? '' : undefined}>
                   <label>Start Date <Req /></label>
-                  <CustomDatePicker value={fiscalStart} onChange={(v) => { setFiscalStart(v); clearErr('fiscalStart') }} placeholder="Pick start date" />
+                  <DatePicker value={fiscalStart} onChange={(v) => { setFiscalStart(v); clearErr('fiscalStart') }} placeholder="Pick start date" />
                   {errs.fiscalStart && <div className="err-msg">{errs.fiscalStart}</div>}
                 </div>
                 <div className="fg" data-err={errs.fiscalEnd ? '' : undefined}>
                   <label>End Date <Req /></label>
-                  <CustomDatePicker value={fiscalEnd} onChange={(v) => { setFiscalEnd(v); clearErr('fiscalEnd') }} min={fiscalStart} placeholder="Pick end date" />
+                  <DatePicker value={fiscalEnd} onChange={(v) => { setFiscalEnd(v); clearErr('fiscalEnd') }} min={fiscalStart} placeholder="Pick end date" />
                   {errs.fiscalEnd && <div className="err-msg">{errs.fiscalEnd}</div>}
                 </div>
               </div>
@@ -1138,7 +625,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
                 <div className="fg col2">
                   <label>Date Format <Req /></label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
                     {DATE_FORMATS.map((f) => {
                       const sel = dateFormat === f.value
                       return (
@@ -1146,20 +633,19 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                           key={f.value}
                           onClick={() => setDateFormat(f.value)}
                           style={{
-                            padding: '10px 12px', borderRadius: 9, cursor: 'pointer', userSelect: 'none',
+                            flex: '1 0 0', minWidth: 0,
+                            padding: '8px 10px', borderRadius: 9, cursor: 'pointer', userSelect: 'none',
                             border: `1.5px solid ${sel ? 'var(--p)' : 'var(--border)'}`,
                             background: sel ? 'var(--p-lt)' : 'var(--surface)',
                             transition: 'border-color .15s, background .15s',
-                            display: 'flex', flexDirection: 'column', gap: 3,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                            <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${sel ? 'var(--p)' : 'var(--border2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'border-color .15s' }}>
-                              {sel && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--p)' }} />}
-                            </div>
-                            <span style={{ fontSize: '.76rem', fontWeight: 700, color: sel ? 'var(--p)' : 'var(--text1)', fontFamily: 'monospace', letterSpacing: '.02em' }}>{f.value}</span>
+                          <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${sel ? 'var(--p)' : 'var(--border2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'border-color .15s' }}>
+                            {sel && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--p)' }} />}
                           </div>
-                          <div style={{ fontSize: '.67rem', color: sel ? 'var(--p)' : 'var(--text3)', paddingLeft: 19, fontFamily: 'monospace' }}>{f.example}</div>
+                          <span style={{ fontSize: '.72rem', fontWeight: 700, color: sel ? 'var(--p)' : 'var(--text1)', fontFamily: 'monospace', letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{f.value}</span>
+                          <span style={{ fontSize: '.63rem', color: sel ? 'var(--p)' : 'var(--text3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{f.example}</span>
                         </div>
                       )
                     })}
@@ -1168,18 +654,15 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
                 <div className="fg">
                   <label>Time Format <Req /></label>
-                  <div className="radio-g">
-                    {TIME_FORMATS.map((f) => (
-                      <label key={f} className={`rc ${timeFormat === f ? 'on' : ''}`} style={{ cursor: 'pointer' }}>
-                        <input type="radio" name="time_format" value={f} checked={timeFormat === f} onChange={() => setTimeFormat(f)} />
-                        <div className="rc-dot" />
-                        <div>
-                          <div className="rc-title">{f === '12h' ? '12-hour' : '24-hour'}</div>
-                          <div className="rc-desc">{f === '12h' ? 'e.g. 02:30 PM' : 'e.g. 14:30'}</div>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
+                  <RadioGroup
+                    name="time_format"
+                    value={timeFormat}
+                    onChange={setTimeFormat}
+                    options={[
+                      { value: '12h', label: '12-hour', desc: 'e.g. 02:30 PM' },
+                      { value: '24h', label: '24-hour', desc: 'e.g. 14:30' },
+                    ]}
+                  />
                 </div>
               </div>
             </div>
@@ -1190,24 +673,15 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
               <div className="g2">
                 <div className="fg col2">
                   <label>Plan Type <Req /></label>
-                  <div className="radio-g">
-                    <label className={`rc ${planType === 'trial' ? 'on' : ''}`} style={{ cursor: 'pointer' }}>
-                      <input type="radio" name="plan_type" value="trial" checked={planType === 'trial'} onChange={() => setPlanType('trial')} />
-                      <div className="rc-dot" />
-                      <div>
-                        <div className="rc-title">Trial</div>
-                        <div className="rc-desc">Free trial period</div>
-                      </div>
-                    </label>
-                    <label className={`rc ${planType === 'premium' ? 'on' : ''}`} style={{ cursor: 'pointer' }}>
-                      <input type="radio" name="plan_type" value="premium" checked={planType === 'premium'} onChange={() => setPlanType('premium')} />
-                      <div className="rc-dot" />
-                      <div>
-                        <div className="rc-title">Premium</div>
-                        <div className="rc-desc">Paid subscription</div>
-                      </div>
-                    </label>
-                  </div>
+                  <RadioGroup
+                    name="plan_type"
+                    value={planType}
+                    onChange={(v) => setPlanType(v as 'trial' | 'premium')}
+                    options={[
+                      { value: 'trial', label: 'Trial', desc: 'Free trial period' },
+                      { value: 'premium', label: 'Premium', desc: 'Paid subscription' },
+                    ]}
+                  />
                 </div>
 
                 <div className="fg col2">
@@ -1235,13 +709,13 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
                     <div className="fg" data-err={errs.planStart ? '' : undefined}>
                       <label>Plan Start Date <Req /></label>
-                      <CustomDatePicker value={planStart} onChange={(v) => { setPlanStart(v); clearErr('planStart') }} placeholder="Pick start date" />
+                      <DatePicker value={planStart} onChange={(v) => { setPlanStart(v); clearErr('planStart') }} placeholder="Pick start date" />
                       {errs.planStart && <div className="err-msg">{errs.planStart}</div>}
                     </div>
 
                     <div className="fg" data-err={errs.planEnd ? '' : undefined}>
                       <label>Plan End Date <Req /></label>
-                      <CustomDatePicker value={planEnd} onChange={(v) => { setPlanEnd(v); clearErr('planEnd') }} min={planStart} placeholder="Pick end date" />
+                      <DatePicker value={planEnd} onChange={(v) => { setPlanEnd(v); clearErr('planEnd') }} min={planStart} placeholder="Pick end date" />
                       {errs.planEnd && <div className="err-msg">{errs.planEnd}</div>}
                     </div>
                   </div>
@@ -1267,6 +741,20 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
             <div className="g2" style={{ marginBottom: 24 }}>
               {MODULES.map((mod) => {
                 const isEnabled = enabledModules.includes(mod.key)
+                const enabledAddonList = enabledAddons[mod.key] || []
+                const totalAddons = mod.addons.length
+                const checkedCount = enabledAddonList.length
+                const allSelected = totalAddons > 0 && checkedCount === totalAddons
+                const someSelected = checkedCount > 0 && checkedCount < totalAddons
+                const pct = totalAddons > 0 ? Math.round((checkedCount / totalAddons) * 100) : 0
+
+                function toggleAllAddons() {
+                  setEnabledAddons((prev) => ({
+                    ...prev,
+                    [mod.key]: allSelected ? [] : [...mod.addons],
+                  }))
+                }
+
                 return (
                   <div key={mod.key} className={`mod-card ${isEnabled ? 'enabled' : ''}`} style={{ opacity: mod.disabled ? .5 : 1 }}>
                     <div className={`mod-head ${isEnabled ? 'enabled' : ''}`}>
@@ -1282,20 +770,64 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                       ) : mod.disabled ? (
                         <span className="bx bx-gray bx-no-dot">Coming Soon</span>
                       ) : (
-                        <input type="checkbox" className="tog" checked={isEnabled} onChange={() => toggleModule(mod.key, mod.locked)} style={{ cursor: 'pointer' }} />
+                        <Toggle checked={isEnabled} onChange={() => toggleModule(mod.key, mod.locked)} />
                       )}
                     </div>
-                    {isEnabled && mod.addons.length > 0 && (
-                      <div className="mod-addons">
-                        {mod.addons.map((addon) => {
-                          const addonEnabled = (enabledAddons[mod.key] || []).includes(addon)
-                          return (
-                            <label key={addon} className="mod-addon-item" style={{ cursor: mod.locked ? 'default' : 'pointer' }}>
-                              <input type="checkbox" className="ck" checked={addonEnabled} onChange={() => !mod.locked && toggleAddon(mod.key, addon)} disabled={mod.locked} style={{ cursor: mod.locked ? 'default' : 'pointer' }} />
-                              <span>{addon}</span>
+
+                    {isEnabled && totalAddons > 0 && (
+                      <div className="mod-addons" style={{ padding: 0 }}>
+                        {/* ── progress + select-all header ── */}
+                        <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
+                              <input
+                                type="checkbox"
+                                className="ck"
+                                checked={allSelected}
+                                ref={(el) => { if (el) el.indeterminate = someSelected }}
+                                onChange={toggleAllAddons}
+                                style={{ cursor: 'pointer' }}
+                              />
+                              <span style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)' }}>Select all</span>
                             </label>
-                          )
-                        })}
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <span style={{
+                                fontSize: '.7rem', fontWeight: 700, letterSpacing: '.02em',
+                                color: checkedCount === totalAddons ? 'var(--s)' : checkedCount > 0 ? 'var(--p)' : 'var(--text4)',
+                              }}>
+                                {checkedCount}/{totalAddons}
+                              </span>
+                              <span style={{ fontSize: '.64rem', color: 'var(--text3)' }}>add-ons</span>
+                            </div>
+                          </div>
+
+                          {/* progress bar */}
+                          <div style={{ height: 5, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
+                            <div style={{
+                              height: '100%', borderRadius: 999,
+                              background: pct === 100 ? 'var(--s)' : 'var(--p)',
+                              width: `${pct}%`,
+                              transition: 'width .25s ease, background .25s ease',
+                            }} />
+                          </div>
+                        </div>
+
+                        {/* addon items */}
+                        <div style={{ padding: '4px 6px 6px' }}>
+                          {mod.addons.map((addon) => {
+                            const addonEnabled = enabledAddonList.includes(addon)
+                            return (
+                              <Checkbox
+                                key={addon}
+                                checked={addonEnabled}
+                                onChange={() => toggleAddon(mod.key, addon)}
+                              >
+                                {addon}
+                              </Checkbox>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1353,7 +885,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
               <div className="fg">
                 <label>Date of Birth</label>
-                <CustomDatePicker value={dob} onChange={setDob} placeholder="Pick date of birth" />
+                <DatePicker value={dob} onChange={setDob} placeholder="Pick date of birth" />
               </div>
 
               <div className="fg" />
@@ -1415,9 +947,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                     <div style={{ fontWeight: 600, fontSize: '.83rem', color: 'var(--text1)', marginBottom: 2 }}>Send Welcome Email</div>
                     <div style={{ fontSize: '.72rem', color: 'var(--text3)' }}>Send login credentials and a welcome message to the super admin's email address</div>
                   </div>
-                  <div style={{ width: 40, height: 22, borderRadius: 11, background: sendWelcomeMail ? 'var(--p)' : 'var(--border)', position: 'relative', transition: 'background .2s', flexShrink: 0 }}>
-                    <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: sendWelcomeMail ? 21 : 3, transition: 'left .2s', boxShadow: '0 1px 3px rgba(0,0,0,.2)' }} />
-                  </div>
+                  <Toggle checked={sendWelcomeMail} onChange={() => setSendWelcomeMail((v) => !v)} />
                 </div>
               </div>
             </div>
