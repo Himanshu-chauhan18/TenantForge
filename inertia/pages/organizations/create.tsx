@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react'
 import {
   Building2, MapPin, Settings2, User, ChevronRight, ChevronLeft,
   Check, Globe, Calendar, Shield, Eye, EyeOff, Copy, RefreshCw, Mail, Lock, Minus, Plus, Upload,
+  X, Sparkles, Puzzle,
 } from 'lucide-react'
 import { SelectSearch } from '~/components/select-search'
 import { DatePicker, fmtDate } from '~/components/date-picker'
@@ -51,10 +52,26 @@ function generatePassword() {
   return pwd.split('').sort(() => Math.random() - 0.5).join('')
 }
 
+// ─── addon grouping helpers ────────────────────────────────────────────────────
+function getAddonGroup(name: string): string {
+  if (name.startsWith('Settings -')) return 'Settings'
+  if (name.startsWith('Employee Document -')) return 'Documents'
+  return 'Core'
+}
+function groupAddonItems(addons: ModuleAddonOption[]): { label: string; items: ModuleAddonOption[] }[] {
+  const ORDER = ['Core', 'Documents', 'Settings']
+  const map: Record<string, ModuleAddonOption[]> = {}
+  for (const a of addons) {
+    const g = getAddonGroup(a.name)
+    ;(map[g] ??= []).push(a)
+  }
+  return ORDER.filter((g) => map[g]?.length).map((g) => ({ label: g, items: map[g] }))
+}
+
 // ─── types ────────────────────────────────────────────────────────────────────
 interface UserOption { id: number; email: string; full_name?: string }
 interface OrgOption { id: number; name: string; orgId: string }
-interface ModuleAddonOption { id: number; name: string }
+interface ModuleAddonOption { id: number; name: string; type: 'default' | 'custom' | 'advance' }
 interface ModuleOption {
   id: number
   key: string
@@ -196,6 +213,12 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
         if (!modulesInitialized.current) {
           modulesInitialized.current = true
           setEnabledModules(data.filter((m) => m.isMandatory).map((m) => m.key))
+          // Auto-enable all default addons for mandatory modules
+          const initAddons: Record<string, string[]> = {}
+          data.filter((m) => m.isMandatory).forEach((m) => {
+            initAddons[m.key] = m.addons.filter((a) => a.type === 'default').map((a) => a.name)
+          })
+          setEnabledAddons(initAddons)
         }
       })
       .catch(() => {})
@@ -216,6 +239,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
   const modulesInitialized = useRef(false)
   const [enabledModules, setEnabledModules] = useState<string[]>([])
   const [enabledAddons, setEnabledAddons] = useState<Record<string, string[]>>({})
+  const [addonModal, setAddonModal] = useState<ModuleOption | null>(null)
+  const [modalTab, setModalTab] = useState<'custom' | 'advance'>('custom')
+  const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
+  const [modalAnimOut, setModalAnimOut] = useState(false)
+  const [closedModalGroups, setClosedModalGroups] = useState<Set<string>>(new Set())
 
   // Super admin
   const [employeeCode] = useState('EMP00001')
@@ -283,13 +311,29 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
   function toggleModule(key: string, locked?: boolean) {
     if (locked) return
-    setEnabledModules((prev) => prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key])
+    setEnabledModules((prev) => {
+      if (prev.includes(key)) {
+        return prev.filter((k) => k !== key)
+      }
+      // Auto-enable all default addons when turning module ON
+      const mod = modules.find((m) => m.key === key)
+      if (mod) {
+        const defaults = mod.addons.filter((a) => a.type === 'default').map((a) => a.name)
+        setEnabledAddons((p) => ({ ...p, [key]: defaults }))
+      }
+      return [...prev, key]
+    })
   }
   function toggleAddon(moduleKey: string, addon: string) {
     setEnabledAddons((prev) => {
       const cur = prev[moduleKey] || []
       return { ...prev, [moduleKey]: cur.includes(addon) ? cur.filter((a) => a !== addon) : [...cur, addon] }
     })
+  }
+
+  function closeModal() {
+    setModalAnimOut(true)
+    setTimeout(() => { setAddonModal(null); setModalAnimOut(false) }, 190)
   }
 
   function handleSubmit() {
@@ -365,6 +409,37 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
         .err-msg { font-size: .68rem; color: var(--danger); margin-top: 3px; }
         .logo-preview-overlay { opacity: 0; transition: opacity .2s; }
         .logo-preview-wrap:hover .logo-preview-overlay { opacity: 1; }
+        .modal-tab-btn { padding: 8px 16px; border: none; background: transparent; cursor: pointer; font-size: .78rem; font-weight: 600; color: var(--text3); border-bottom: 2px solid transparent; transition: color .15s, border-color .15s; }
+        .modal-tab-btn.active { color: var(--p); border-bottom-color: var(--p); }
+        .addon-item { display: flex; align-items: flex-start; gap: 10; padding: 10px 12px; border-radius: 9px; cursor: pointer; transition: background .12s; }
+        .addon-item:hover { background: var(--bg); }
+        .extra-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 9px; border-radius: 20px; font-size: .68rem; font-weight: 600; background: var(--p-lt); color: var(--p); border: 1px solid var(--p-mid); }
+        .extra-chip button { display: flex; align-items: center; background: none; border: none; cursor: pointer; color: var(--p); padding: 0; opacity: .7; }
+        .extra-chip button:hover { opacity: 1; }
+        .advance-chip { background: var(--s-lt, #f0fdf4); color: var(--s); border-color: var(--s-mid, #bbf7d0); }
+        .acc-hd { display: flex; align-items: center; gap: 8px; padding: 10px 14px 10px 12px; cursor: pointer; user-select: none; transition: background .15s, border-left-color .15s; border-left: 2.5px solid transparent; }
+        .acc-hd:hover { background: var(--bg); }
+        .acc-hd.open { background: var(--p-lt); border-left-color: var(--p); }
+        .acc-body { overflow: hidden; transition: max-height .3s cubic-bezier(0.4,0,0.2,1); }
+        .cs-preview { padding: 10px 14px 14px; border-top: 1px solid var(--border); }
+        .cs-addon-row { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; pointer-events: none; }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(.94) translateY(8px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        @keyframes modalOut {
+          from { opacity: 1; transform: scale(1) translateY(0); }
+          to   { opacity: 0; transform: scale(.94) translateY(8px); }
+        }
+        @keyframes backdropIn { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes backdropOut { from { opacity: 1 } to { opacity: 0 } }
+        .addon-modal { animation: modalIn .24s cubic-bezier(0.34,1.2,0.64,1) forwards; }
+        .addon-modal-out { animation: modalOut .18s ease forwards; }
+        .modal-backdrop { animation: backdropIn .2s ease forwards; }
+        .modal-backdrop-out { animation: backdropOut .18s ease forwards; }
+        .modal-addon-item { display: flex; align-items: center; gap: 10px; padding: 9px 18px 9px 22px; cursor: pointer; transition: background .12s; }
+        .modal-addon-item:hover { background: var(--bg); }
+        .mod-inactive-hint { border-top: 1px solid var(--border); padding: 10px 16px; background: var(--bg); }
       `}</style>
 
       <div className="ph">
@@ -742,27 +817,30 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
               ) : modules.map((mod) => {
                 const isEnabled = enabledModules.includes(mod.key)
                 const enabledAddonList = enabledAddons[mod.key] || []
-                const totalAddons = mod.addons.length
-                const checkedCount = enabledAddonList.length
-                const allSelected = totalAddons > 0 && checkedCount === totalAddons
-                const someSelected = checkedCount > 0 && checkedCount < totalAddons
-                const pct = totalAddons > 0 ? Math.round((checkedCount / totalAddons) * 100) : 0
 
-                function toggleAllAddons() {
-                  setEnabledAddons((prev) => ({
-                    ...prev,
-                    [mod.key]: allSelected ? [] : mod.addons.map((a) => a.name),
-                  }))
-                }
+                // Partition addons by type
+                const defaultAddons = mod.addons.filter((a) => a.type === 'default')
+                const customAddons = mod.addons.filter((a) => a.type === 'custom')
+                const advanceAddons = mod.addons.filter((a) => a.type === 'advance')
+                const defaultGroups = groupAddonItems(defaultAddons)
+
+                // Extra (custom/advance) addons that have been selected
+                const extraAddons = enabledAddonList.filter(
+                  (name) => mod.addons.find((a) => a.name === name)?.type !== 'default'
+                )
 
                 return (
-                  <div key={mod.key} className={`mod-card ${isEnabled ? 'enabled' : ''}`} style={{ opacity: mod.isComingSoon ? .5 : 1 }}>
+                  <div key={mod.key} className={`mod-card ${isEnabled ? 'enabled' : ''}`}>
+                    {/* ── Module header ── */}
                     <div className={`mod-head ${isEnabled ? 'enabled' : ''}`}>
-                      <div className="mod-ico" style={{ background: isEnabled ? 'var(--p)' : 'var(--border)', color: isEnabled ? '#fff' : 'var(--text3)' }}>
+                      <div className="mod-ico" style={{
+                        background: isEnabled ? 'var(--p)' : mod.isComingSoon ? 'var(--bg)' : 'var(--border)',
+                        color: isEnabled ? '#fff' : mod.isComingSoon ? 'var(--text4)' : 'var(--text3)',
+                      }}>
                         <Building2 size={14} />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div className="mod-title">{mod.label}</div>
+                        <div className="mod-title" style={{ color: mod.isComingSoon ? 'var(--text3)' : undefined }}>{mod.label}</div>
                         <div className="mod-sub">{mod.description}</div>
                       </div>
                       {mod.isMandatory ? (
@@ -774,60 +852,180 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                       )}
                     </div>
 
-                    {isEnabled && totalAddons > 0 && (
-                      <div className="mod-addons" style={{ padding: 0 }}>
-                        {/* ── progress + select-all header ── */}
-                        <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--border)' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', userSelect: 'none' }}>
-                              <input
-                                type="checkbox"
-                                className="ck"
-                                checked={allSelected}
-                                ref={(el) => { if (el) el.indeterminate = someSelected }}
-                                onChange={toggleAllAddons}
-                                style={{ cursor: 'pointer' }}
-                              />
-                              <span style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)' }}>Select all</span>
-                            </label>
-
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                              <span style={{
-                                fontSize: '.7rem', fontWeight: 700, letterSpacing: '.02em',
-                                color: checkedCount === totalAddons ? 'var(--s)' : checkedCount > 0 ? 'var(--p)' : 'var(--text4)',
-                              }}>
-                                {checkedCount}/{totalAddons}
-                              </span>
-                              <span style={{ fontSize: '.64rem', color: 'var(--text3)' }}>add-ons</span>
+                    {/* ── Coming-soon addon preview (disabled) ── */}
+                    {(mod.isComingSoon && mod.addons.length > 0) ? (
+                      <div className="cs-preview">
+                        <div style={{ fontSize: '.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text4)', marginBottom: 10 }}>
+                          Features Preview
+                        </div>
+                        {groupAddonItems(mod.addons).map((grp) => (
+                          <div key={grp.label} style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: '.65rem', fontWeight: 700, color: 'var(--text4)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ display: 'inline-block', width: 16, height: 1.5, background: 'var(--border)', borderRadius: 1 }} />
+                              {grp.label}
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                              {grp.items.map((a) => (
+                                <div key={a.id} className="cs-addon-row" style={{
+                                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                                  padding: '3px 9px 3px 7px', borderRadius: 20,
+                                  background: 'var(--bg)', border: '1px solid var(--border)',
+                                  opacity: .55,
+                                }}>
+                                  <div style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid var(--border2)', flexShrink: 0 }} />
+                                  <span style={{ fontSize: '.72rem', color: 'var(--text3)' }}>{a.name}</span>
+                                  {a.type !== 'default' && (
+                                    <span style={{ fontSize: '.58rem', fontWeight: 700, background: a.type === 'advance' ? 'var(--s-lt, #f0fdf4)' : 'var(--p-lt)', color: a.type === 'advance' ? 'var(--s)' : 'var(--p)', borderRadius: 20, padding: '1px 5px' }}>
+                                      {a.type}
+                                    </span>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </div>
+                        ))}
+                      </div>
+                    ):''}
 
-                          {/* progress bar */}
-                          <div style={{ height: 5, borderRadius: 999, background: 'var(--border)', overflow: 'hidden' }}>
-                            <div style={{
-                              height: '100%', borderRadius: 999,
-                              background: pct === 100 ? 'var(--s)' : 'var(--p)',
-                              width: `${pct}%`,
-                              transition: 'width .25s ease, background .25s ease',
-                            }} />
-                          </div>
+                    {/* ── Inactive module placeholder ── */}
+                    {(!isEnabled && !mod.isComingSoon && mod.addons.length > 0) ? (
+                      <div className="mod-inactive-hint">
+                        <div style={{ fontSize: '.78rem', color: 'var(--text3)', fontWeight: 500 }}>
+                          Enable this module to configure <strong style={{ color: 'var(--text2)', fontWeight: 700 }}>{mod.addons.length} add-ons</strong>
                         </div>
+                      </div>
+                    ):''}
 
-                        {/* addon items */}
-                        <div style={{ padding: '4px 6px 6px' }}>
-                          {mod.addons.map((addon) => {
-                            const addonEnabled = enabledAddonList.includes(addon.name)
-                            return (
-                              <Checkbox
-                                key={addon.id}
-                                checked={addonEnabled}
-                                onChange={() => toggleAddon(mod.key, addon.name)}
+                    {/* ── Enabled module addons ── */}
+                    {isEnabled && (
+                      <div className="mod-addons" style={{ padding: 0 }}>
+
+                        {/* ── Grouped default addons as accordions ── */}
+                        {defaultGroups.map((grp, gi) => {
+                          const groupKey = `${mod.key}:${grp.label}`
+                          const isOpen = !closedGroups.has(groupKey)
+                          const grpChecked = grp.items.filter((a) => enabledAddonList.includes(a.name)).length
+                          const grpTotal = grp.items.length
+                          const allGrpSel = grpChecked === grpTotal
+                          const someGrpSel = grpChecked > 0 && grpChecked < grpTotal
+                          const grpPct = grpTotal > 0 ? Math.round((grpChecked / grpTotal) * 100) : 0
+                          const hasMore = gi < defaultGroups.length - 1 || extraAddons.length > 0 || customAddons.length > 0 || advanceAddons.length > 0
+
+                          return (
+                            <div key={grp.label} style={{ borderBottom: hasMore ? '1px solid var(--border)' : 'none' }}>
+                              {/* Accordion header */}
+                              <div
+                                className={`acc-hd${isOpen ? ' open' : ''}`}
+                                onClick={() => setClosedGroups((prev) => {
+                                  const n = new Set(prev)
+                                  n.has(groupKey) ? n.delete(groupKey) : n.add(groupKey)
+                                  return n
+                                })}
                               >
-                                {addon.name}
-                              </Checkbox>
-                            )
-                          })}
-                        </div>
+                                <ChevronRight
+                                  size={12}
+                                  style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform .22s', color: isOpen ? 'var(--p)' : 'var(--text4)', flexShrink: 0 }}
+                                />
+                                <span style={{ fontSize: '.72rem', fontWeight: 700, color: isOpen ? 'var(--text1)' : 'var(--text2)', flex: 1, letterSpacing: '.01em' }}>{grp.label}</span>
+                                {/* Progress bar — wider (72px) */}
+                                <div style={{ width: 72, height: 4, borderRadius: 999, background: 'var(--border)', overflow: 'hidden', flexShrink: 0 }}>
+                                  <div style={{ height: '100%', borderRadius: 999, background: grpPct === 100 ? 'var(--s)' : 'var(--p)', width: `${grpPct}%`, transition: 'width .3s ease' }} />
+                                </div>
+                                {/* Counter — only shown when at least one item is checked */}
+                                {grpChecked > 0 && (
+                                  <span style={{ fontSize: '.64rem', fontWeight: 700, color: grpChecked === grpTotal ? 'var(--s)' : 'var(--p)', minWidth: 36, textAlign: 'right' }}>
+                                    {grpChecked}/{grpTotal}
+                                  </span>
+                                )}
+                                <label
+                                  onClick={(e) => e.stopPropagation()}
+                                  style={{ display: 'flex', alignItems: 'center', marginLeft: 6, cursor: 'pointer' }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    className="ck"
+                                    checked={allGrpSel}
+                                    ref={(el) => { if (el) el.indeterminate = someGrpSel }}
+                                    onChange={() => {
+                                      const names = grp.items.map((a) => a.name)
+                                      setEnabledAddons((prev) => {
+                                        const cur = prev[mod.key] || []
+                                        const rest = cur.filter((n) => !names.includes(n))
+                                        return { ...prev, [mod.key]: allGrpSel ? rest : [...rest, ...names] }
+                                      })
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                </label>
+                              </div>
+                              {/* Accordion body */}
+                              <div
+                                className="acc-body"
+                                style={{ maxHeight: isOpen ? `${grp.items.length * 44}px` : 0 }}
+                              >
+                                <div style={{ padding: '2px 6px 6px' }}>
+                                  {grp.items.map((addon) => (
+                                    <Checkbox
+                                      key={addon.id}
+                                      checked={enabledAddonList.includes(addon.name)}
+                                      onChange={() => toggleAddon(mod.key, addon.name)}
+                                    >
+                                      {addon.name}
+                                    </Checkbox>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+
+                        {/* ── Extra addons selected as chips ── */}
+                        {extraAddons.length > 0 && (
+                          <div style={{ padding: '8px 14px', borderTop: defaultGroups.length > 0 ? '1px solid var(--border)' : undefined }}>
+                            <div style={{ fontSize: '.64rem', color: 'var(--text3)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 6 }}>
+                              Additional Add-ons
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                              {extraAddons.map((name) => {
+                                const isAdv = mod.addons.find((a) => a.name === name)?.type === 'advance'
+                                return (
+                                  <span key={name} className={`extra-chip${isAdv ? ' advance-chip' : ''}`}>
+                                    {isAdv ? <Sparkles size={10} /> : <Puzzle size={10} />}
+                                    {name}
+                                    <button type="button" onClick={() => toggleAddon(mod.key, name)}>
+                                      <X size={10} />
+                                    </button>
+                                  </span>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── Add More button ── */}
+                        {(customAddons.length > 0 || advanceAddons.length > 0) && (
+                          <div style={{ padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
+                            <button
+                              type="button"
+                              onClick={() => { setAddonModal(mod); setModalTab(customAddons.length > 0 ? 'custom' : 'advance') }}
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px',
+                                background: 'var(--bg)', border: '1.5px dashed var(--border2)', borderRadius: 7,
+                                cursor: 'pointer', fontSize: '.74rem', fontWeight: 600, color: 'var(--text2)',
+                                transition: 'border-color .15s, color .15s',
+                              }}
+                            >
+                              <Plus size={12} style={{ color: 'var(--p)' }} />
+                              Add More Add-ons
+                              {extraAddons.length > 0 && (
+                                <span style={{ background: 'var(--p)', color: '#fff', borderRadius: 20, fontSize: '.62rem', padding: '1px 6px', fontWeight: 700 }}>
+                                  {extraAddons.length}
+                                </span>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -997,6 +1195,186 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
           </div>
         </div>
       )}
+
+      {/* ═══════════════════ ADD-ONS MODAL ═══════════════════ */}
+      {addonModal && (() => {
+        const mod = addonModal
+        const customAddons = mod.addons.filter((a) => a.type === 'custom')
+        const advanceAddons = mod.addons.filter((a) => a.type === 'advance')
+        const activeList = modalTab === 'custom' ? customAddons : advanceAddons
+        const activeGroups = groupAddonItems(activeList)
+        const enabledAddonList = enabledAddons[mod.key] || []
+        const extraSelectedCount = enabledAddonList.filter((n) => mod.addons.find((a) => a.name === n && a.type !== 'default')).length
+
+        return (
+          <div
+            className={modalAnimOut ? 'modal-backdrop-out' : 'modal-backdrop'}
+            style={{ position: 'fixed', inset: 0, zIndex: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.48)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)', padding: '20px 16px' }}
+            onClick={(e) => { if (e.target === e.currentTarget) closeModal() }}
+          >
+            {/* Centered dialog */}
+            <div
+              className={`addon-modal${modalAnimOut ? ' addon-modal-out' : ''}`}
+              style={{
+                background: 'var(--surface)', width: '100%', maxWidth: 560,
+                maxHeight: '86vh', display: 'flex', flexDirection: 'column',
+                overflow: 'hidden', borderRadius: 18,
+                boxShadow: '0 24px 60px rgba(0,0,0,.28)',
+                border: '1px solid var(--border)',
+              }}
+            >
+
+              {/* Header */}
+              <div style={{ padding: '4px 22px 14px', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text1)', marginBottom: 3, letterSpacing: '-.01em' }}>
+                    {mod.label} — Add-ons
+                  </div>
+                  <div style={{ fontSize: '.74rem', color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {extraSelectedCount > 0 ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--p-lt)', color: 'var(--p)', borderRadius: 20, padding: '2px 9px', fontWeight: 700, fontSize: '.68rem' }}>
+                        <Check size={10} /> {extraSelectedCount} selected
+                      </span>
+                    ) : (
+                      'Select optional features to enable'
+                    )}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  style={{ background: 'var(--bg)', border: '1.5px solid var(--border)', borderRadius: 10, cursor: 'pointer', color: 'var(--text2)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, transition: 'background .12s' }}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              {/* Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg)', flexShrink: 0, padding: '0 10px' }}>
+                {customAddons.length > 0 && (
+                  <button
+                    type="button"
+                    className={`modal-tab-btn${modalTab === 'custom' ? ' active' : ''}`}
+                    onClick={() => setModalTab('custom')}
+                  >
+                    <Puzzle size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />
+                    Custom
+                    <span style={{ marginLeft: 6, background: modalTab === 'custom' ? 'var(--p)' : 'var(--border)', color: modalTab === 'custom' ? '#fff' : 'var(--text3)', borderRadius: 20, fontSize: '.6rem', padding: '1px 7px', fontWeight: 700 }}>
+                      {customAddons.length}
+                    </span>
+                  </button>
+                )}
+                {advanceAddons.length > 0 && (
+                  <button
+                    type="button"
+                    className={`modal-tab-btn${modalTab === 'advance' ? ' active' : ''}`}
+                    onClick={() => setModalTab('advance')}
+                  >
+                    <Sparkles size={12} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 5 }} />
+                    Advanced
+                    <span style={{ marginLeft: 6, background: modalTab === 'advance' ? 'var(--s)' : 'var(--border)', color: modalTab === 'advance' ? '#fff' : 'var(--text3)', borderRadius: 20, fontSize: '.6rem', padding: '1px 7px', fontWeight: 700 }}>
+                      {advanceAddons.length}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Grouped addon list */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {activeList.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text4)', fontSize: '.82rem' }}>
+                    No add-ons available
+                  </div>
+                ) : (
+                  activeGroups.map((grp) => {
+                    const mgKey = `${mod.key}:${modalTab}:${grp.label}`
+                    const isGrpOpen = !closedModalGroups.has(mgKey)
+                    const grpSel = grp.items.filter((a) => enabledAddonList.includes(a.name)).length
+                    const allGrpSel = grpSel === grp.items.length
+                    const someGrpSel = grpSel > 0 && grpSel < grp.items.length
+
+                    return (
+                      <div key={grp.label} style={{ borderBottom: '1px solid var(--border)' }}>
+                        {/* Group accordion header */}
+                        <div
+                          className={`acc-hd${isGrpOpen ? ' open' : ''}`}
+                          style={{ padding: '11px 18px 11px 14px' }}
+                          onClick={() => setClosedModalGroups((prev) => {
+                            const n = new Set(prev)
+                            n.has(mgKey) ? n.delete(mgKey) : n.add(mgKey)
+                            return n
+                          })}
+                        >
+                          <ChevronRight size={12} style={{ transform: isGrpOpen ? 'rotate(90deg)' : 'none', transition: 'transform .22s', color: isGrpOpen ? 'var(--p)' : 'var(--text4)', flexShrink: 0 }} />
+                          <span style={{ fontSize: '.76rem', fontWeight: 700, color: isGrpOpen ? 'var(--text1)' : 'var(--text2)', flex: 1, letterSpacing: '.01em' }}>{grp.label}</span>
+                          {grpSel > 0 && (
+                            <span style={{ fontSize: '.62rem', fontWeight: 700, background: 'var(--p-lt)', color: 'var(--p)', borderRadius: 20, padding: '2px 8px', marginRight: 8 }}>
+                              {grpSel}/{grp.items.length}
+                            </span>
+                          )}
+                          {/* Group select-all */}
+                          <label onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                            <input
+                              type="checkbox"
+                              className="ck"
+                              checked={allGrpSel}
+                              ref={(el) => { if (el) el.indeterminate = someGrpSel }}
+                              onChange={() => {
+                                const names = grp.items.map((a) => a.name)
+                                setEnabledAddons((prev) => {
+                                  const cur = prev[mod.key] || []
+                                  const rest = cur.filter((n) => !names.includes(n))
+                                  return { ...prev, [mod.key]: allGrpSel ? rest : [...rest, ...names] }
+                                })
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </label>
+                        </div>
+                        {/* Group accordion body */}
+                        <div className="acc-body" style={{ maxHeight: isGrpOpen ? `${grp.items.length * 52}px` : 0 }}>
+                          {grp.items.map((addon) => {
+                            const checked = enabledAddonList.includes(addon.name)
+                            return (
+                              <label key={addon.id} className="modal-addon-item">
+                                <input
+                                  type="checkbox"
+                                  className="ck"
+                                  checked={checked}
+                                  onChange={() => toggleAddon(mod.key, addon.name)}
+                                  style={{ cursor: 'pointer', flexShrink: 0 }}
+                                />
+                                <span style={{ flex: 1, fontSize: '.82rem', fontWeight: checked ? 600 : 500, color: checked ? 'var(--text1)' : 'var(--text2)', transition: 'color .12s' }}>
+                                  {addon.name}
+                                </span>
+                                {checked && <Check size={13} style={{ color: 'var(--p)', flexShrink: 0 }} />}
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '14px 22px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg)', flexShrink: 0 }}>
+                <div style={{ fontSize: '.74rem', color: 'var(--text3)' }}>
+                  {extraSelectedCount > 0
+                    ? <span style={{ color: 'var(--text1)', fontWeight: 600 }}>{extraSelectedCount} optional add-on{extraSelectedCount > 1 ? 's' : ''} enabled</span>
+                    : 'No optional add-ons selected'
+                  }
+                </div>
+                <button type="button" className="btn btn-p" style={{ cursor: 'pointer' }} onClick={closeModal}>
+                  <Check size={13} /> Done
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </>
   )
 }

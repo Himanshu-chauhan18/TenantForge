@@ -16,6 +16,9 @@ export default class ModuleAddon extends BaseModel {
   declare name: string
 
   @column()
+  declare type: 'default' | 'custom' | 'advance'
+
+  @column()
   declare sortOrder: number
 
   @column()

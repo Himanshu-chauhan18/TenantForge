@@ -11,6 +11,9 @@ export default class OrganizationAddon extends BaseModel {
   declare orgId: number
 
   @column()
+  declare moduleKey: string
+
+  @column()
   declare addonKey: string
 
   @column()

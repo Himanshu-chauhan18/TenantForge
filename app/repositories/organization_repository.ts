@@ -192,7 +192,7 @@ export default class OrganizationRepository {
       for (const mod of incoming) {
         await OrganizationModule.create({ orgId: org.id, moduleKey: mod.key, enabled: true }, { client: trx })
         for (const addonKey of mod.addons) {
-          await OrganizationAddon.create({ orgId: org.id, addonKey, enabled: true }, { client: trx })
+          await OrganizationAddon.create({ orgId: org.id, moduleKey: mod.key, addonKey, enabled: true }, { client: trx })
         }
       }
 

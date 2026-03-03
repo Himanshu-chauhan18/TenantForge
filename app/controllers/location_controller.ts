@@ -18,7 +18,7 @@ export default class LocationController {
         isMandatory: m.isMandatory,
         isComingSoon: m.isComingSoon,
         sortOrder: m.sortOrder,
-        addons: m.addons.map((a) => ({ id: a.id, name: a.name })),
+        addons: m.addons.map((a) => ({ id: a.id, name: a.name, type: a.type })),
       }))
     )
   }

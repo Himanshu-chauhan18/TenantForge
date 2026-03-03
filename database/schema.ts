@@ -117,7 +117,7 @@ export class FiscalYearSchema extends BaseModel {
 }
 
 export class ModuleAddonSchema extends BaseModel {
-  static $columns = ['id', 'moduleId', 'name', 'sortOrder', 'isActive', 'createdAt', 'updatedAt'] as const
+  static $columns = ['id', 'moduleId', 'name', 'type', 'sortOrder', 'isActive', 'createdAt', 'updatedAt'] as const
   $columns = ModuleAddonSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -125,6 +125,8 @@ export class ModuleAddonSchema extends BaseModel {
   declare moduleId: number
   @column()
   declare name: string
+  @column()
+  declare type: string
   @column()
   declare sortOrder: number
   @column()
@@ -161,12 +163,14 @@ export class ModuleSchema extends BaseModel {
 }
 
 export class OrganizationAddonSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'addonKey', 'enabled', 'createdAt'] as const
+  static $columns = ['id', 'orgId', 'moduleKey', 'addonKey', 'enabled', 'createdAt'] as const
   $columns = OrganizationAddonSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare orgId: number
+  @column()
+  declare moduleKey: string
   @column()
   declare addonKey: string
   @column()
