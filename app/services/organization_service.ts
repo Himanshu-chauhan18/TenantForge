@@ -23,6 +23,16 @@ export default class OrganizationService {
       sendWelcomeMail?: boolean | null
     }
   ) {
+    // Collect ALL duplicate errors before any DB write
+    const dupErrors: string[] = []
+
+    if (step1.email && await this.repo.emailExists(step1.email)) dupErrors.push('DUPLICATE_ORG_EMAIL')
+    if (step1.phone && await this.repo.phoneExists(step1.phone)) dupErrors.push('DUPLICATE_ORG_PHONE')
+    if (await OrganizationUser.findBy('company_email', superAdmin.companyEmail)) dupErrors.push('DUPLICATE_ADMIN_EMAIL')
+    if (superAdmin.adminPhone && await OrganizationUser.findBy('phone', superAdmin.adminPhone)) dupErrors.push('DUPLICATE_ADMIN_PHONE')
+
+    if (dupErrors.length > 0) throw new Error(dupErrors.join(','))
+
     const org = await this.repo.create({ ...step1, modules })
 
     // Create super admin user for org

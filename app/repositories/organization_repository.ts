@@ -127,6 +127,16 @@ export default class OrganizationRepository {
     return id
   }
 
+  async emailExists(email: string): Promise<boolean> {
+    const found = await Organization.query().whereNull('deleted_at').where('email', email).first()
+    return !!found
+  }
+
+  async phoneExists(phone: string): Promise<boolean> {
+    const found = await Organization.query().whereNull('deleted_at').where('phone', phone).first()
+    return !!found
+  }
+
   async create(data: OrgCreateData): Promise<Organization> {
     const orgId = await this.generateOrgId()
     const slug = data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')

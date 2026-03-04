@@ -29,13 +29,20 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
      */
     const successMsg = session?.flashMessages.get('success')
     const flashErrors = session?.flashMessages.get('errors') ?? {}
+    // Also pick up manual session.flash('error', msg) set by controllers
+    const manualError = session?.flashMessages.get('error')
+    // Multiple toast messages (e.g. multiple duplicate errors at once)
+    const rawFlashToasts = session?.flashMessages.get('flashToasts')
+    let flashToasts: string[] = []
+    try { if (rawFlashToasts) flashToasts = JSON.parse(rawFlashToasts) } catch {}
 
     return {
       errors: ctx.inertia.always(this.getValidationErrors(ctx)),
       flash: ctx.inertia.always({
-        error,
+        error: error || (typeof manualError === 'string' ? manualError : undefined),
         success: typeof successMsg === 'string' ? successMsg : undefined,
         errors: flashErrors,
+        toasts: flashToasts.length > 0 ? flashToasts : undefined,
       }),
       user: ctx.inertia.always(auth?.user ? UserTransformer.transform(auth.user) : undefined),
     }

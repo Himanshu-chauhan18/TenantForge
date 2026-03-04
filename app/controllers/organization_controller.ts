@@ -28,6 +28,7 @@ export default class OrganizationController {
     })
 
     const users = await userRepo.list()
+
     return inertia.render('organizations/index', {
       orgs: orgs.serialize(),
       users: users.map((u) => u.serialize()),
@@ -63,20 +64,29 @@ export default class OrganizationController {
     try {
       const org = await orgService.create({ ...step1, logo: logoPath } as any, modules, superAdmin as any)
       session.flash('success', `Organization "${org.name}" created successfully!`)
-      return response.redirect().toRoute('dashboard')
+      return response.redirect().toRoute('organizations.index')
     } catch (error) {
       const msg: string = error.message || ''
-      let friendly: string
-      if (msg.includes('Duplicate entry') && msg.includes('company_email')) {
-        friendly = 'Super admin email is already registered in another organization. Use a different email.'
-      } else if (msg.includes('Duplicate entry') && msg.includes('org_id')) {
-        friendly = 'Organization ID conflict. Please try again.'
-      } else if (msg.includes('Duplicate entry')) {
-        friendly = 'A record with this information already exists.'
-      } else {
-        friendly = 'Failed to create organization. Please try again.'
+      const CODE_MAP: Record<string, string> = {
+        DUPLICATE_ORG_EMAIL: 'An organization with this email already exists. Use a different email.',
+        DUPLICATE_ORG_PHONE: 'An organization with this phone number already exists. Use a different phone number.',
+        DUPLICATE_ADMIN_EMAIL: 'This super admin email is already registered in another organization.',
+        DUPLICATE_ADMIN_PHONE: 'This super admin phone number is already registered in another organization.',
       }
-      session.flash('error', friendly)
+      const codes = msg.split(',')
+      const toasts = codes.map((c) => CODE_MAP[c]).filter(Boolean)
+
+      if (toasts.length > 0) {
+        session.flash('flashToasts', JSON.stringify(toasts))
+      } else if (msg.includes('Duplicate entry') && msg.includes('company_email')) {
+        session.flash('flashToasts', JSON.stringify(['This super admin email is already registered in another organization.']))
+      } else if (msg.includes('Duplicate entry') && msg.includes('org_id')) {
+        session.flash('flashToasts', JSON.stringify(['Organization ID conflict. Please try again.']))
+      } else if (msg.includes('Duplicate entry')) {
+        session.flash('flashToasts', JSON.stringify(['A duplicate record already exists. Please check your inputs.']))
+      } else {
+        session.flash('flashToasts', JSON.stringify(['Failed to create organization. Please try again.']))
+      }
       return response.redirect().back()
     }
   }

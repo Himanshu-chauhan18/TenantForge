@@ -23,7 +23,7 @@ interface SharedProps {
     email: string
     initials: string
   }
-  flash?: { success?: string; error?: string }
+  flash?: { success?: string; error?: string; toasts?: string[] }
 }
 
 interface NavItem {
@@ -105,7 +105,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (shared?.flash?.success) toast.success(shared.flash.success)
     if (shared?.flash?.error) toast.error(shared.flash.error)
-  }, [url])
+    shared?.flash?.toasts?.forEach((msg) => toast.error(msg))
+  }, [shared?.flash?.success, shared?.flash?.error, shared?.flash?.toasts?.join('|')])
 
   const isActive = (item: NavItem) => {
     if (item.href && url.startsWith(item.href)) return true

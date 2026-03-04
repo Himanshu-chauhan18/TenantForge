@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, router } from '@inertiajs/react'
+import { router } from '@inertiajs/react'
 import {
-  Building2, Plus, Search, Filter, Download, ChevronDown,
+  Building2, Plus, Search, Download, ChevronDown,
   MoreHorizontal, Eye, Pencil, Trash2, CheckSquare, X,
   ChevronLeft, ChevronRight, Users, RefreshCw,
 } from 'lucide-react'
+import { Link } from '@inertiajs/react'
 
 interface Org {
   id: number
@@ -64,17 +65,14 @@ const BULK_OPS = [
 export default function OrganizationsIndex({ orgs, users, flash }: Props) {
   const [selected, setSelected] = useState<number[]>([])
   const [bulkOpen, setBulkOpen] = useState(false)
-  const [filterOpen, setFilterOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null)
   const [rowMenuOpen, setRowMenuOpen] = useState<number | null>(null)
   const bulkRef = useRef<HTMLDivElement>(null)
-  const filterRef = useRef<HTMLDivElement>(null)
 
   // Read current filters from URL
   const url = new URL(window.location.href)
   const currentTab = url.searchParams.get('tab') || 'all'
   const currentSearch = url.searchParams.get('search') || ''
-  const currentPage = Number(url.searchParams.get('page') || 1)
   const currentLeadOwner = url.searchParams.get('lead_owner_id') || ''
   const currentSortBy = url.searchParams.get('sort_by') || 'created_at'
   const currentSortDir = url.searchParams.get('sort_dir') || 'desc'
@@ -86,7 +84,6 @@ export default function OrganizationsIndex({ orgs, users, flash }: Props) {
   useEffect(() => {
     function closeMenus(e: MouseEvent) {
       if (bulkRef.current && !bulkRef.current.contains(e.target as Node)) setBulkOpen(false)
-      if (filterRef.current && !filterRef.current.contains(e.target as Node)) setFilterOpen(false)
       setRowMenuOpen(null)
     }
     document.addEventListener('mousedown', closeMenus)
@@ -145,11 +142,6 @@ export default function OrganizationsIndex({ orgs, users, flash }: Props) {
   const sortIcon = (col: string) => {
     if (currentSortBy !== col) return <span style={{ opacity: .2 }}>↕</span>
     return currentSortDir === 'asc' ? <span style={{ color: 'var(--p)' }}>↑</span> : <span style={{ color: 'var(--p)' }}>↓</span>
-  }
-
-  const pct = (org: Org) => {
-    // no current user count in this list view; just show limit
-    return 0
   }
 
   return (
@@ -440,6 +432,7 @@ export default function OrganizationsIndex({ orgs, users, flash }: Props) {
           </div>
         </>
       )}
+
     </>
   )
 }
