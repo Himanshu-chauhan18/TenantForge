@@ -7,7 +7,7 @@ const OrganizationController = () => import('#controllers/organization_controlle
 const LocationController = () => import('#controllers/location_controller')
 
 // Root redirect
-router.on('/').redirect('/dashboard')
+router.on('/').redirectToPath('/dashboard')
 
 // Auth routes (guest only)
 router
