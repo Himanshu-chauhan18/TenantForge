@@ -162,34 +162,19 @@ export class ModuleSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
-export class OrganizationAddonSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'moduleKey', 'addonKey', 'enabled', 'createdAt'] as const
-  $columns = OrganizationAddonSchema.$columns
+export class OrganizationModuleConfigSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'moduleId', 'enabled', 'addonIds', 'createdAt'] as const
+  $columns = OrganizationModuleConfigSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare orgId: number
   @column()
-  declare moduleKey: string
-  @column()
-  declare addonKey: string
+  declare moduleId: number
   @column()
   declare enabled: boolean | null
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-}
-
-export class OrganizationModuleSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'moduleKey', 'enabled', 'createdAt'] as const
-  $columns = OrganizationModuleSchema.$columns
-  @column({ isPrimary: true })
-  declare id: number
   @column()
-  declare orgId: number
-  @column()
-  declare moduleKey: string
-  @column()
-  declare enabled: boolean | null
+  declare addonIds: any
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 }

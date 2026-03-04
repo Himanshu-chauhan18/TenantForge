@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { router } from '@inertiajs/react'
+import { toast } from 'sonner'
 import {
   Building2, MapPin, Settings2, User, ChevronRight, ChevronLeft,
   Check, Globe, Calendar, Shield, Eye, EyeOff, Copy, RefreshCw, Mail, Lock, Minus, Plus, Upload,
@@ -212,11 +213,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
         setModules(data)
         if (!modulesInitialized.current) {
           modulesInitialized.current = true
-          setEnabledModules(data.filter((m) => m.isMandatory).map((m) => m.key))
+          setEnabledModules(data.filter((m) => m.isMandatory).map((m) => m.id))
           // Auto-enable all default addons for mandatory modules
-          const initAddons: Record<string, string[]> = {}
+          const initAddons: Record<number, number[]> = {}
           data.filter((m) => m.isMandatory).forEach((m) => {
-            initAddons[m.key] = m.addons.filter((a) => a.type === 'default').map((a) => a.name)
+            initAddons[m.id] = m.addons.filter((a) => a.type === 'default').map((a) => a.id)
           })
           setEnabledAddons(initAddons)
         }
@@ -237,8 +238,8 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
   const [modules, setModules] = useState<ModuleOption[]>([])
   const [modulesLoading, setModulesLoading] = useState(true)
   const modulesInitialized = useRef(false)
-  const [enabledModules, setEnabledModules] = useState<string[]>([])
-  const [enabledAddons, setEnabledAddons] = useState<Record<string, string[]>>({})
+  const [enabledModules, setEnabledModules] = useState<number[]>([])
+  const [enabledAddons, setEnabledAddons] = useState<Record<number, number[]>>({})
   const [addonModal, setAddonModal] = useState<ModuleOption | null>(null)
   const [modalTab, setModalTab] = useState<'custom' | 'advance'>('custom')
   const [closedGroups, setClosedGroups] = useState<Set<string>>(new Set())
@@ -309,25 +310,25 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
     return true
   }
 
-  function toggleModule(key: string, locked?: boolean) {
+  function toggleModule(id: number, locked?: boolean) {
     if (locked) return
     setEnabledModules((prev) => {
-      if (prev.includes(key)) {
-        return prev.filter((k) => k !== key)
+      if (prev.includes(id)) {
+        return prev.filter((k) => k !== id)
       }
       // Auto-enable all default addons when turning module ON
-      const mod = modules.find((m) => m.key === key)
+      const mod = modules.find((m) => m.id === id)
       if (mod) {
-        const defaults = mod.addons.filter((a) => a.type === 'default').map((a) => a.name)
-        setEnabledAddons((p) => ({ ...p, [key]: defaults }))
+        const defaults = mod.addons.filter((a) => a.type === 'default').map((a) => a.id)
+        setEnabledAddons((p) => ({ ...p, [id]: defaults }))
       }
-      return [...prev, key]
+      return [...prev, id]
     })
   }
-  function toggleAddon(moduleKey: string, addon: string) {
+  function toggleAddon(moduleId: number, addonId: number) {
     setEnabledAddons((prev) => {
-      const cur = prev[moduleKey] || []
-      return { ...prev, [moduleKey]: cur.includes(addon) ? cur.filter((a) => a !== addon) : [...cur, addon] }
+      const cur = prev[moduleId] || []
+      return { ...prev, [moduleId]: cur.includes(addonId) ? cur.filter((a) => a !== addonId) : [...cur, addonId] }
     })
   }
 
@@ -338,7 +339,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
   function handleSubmit() {
     if (!validateStep3()) return
-    const modules = enabledModules.map((key) => ({ key, addons: enabledAddons[key] || [] }))
+    const modules = enabledModules.map((moduleId) => ({ moduleId, addonIds: enabledAddons[moduleId] || [] }))
     setProcessing(true)
     router.post('/organizations', {
       name,
@@ -375,7 +376,19 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
       companyEmail,
       password,
       sendWelcomeMail,
-    }, { onFinish: () => setProcessing(false) })
+    }, {
+      onFinish: () => setProcessing(false),
+      onError: (errors) => {
+        const entries = Object.entries(errors)
+        if (entries.length > 0) {
+          const [field, msg] = entries[0]
+          toast.error(String(msg))
+          if (['companyEmail', 'fullName', 'password', 'adminPhone'].includes(field)) {
+            goToStep(3)
+          }
+        }
+      },
+    })
   }
 
   // Build option arrays for SelectSearch
@@ -815,8 +828,8 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                   Loading modules…
                 </div>
               ) : modules.map((mod) => {
-                const isEnabled = enabledModules.includes(mod.key)
-                const enabledAddonList = enabledAddons[mod.key] || []
+                const isEnabled = enabledModules.includes(mod.id)
+                const enabledAddonList = enabledAddons[mod.id] || []
 
                 // Partition addons by type
                 const defaultAddons = mod.addons.filter((a) => a.type === 'default')
@@ -826,11 +839,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
                 // Extra (custom/advance) addons that have been selected
                 const extraAddons = enabledAddonList.filter(
-                  (name) => mod.addons.find((a) => a.name === name)?.type !== 'default'
+                  (id) => mod.addons.find((a) => a.id === id)?.type !== 'default'
                 )
 
                 return (
-                  <div key={mod.key} className={`mod-card ${isEnabled ? 'enabled' : ''}`}>
+                  <div key={mod.id} className={`mod-card ${isEnabled ? 'enabled' : ''}`}>
                     {/* ── Module header ── */}
                     <div className={`mod-head ${isEnabled ? 'enabled' : ''}`}>
                       <div className="mod-ico" style={{
@@ -848,7 +861,7 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                       ) : mod.isComingSoon ? (
                         <span className="bx bx-gray bx-no-dot">Coming Soon</span>
                       ) : (
-                        <Toggle checked={isEnabled} onChange={() => toggleModule(mod.key, mod.isMandatory)} />
+                        <Toggle checked={isEnabled} onChange={() => toggleModule(mod.id, mod.isMandatory)} />
                       )}
                     </div>
 
@@ -902,9 +915,9 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
 
                         {/* ── Grouped default addons as accordions ── */}
                         {defaultGroups.map((grp, gi) => {
-                          const groupKey = `${mod.key}:${grp.label}`
+                          const groupKey = `${mod.id}:${grp.label}`
                           const isOpen = !closedGroups.has(groupKey)
-                          const grpChecked = grp.items.filter((a) => enabledAddonList.includes(a.name)).length
+                          const grpChecked = grp.items.filter((a) => enabledAddonList.includes(a.id)).length
                           const grpTotal = grp.items.length
                           const allGrpSel = grpChecked === grpTotal
                           const someGrpSel = grpChecked > 0 && grpChecked < grpTotal
@@ -947,11 +960,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                                     checked={allGrpSel}
                                     ref={(el) => { if (el) el.indeterminate = someGrpSel }}
                                     onChange={() => {
-                                      const names = grp.items.map((a) => a.name)
+                                      const ids = grp.items.map((a) => a.id)
                                       setEnabledAddons((prev) => {
-                                        const cur = prev[mod.key] || []
-                                        const rest = cur.filter((n) => !names.includes(n))
-                                        return { ...prev, [mod.key]: allGrpSel ? rest : [...rest, ...names] }
+                                        const cur = prev[mod.id] || []
+                                        const rest = cur.filter((n) => !ids.includes(n))
+                                        return { ...prev, [mod.id]: allGrpSel ? rest : [...rest, ...ids] }
                                       })
                                     }}
                                     onClick={(e) => e.stopPropagation()}
@@ -968,8 +981,8 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                                   {grp.items.map((addon) => (
                                     <Checkbox
                                       key={addon.id}
-                                      checked={enabledAddonList.includes(addon.name)}
-                                      onChange={() => toggleAddon(mod.key, addon.name)}
+                                      checked={enabledAddonList.includes(addon.id)}
+                                      onChange={() => toggleAddon(mod.id, addon.id)}
                                     >
                                       {addon.name}
                                     </Checkbox>
@@ -987,13 +1000,14 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                               Additional Add-ons
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                              {extraAddons.map((name) => {
-                                const isAdv = mod.addons.find((a) => a.name === name)?.type === 'advance'
+                              {extraAddons.map((addonId) => {
+                                const addon = mod.addons.find((a) => a.id === addonId)!
+                                const isAdv = addon.type === 'advance'
                                 return (
-                                  <span key={name} className={`extra-chip${isAdv ? ' advance-chip' : ''}`}>
+                                  <span key={addonId} className={`extra-chip${isAdv ? ' advance-chip' : ''}`}>
                                     {isAdv ? <Sparkles size={10} /> : <Puzzle size={10} />}
-                                    {name}
-                                    <button type="button" onClick={() => toggleAddon(mod.key, name)}>
+                                    {addon.name}
+                                    <button type="button" onClick={() => toggleAddon(mod.id, addonId)}>
                                       <X size={10} />
                                     </button>
                                   </span>
@@ -1150,39 +1164,117 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
               </div>
             </div>
 
-            {/* Summary card */}
-            <div className="card" style={{ marginBottom: 20, border: '1.5px dashed var(--border)' }}>
-              <div className="card-h">
-                <div className="card-title">Summary</div>
+            {/* ── Review Summary ─────────────────────────────────── */}
+            <div style={{ marginBottom: 20, borderRadius: 12, border: '1px solid var(--border)', overflow: 'hidden' }}>
+
+              {/* Header */}
+              <div style={{ padding: '12px 16px', background: 'linear-gradient(135deg, var(--p-lt), var(--bg))', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: 'linear-gradient(135deg, var(--p), var(--s))', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Check size={13} style={{ color: '#fff' }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '.85rem', color: 'var(--text1)', fontFamily: 'var(--fd)', lineHeight: 1.2 }}>Review & Confirm</div>
+                  <div style={{ fontSize: '.67rem', color: 'var(--text3)' }}>Check all details before creating the organization</div>
+                </div>
               </div>
-              <div className="card-b">
-                <div className="g2">
-                  <div>
-                    <div style={{ fontSize: '.66rem', color: 'var(--text3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>Organization</div>
-                    <div style={{ fontWeight: 700, marginBottom: 2 }}>{name || '—'}</div>
-                    <div style={{ fontSize: '.74rem', color: 'var(--text3)' }}>
-                      {planType === 'premium' ? 'Premium' : 'Trial'} · {userLimit} users
-                      {selectedCountry && ` · ${selectedCountry.emoji || ''} ${selectedCountry.name}`}
+
+              {/* Top row: Org details + Plan */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid var(--border)' }}>
+
+                {/* Organization */}
+                <div style={{ padding: '14px 16px', borderRight: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 8 }}>Organization</div>
+                  <div style={{ fontWeight: 800, fontSize: '.88rem', color: 'var(--text1)', marginBottom: 4 }}>{name || <span style={{ color: 'var(--text4)', fontWeight: 400 }}>—</span>}</div>
+                  {(industry || companySize) && (
+                    <div style={{ fontSize: '.72rem', color: 'var(--text3)', marginBottom: 3 }}>
+                      {[industry, companySize].filter(Boolean).join(' · ')}
                     </div>
-                    {parentOrgId && (
-                      <div style={{ fontSize: '.72rem', color: 'var(--text3)', marginTop: 3 }}>
-                        Parent: {organizations.find(o => String(o.id) === parentOrgId)?.name}
-                      </div>
-                    )}
+                  )}
+                  {selectedCountry && (
+                    <div style={{ fontSize: '.72rem', color: 'var(--text3)', marginBottom: 3 }}>
+                      {selectedCountry.emoji} {selectedCountry.name}{selectedCity ? `, ${selectedCity.name}` : ''}
+                    </div>
+                  )}
+                  {email && <div style={{ fontSize: '.71rem', color: 'var(--text3)', marginBottom: 2 }}>{email}</div>}
+                  {phone && <div style={{ fontSize: '.71rem', color: 'var(--text3)', marginBottom: 2 }}>{phone}</div>}
+                  {parentOrgId && (
+                    <div style={{ marginTop: 6, fontSize: '.68rem', color: 'var(--text4)', background: 'var(--bg2)', padding: '2px 7px', borderRadius: 5, display: 'inline-block', border: '1px solid var(--border)' }}>
+                      Under: {organizations.find(o => String(o.id) === parentOrgId)?.name}
+                    </div>
+                  )}
+                  {leadOwnerId && (
+                    <div style={{ marginTop: 6, fontSize: '.68rem', color: 'var(--text4)' }}>
+                      Lead: {users.find(u => String(u.id) === leadOwnerId)?.full_name || users.find(u => String(u.id) === leadOwnerId)?.email || '—'}
+                    </div>
+                  )}
+                </div>
+
+                {/* Plan & Settings */}
+                <div style={{ padding: '14px 16px' }}>
+                  <div style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 8 }}>Plan & Settings</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 }}>
+                    <span className={`bx ${planType === 'premium' ? 'bx-purple' : 'bx-teal'} bx-no-dot`} style={{ fontSize: '.7rem' }}>
+                      {planType === 'premium' ? 'Premium' : 'Trial'}
+                    </span>
+                    <span style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--text1)' }}>{userLimit} users</span>
                   </div>
-                  <div>
-                    <div style={{ fontSize: '.66rem', color: 'var(--text3)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>Modules</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {enabledModules.map((m) => (
-                        <span key={m} className="bx bx-teal">{m}</span>
-                      ))}
+                  {planStart && planEnd && (
+                    <div style={{ fontSize: '.72rem', color: 'var(--text3)', marginBottom: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <Calendar size={11} style={{ flexShrink: 0 }} />
+                      {planStart} → {planEnd}
                     </div>
-                    <div style={{ marginTop: 8, fontSize: '.72rem', color: 'var(--text3)' }}>
-                      {currency} · {timezone.split('/').pop()}
+                  )}
+                  {fiscalName && (
+                    <div style={{ fontSize: '.72rem', color: 'var(--text3)', marginBottom: 3 }}>
+                      FY: {fiscalName} ({fiscalStart} → {fiscalEnd})
                     </div>
+                  )}
+                  <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {[currency, timezone.split('/').pop(), dateFormat].filter(Boolean).map((v) => (
+                      <span key={v} style={{ fontSize: '.65rem', color: 'var(--text3)', background: 'var(--bg2)', padding: '2px 6px', borderRadius: 4, border: '1px solid var(--border)' }}>{v}</span>
+                    ))}
                   </div>
                 </div>
               </div>
+
+              {/* Modules row */}
+              <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 8 }}>
+                  Modules ({enabledModules.length})
+                </div>
+                {enabledModules.length === 0 ? (
+                  <div style={{ fontSize: '.75rem', color: 'var(--text4)' }}>No modules selected</div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                    {enabledModules.map((modId) => {
+                      const mod = modules.find((m) => m.id === modId)
+                      if (!mod) return null
+                      return (
+                        <span key={modId} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, fontSize: '.75rem', fontWeight: 600, color: 'var(--text1)' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: mod.isMandatory ? 'var(--p)' : 'var(--s)', flexShrink: 0 }} />
+                          {mod.label}
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Super admin row */}
+              <div style={{ padding: '10px 16px', background: 'var(--bg)', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                <div style={{ fontSize: '.6rem', fontWeight: 800, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text4)', flexShrink: 0 }}>Super Admin</div>
+                <div style={{ width: 1, height: 12, background: 'var(--border)' }} />
+                <span style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--text1)' }}>{fullName || <span style={{ color: 'var(--text4)', fontWeight: 400 }}>Name not set</span>}</span>
+                {companyEmail && <span style={{ fontSize: '.74rem', color: 'var(--text3)' }}>{companyEmail}</span>}
+                {adminPhone && <span style={{ fontSize: '.74rem', color: 'var(--text3)' }}>{adminPhone}</span>}
+                {sendWelcomeMail && (
+                  <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: '.7rem', color: 'var(--p)', fontWeight: 600 }}>
+                    <Mail size={11} />
+                    Welcome email will be sent
+                  </div>
+                )}
+              </div>
+
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -1203,8 +1295,8 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
         const advanceAddons = mod.addons.filter((a) => a.type === 'advance')
         const activeList = modalTab === 'custom' ? customAddons : advanceAddons
         const activeGroups = groupAddonItems(activeList)
-        const enabledAddonList = enabledAddons[mod.key] || []
-        const extraSelectedCount = enabledAddonList.filter((n) => mod.addons.find((a) => a.name === n && a.type !== 'default')).length
+        const enabledAddonList = enabledAddons[mod.id] || []
+        const extraSelectedCount = enabledAddonList.filter((id) => mod.addons.find((a) => a.id === id && a.type !== 'default')).length
 
         return (
           <div
@@ -1287,9 +1379,9 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                   </div>
                 ) : (
                   activeGroups.map((grp) => {
-                    const mgKey = `${mod.key}:${modalTab}:${grp.label}`
+                    const mgKey = `${mod.id}:${modalTab}:${grp.label}`
                     const isGrpOpen = !closedModalGroups.has(mgKey)
-                    const grpSel = grp.items.filter((a) => enabledAddonList.includes(a.name)).length
+                    const grpSel = grp.items.filter((a) => enabledAddonList.includes(a.id)).length
                     const allGrpSel = grpSel === grp.items.length
                     const someGrpSel = grpSel > 0 && grpSel < grp.items.length
 
@@ -1320,11 +1412,11 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                               checked={allGrpSel}
                               ref={(el) => { if (el) el.indeterminate = someGrpSel }}
                               onChange={() => {
-                                const names = grp.items.map((a) => a.name)
+                                const ids = grp.items.map((a) => a.id)
                                 setEnabledAddons((prev) => {
-                                  const cur = prev[mod.key] || []
-                                  const rest = cur.filter((n) => !names.includes(n))
-                                  return { ...prev, [mod.key]: allGrpSel ? rest : [...rest, ...names] }
+                                  const cur = prev[mod.id] || []
+                                  const rest = cur.filter((n) => !ids.includes(n))
+                                  return { ...prev, [mod.id]: allGrpSel ? rest : [...rest, ...ids] }
                                 })
                               }}
                               onClick={(e) => e.stopPropagation()}
@@ -1335,14 +1427,14 @@ export default function CreateOrganization({ users, organizations, flash }: Prop
                         {/* Group accordion body */}
                         <div className="acc-body" style={{ maxHeight: isGrpOpen ? `${grp.items.length * 52}px` : 0 }}>
                           {grp.items.map((addon) => {
-                            const checked = enabledAddonList.includes(addon.name)
+                            const checked = enabledAddonList.includes(addon.id)
                             return (
                               <label key={addon.id} className="modal-addon-item">
                                 <input
                                   type="checkbox"
                                   className="ck"
                                   checked={checked}
-                                  onChange={() => toggleAddon(mod.key, addon.name)}
+                                  onChange={() => toggleAddon(mod.id, addon.id)}
                                   style={{ cursor: 'pointer', flexShrink: 0 }}
                                 />
                                 <span style={{ flex: 1, fontSize: '.82rem', fontWeight: checked ? 600 : 500, color: checked ? 'var(--text1)' : 'var(--text2)', transition: 'color .12s' }}>

@@ -1,6 +1,6 @@
 import Organization from '#models/organization'
+import Module from '#models/module'
 import OrganizationModule from '#models/organization_module'
-import OrganizationAddon from '#models/organization_addon'
 import FiscalYear from '#models/fiscal_year'
 import db from '@adonisjs/lucid/services/db'
 
@@ -44,7 +44,7 @@ export interface OrgCreateData {
   planStart?: string
   planEnd?: string
   // Step 2 - modules/addons
-  modules?: { key: string; addons: string[] }[]
+  modules?: { moduleId: number; addonIds: number[] }[]
 }
 
 export default class OrganizationRepository {
@@ -104,8 +104,7 @@ export default class OrganizationRepository {
     return Organization.query()
       .where('id', id)
       .preload('leadOwner')
-      .preload('modules')
-      .preload('addons')
+      .preload('modules', (q) => q.preload('module', (mq) => mq.preload('addons')))
       .preload('orgUsers')
       .preload('userProfiles', (q) => q.preload('permissions'))
       .preload('fiscalYears')
@@ -182,18 +181,24 @@ export default class OrganizationRepository {
       }
 
       // Build module list — always guarantee mandatory modules are present
-      const mandatoryKeys = ['employee', 'organization']
+      const mandatoryModules = await Module.query().where('is_mandatory', true).select('id').useTransaction(trx)
+      const mandatoryIds = mandatoryModules.map((m) => m.id)
       const incoming = data.modules && data.modules.length > 0 ? [...data.modules] : []
-      const incomingKeys = new Set(incoming.map((m) => m.key))
-      for (const key of mandatoryKeys) {
-        if (!incomingKeys.has(key)) incoming.push({ key, addons: [] })
+      const incomingModuleIds = new Set(incoming.map((m) => m.moduleId))
+      for (const id of mandatoryIds) {
+        if (!incomingModuleIds.has(id)) incoming.push({ moduleId: id, addonIds: [] })
       }
 
       for (const mod of incoming) {
-        await OrganizationModule.create({ orgId: org.id, moduleKey: mod.key, enabled: true }, { client: trx })
-        for (const addonKey of mod.addons) {
-          await OrganizationAddon.create({ orgId: org.id, moduleKey: mod.key, addonKey, enabled: true }, { client: trx })
-        }
+        await OrganizationModule.create(
+          {
+            orgId: org.id,
+            moduleId: mod.moduleId,
+            enabled: true,
+            addonIds: mod.addonIds.map((id) => ({ id, enabled: true })),
+          },
+          { client: trx }
+        )
       }
 
       return org

@@ -11,7 +11,7 @@ export default class OrganizationService {
 
   async create(
     step1: OrgCreateData,
-    modules: { key: string; addons: string[] }[] | undefined,
+    modules: { moduleId: number; addonIds: number[] }[] | undefined,
     superAdmin: {
       employeeCode?: string | null
       fullName: string

@@ -3,7 +3,6 @@ import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 import User from '#models/user'
 import OrganizationModule from '#models/organization_module'
-import OrganizationAddon from '#models/organization_addon'
 import OrganizationUser from '#models/organization_user'
 import UserProfile from '#models/user_profile'
 import FiscalYear from '#models/fiscal_year'
@@ -113,9 +112,6 @@ export default class Organization extends BaseModel {
 
   @hasMany(() => OrganizationModule, { foreignKey: 'orgId' })
   declare modules: HasMany<typeof OrganizationModule>
-
-  @hasMany(() => OrganizationAddon, { foreignKey: 'orgId' })
-  declare addons: HasMany<typeof OrganizationAddon>
 
   @hasMany(() => OrganizationUser, { foreignKey: 'orgId' })
   declare orgUsers: HasMany<typeof OrganizationUser>

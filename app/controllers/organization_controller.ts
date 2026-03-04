@@ -65,7 +65,18 @@ export default class OrganizationController {
       session.flash('success', `Organization "${org.name}" created successfully!`)
       return response.redirect().toRoute('dashboard')
     } catch (error) {
-      session.flash('errors', { create: error.message || 'Failed to create organization.' })
+      const msg: string = error.message || ''
+      let friendly: string
+      if (msg.includes('Duplicate entry') && msg.includes('company_email')) {
+        friendly = 'Super admin email is already registered in another organization. Use a different email.'
+      } else if (msg.includes('Duplicate entry') && msg.includes('org_id')) {
+        friendly = 'Organization ID conflict. Please try again.'
+      } else if (msg.includes('Duplicate entry')) {
+        friendly = 'A record with this information already exists.'
+      } else {
+        friendly = 'Failed to create organization. Please try again.'
+      }
+      session.flash('error', friendly)
       return response.redirect().back()
     }
   }

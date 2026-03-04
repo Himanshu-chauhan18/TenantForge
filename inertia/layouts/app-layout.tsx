@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, router, usePage } from '@inertiajs/react'
+import { toast, Toaster } from 'sonner'
 import {
   LayoutDashboard,
   Building2,
@@ -13,7 +14,6 @@ import {
   Menu,
   Settings,
   ChevronRight,
-  Check,
 } from 'lucide-react'
 
 interface SharedProps {
@@ -101,6 +101,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setTimeout(() => searchRef.current?.focus(), 50)
     }
   }, [searchOpen])
+
+  useEffect(() => {
+    if (shared?.flash?.success) toast.success(shared.flash.success)
+    if (shared?.flash?.error) toast.error(shared.flash.error)
+  }, [url])
 
   const isActive = (item: NavItem) => {
     if (item.href && url.startsWith(item.href)) return true
@@ -261,23 +266,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* Flash messages */}
-          {shared?.flash?.success && (
-            <div style={{ padding: '0 24px', paddingTop: 12 }}>
-              <div className="alert alert-success">
-                <Check size={16} />
-                {shared.flash.success}
-              </div>
-            </div>
-          )}
-          {shared?.flash?.error && (
-            <div style={{ padding: '0 24px', paddingTop: 12 }}>
-              <div className="alert alert-danger">
-                {shared.flash.error}
-              </div>
-            </div>
-          )}
-
           {/* Page content */}
           <main className="content">
             {children}
@@ -330,6 +318,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </div>
+
+      <Toaster position="top-right" richColors />
 
       {/* Notifications Drawer */}
       <div className={`dov${drawerOpen ? ' open' : ''}`} onClick={() => setDrawerOpen(false)} />

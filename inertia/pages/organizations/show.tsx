@@ -9,15 +9,10 @@ import {
 
 interface OrgModule {
   id: number
-  module_key: string
+  module_id: number
   enabled: boolean
-}
-
-interface OrgAddon {
-  id: number
-  module_key?: string
-  addon_key: string
-  enabled: boolean
+  addon_ids: Array<{ id: number; enabled: boolean }>
+  module: { id: number; key: string; label: string; addons: Array<{ id: number; name: string; type: string }> }
 }
 
 interface OrgUser {
@@ -80,7 +75,6 @@ interface Org {
   updated_at: string
   lead_owner: LeadOwner | null
   modules: OrgModule[]
-  addons: OrgAddon[]
   org_users: OrgUser[]
   fiscal_years: FiscalYear[]
 }
@@ -130,16 +124,7 @@ export default function ShowOrganization({ org, users, flash }: Props) {
     setDeleteConfirm(false)
   }
 
-  const enabledModules = org.modules.filter((m) => m.enabled).map((m) => m.module_key)
-
-  const MODULE_ADDONS: Record<string, string[]> = {
-    employee: ['Employee Self Service', 'Document Management', 'Onboarding Workflow'],
-    organization: ['Branch Management', 'Department Structure', 'Role Management'],
-    attendance: ['Biometric Integration', 'Geo-fencing', 'Shift Management', 'Overtime Tracking'],
-    leave: ['Leave Encashment', 'Comp Off', 'Holiday Calendar'],
-    payroll: ['Tax Computation', 'PF & ESI', 'Payslip Generation', 'Bank Transfer'],
-    performance: ['360 Feedback', 'Goal Tracking', 'Appraisal Cycles'],
-  }
+  const enabledOrgModules = org.modules.filter((m) => m.enabled)
 
   return (
     <>
@@ -379,40 +364,43 @@ export default function ShowOrganization({ org, users, flash }: Props) {
             <div className="card-h">
               <div>
                 <div className="card-title">Modules & Add-ons</div>
-                <div className="card-sub">{enabledModules.length} module{enabledModules.length !== 1 ? 's' : ''} enabled</div>
+                <div className="card-sub">{enabledOrgModules.length} module{enabledOrgModules.length !== 1 ? 's' : ''} enabled</div>
               </div>
               <Link href={`/organizations/${org.id}/edit`} className="btn btn-ghost btn-xs">
                 <Edit3 size={11} /> Edit
               </Link>
             </div>
             <div className="card-b" style={{ padding: 0 }}>
-              {Object.entries(MODULE_ADDONS).map(([key, addonList]) => {
-                const modEnabled = enabledModules.includes(key)
-                const enabledAddonKeys = org.addons.filter((a) => a.enabled).map((a) => a.addon_key)
-                if (!modEnabled) return null
+              {enabledOrgModules.map((orgMod) => {
+                const enabledAddons = orgMod.module.addons.filter((a) =>
+                  orgMod.addon_ids.some((ai) => ai.id === a.id && ai.enabled)
+                )
                 return (
-                  <div key={key} style={{ borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
+                  <div key={orgMod.module_id} style={{ borderBottom: '1px solid var(--border)', padding: '10px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <div style={{ width: 22, height: 22, borderRadius: 6, background: 'var(--p-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Building2 size={12} style={{ color: 'var(--p)' }} />
                       </div>
-                      <span style={{ fontWeight: 700, fontSize: '.8rem', color: 'var(--text1)', textTransform: 'capitalize' }}>{key}</span>
+                      <span style={{ fontWeight: 700, fontSize: '.8rem', color: 'var(--text1)' }}>{orgMod.module.label}</span>
                       <span className="bx bx-green bx-no-dot" style={{ marginLeft: 'auto' }}>Active</span>
                     </div>
-                    {addonList.length > 0 && (
+                    {enabledAddons.length > 0 && (
                       <div style={{ paddingLeft: 30, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                        {addonList.map((addon) => (
-                          <span key={addon} className={`bx ${enabledAddonKeys.includes(addon) ? 'bx-teal' : 'bx-gray'} bx-no-dot`} style={{ fontSize: '.64rem' }}>
-                            {enabledAddonKeys.includes(addon) ? <Check size={9} /> : null}
-                            {addon}
+                        {enabledAddons.map((a) => (
+                          <span key={a.id} className="bx bx-teal bx-no-dot" style={{ fontSize: '.64rem' }}>
+                            <Check size={9} />
+                            {a.name}
                           </span>
                         ))}
                       </div>
                     )}
+                    {enabledAddons.length === 0 && (
+                      <div style={{ paddingLeft: 30, fontSize: '.74rem', color: 'var(--text4)' }}>No add-ons enabled</div>
+                    )}
                   </div>
                 )
               })}
-              {enabledModules.length === 0 && (
+              {enabledOrgModules.length === 0 && (
                 <div style={{ padding: '16px', fontSize: '.8rem', color: 'var(--text4)', textAlign: 'center' }}>No modules enabled</div>
               )}
             </div>
