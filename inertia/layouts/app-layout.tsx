@@ -12,8 +12,8 @@ import {
   ChevronDown,
   X,
   Menu,
-  Settings,
   ChevronRight,
+  UserCheck,
 } from 'lucide-react'
 
 interface SharedProps {
@@ -46,21 +46,20 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Building2 size={16} />,
     href: '/organizations',
     routeName: 'organizations.index',
-    children: [
-      { label: 'All Organizations', href: '/organizations' },
-      { label: 'Add Organization', href: '/organizations/create' },
-    ],
+  },
+  {
+    label: 'Leads & Owners',
+    icon: <UserCheck size={16} />,
+    href: '/leads',
+    routeName: 'leads.index',
   },
 ]
-
-function getInitialsColor(initials: string) {
-  return 'linear-gradient(135deg, var(--p), var(--s))'
-}
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { url, props } = usePage<{ props: SharedProps } & any>()
   const shared = props as SharedProps
   const user = shared?.user
+  const flash = shared?.flash
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -102,11 +101,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [searchOpen])
 
+  // Drive toasts from usePage() flash so they fire reliably on every navigation,
+  // including same-page redirects (e.g. form POST → back() → same URL).
   useEffect(() => {
-    if (shared?.flash?.success) toast.success(shared.flash.success)
-    if (shared?.flash?.error) toast.error(shared.flash.error)
-    shared?.flash?.toasts?.forEach((msg) => toast.error(msg))
-  }, [shared?.flash?.success, shared?.flash?.error, shared?.flash?.toasts?.join('|')])
+    if (flash?.success) toast.success(flash.success)
+    if (flash?.error)   toast.error(flash.error)
+    flash?.toasts?.forEach((msg: string) => toast.error(msg))
+  }, [flash])
 
   const isActive = (item: NavItem) => {
     if (item.href && url.startsWith(item.href)) return true
@@ -122,6 +123,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       if (parts[1] === 'create') crumbs.push({ label: 'Add Organization', href: '/organizations/create' })
       else if (parts[1]) crumbs.push({ label: 'Detail', href: url })
     }
+    if (parts[0] === 'leads') crumbs.push({ label: 'Leads & Owners', href: '/leads' })
     return crumbs
   })()
 
@@ -320,7 +322,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <Toaster position="top-right" richColors />
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        duration={4000}
+        gap={8}
+        toastOptions={{
+          style: {
+            borderRadius: '12px',
+            fontSize: '.82rem',
+            fontWeight: 500,
+            boxShadow: '0 8px 32px rgba(0,0,0,.16)',
+            padding: '12px 16px',
+          },
+        }}
+      />
 
       {/* Notifications Drawer */}
       <div className={`dov${drawerOpen ? ' open' : ''}`} onClick={() => setDrawerOpen(false)} />

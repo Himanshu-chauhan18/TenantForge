@@ -1,9 +1,13 @@
 import User from '#models/user'
+import SettingsRepository from '#repositories/settings_repository'
 import type { HttpContext } from '@adonisjs/core/http'
+
+const settingsRepo = new SettingsRepository()
 
 export default class SessionController {
   async create({ inertia }: HttpContext) {
-    return inertia.render('auth/login', {})
+    const loginMethod = await settingsRepo.getLoginMethod()
+    return inertia.render('auth/login', { loginMethod })
   }
 
   async store({ request, auth, response }: HttpContext) {
@@ -11,11 +15,11 @@ export default class SessionController {
     const user = await User.verifyCredentials(email, password)
 
     await auth.use('web').login(user)
-    response.redirect().toRoute('home')
+    return response.redirect().toRoute('dashboard')
   }
 
   async destroy({ auth, response }: HttpContext) {
     await auth.use('web').logout()
-    response.redirect().toRoute('session.create')
+    return response.redirect().toRoute('auth.login')
   }
 }

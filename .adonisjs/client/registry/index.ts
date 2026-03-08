@@ -90,6 +90,12 @@ const routes = {
     tokens: [{"old":"/api/modules","type":0,"val":"api","end":""},{"old":"/api/modules","type":0,"val":"modules","end":""}],
     types: placeholder as Registry['api.modules']['types'],
   },
+  'api.lead_owners': {
+    methods: ["GET","HEAD"],
+    pattern: '/api/lead-owners',
+    tokens: [{"old":"/api/lead-owners","type":0,"val":"api","end":""},{"old":"/api/lead-owners","type":0,"val":"lead-owners","end":""}],
+    types: placeholder as Registry['api.lead_owners']['types'],
+  },
   'dashboard': {
     methods: ["GET","HEAD"],
     pattern: '/dashboard',
@@ -126,6 +132,24 @@ const routes = {
     tokens: [{"old":"/organizations/export","type":0,"val":"organizations","end":""},{"old":"/organizations/export","type":0,"val":"export","end":""}],
     types: placeholder as Registry['organizations.export']['types'],
   },
+  'organizations.checkEmail': {
+    methods: ["GET","HEAD"],
+    pattern: '/organizations/check-email',
+    tokens: [{"old":"/organizations/check-email","type":0,"val":"organizations","end":""},{"old":"/organizations/check-email","type":0,"val":"check-email","end":""}],
+    types: placeholder as Registry['organizations.checkEmail']['types'],
+  },
+  'organizations.checkPhone': {
+    methods: ["GET","HEAD"],
+    pattern: '/organizations/check-phone',
+    tokens: [{"old":"/organizations/check-phone","type":0,"val":"organizations","end":""},{"old":"/organizations/check-phone","type":0,"val":"check-phone","end":""}],
+    types: placeholder as Registry['organizations.checkPhone']['types'],
+  },
+  'organizations.checkAdminPhone': {
+    methods: ["GET","HEAD"],
+    pattern: '/organizations/check-admin-phone',
+    tokens: [{"old":"/organizations/check-admin-phone","type":0,"val":"organizations","end":""},{"old":"/organizations/check-admin-phone","type":0,"val":"check-admin-phone","end":""}],
+    types: placeholder as Registry['organizations.checkAdminPhone']['types'],
+  },
   'organizations.show': {
     methods: ["GET","HEAD"],
     pattern: '/organizations/:id',
@@ -144,11 +168,53 @@ const routes = {
     tokens: [{"old":"/organizations/:id","type":0,"val":"organizations","end":""},{"old":"/organizations/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['organizations.update']['types'],
   },
+  'organizations.superAdmin.update': {
+    methods: ["PUT"],
+    pattern: '/organizations/:id/super-admin',
+    tokens: [{"old":"/organizations/:id/super-admin","type":0,"val":"organizations","end":""},{"old":"/organizations/:id/super-admin","type":1,"val":"id","end":""},{"old":"/organizations/:id/super-admin","type":0,"val":"super-admin","end":""}],
+    types: placeholder as Registry['organizations.superAdmin.update']['types'],
+  },
+  'organizations.modules.update': {
+    methods: ["PUT"],
+    pattern: '/organizations/:id/modules',
+    tokens: [{"old":"/organizations/:id/modules","type":0,"val":"organizations","end":""},{"old":"/organizations/:id/modules","type":1,"val":"id","end":""},{"old":"/organizations/:id/modules","type":0,"val":"modules","end":""}],
+    types: placeholder as Registry['organizations.modules.update']['types'],
+  },
   'organizations.destroy': {
     methods: ["DELETE"],
     pattern: '/organizations/:id',
     tokens: [{"old":"/organizations/:id","type":0,"val":"organizations","end":""},{"old":"/organizations/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['organizations.destroy']['types'],
+  },
+  'leads.index': {
+    methods: ["GET","HEAD"],
+    pattern: '/leads',
+    tokens: [{"old":"/leads","type":0,"val":"leads","end":""}],
+    types: placeholder as Registry['leads.index']['types'],
+  },
+  'leads.store': {
+    methods: ["POST"],
+    pattern: '/leads',
+    tokens: [{"old":"/leads","type":0,"val":"leads","end":""}],
+    types: placeholder as Registry['leads.store']['types'],
+  },
+  'leads.bulk': {
+    methods: ["POST"],
+    pattern: '/leads/bulk',
+    tokens: [{"old":"/leads/bulk","type":0,"val":"leads","end":""},{"old":"/leads/bulk","type":0,"val":"bulk","end":""}],
+    types: placeholder as Registry['leads.bulk']['types'],
+  },
+  'leads.update': {
+    methods: ["PUT"],
+    pattern: '/leads/:id',
+    tokens: [{"old":"/leads/:id","type":0,"val":"leads","end":""},{"old":"/leads/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['leads.update']['types'],
+  },
+  'leads.destroy': {
+    methods: ["DELETE"],
+    pattern: '/leads/:id',
+    tokens: [{"old":"/leads/:id","type":0,"val":"leads","end":""},{"old":"/leads/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['leads.destroy']['types'],
   },
 } as const satisfies Record<string, AdonisEndpoint>
 

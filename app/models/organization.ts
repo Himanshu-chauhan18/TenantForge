@@ -1,7 +1,7 @@
 import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
-import User from '#models/user'
+import LeadOwner from '#models/lead_owner'
 import OrganizationModule from '#models/organization_module'
 import OrganizationUser from '#models/organization_user'
 import UserProfile from '#models/user_profile'
@@ -80,7 +80,10 @@ export default class Organization extends BaseModel {
   @column()
   declare timeFormat: string
 
-  @column()
+  @column({
+    prepare: (v: 'trial' | 'premium') => (v === 'premium' ? 1 : 0),
+    consume: (v: number | string) => (typeof v === 'string' ? v : v === 1 ? 'premium' : 'trial') as 'trial' | 'premium',
+  })
   declare planType: 'trial' | 'premium'
 
   @column()
@@ -92,7 +95,14 @@ export default class Organization extends BaseModel {
   @column()
   declare planEnd: string | null
 
-  @column()
+  @column({
+    prepare: (v: 'active' | 'inactive' | 'expired') =>
+      v === 'inactive' ? 0 : v === 'expired' ? 2 : 1,
+    consume: (v: number | string) => {
+      if (typeof v === 'string') return v as 'active' | 'inactive' | 'expired'
+      return (v === 0 ? 'inactive' : v === 2 ? 'expired' : 'active') as 'active' | 'inactive' | 'expired'
+    },
+  })
   declare status: 'active' | 'inactive' | 'expired'
 
   @column()
@@ -107,8 +117,8 @@ export default class Organization extends BaseModel {
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
 
-  @belongsTo(() => User, { foreignKey: 'leadOwnerId' })
-  declare leadOwner: BelongsTo<typeof User>
+  @belongsTo(() => LeadOwner, { foreignKey: 'leadOwnerId' })
+  declare leadOwner: BelongsTo<typeof LeadOwner>
 
   @hasMany(() => OrganizationModule, { foreignKey: 'orgId' })
   declare modules: HasMany<typeof OrganizationModule>

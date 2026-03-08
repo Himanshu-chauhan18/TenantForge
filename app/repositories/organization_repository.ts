@@ -4,12 +4,21 @@ import OrganizationModule from '#models/organization_module'
 import FiscalYear from '#models/fiscal_year'
 import db from '@adonisjs/lucid/services/db'
 
+// Numeric mappings for tinyint columns — used in raw query builder calls
+// (Lucid model prepare/consume only applies to INSERT/UPDATE via model, not raw QB WHERE/UPDATE)
+const S = { inactive: 0, active: 1, expired: 2 } as const
+const P = { trial: 0, premium: 1 } as const
+
 export interface OrgFilters {
   search?: string
-  tab?: 'all' | 'paid' | 'trial' | 'unsubscribed' | 'exceeds' | 'archived'
+  tab?: 'all' | 'paid' | 'trial' | 'unsubscribed' | 'archived' | 'expired' | 'near_expiry'
   planType?: 'trial' | 'premium'
   status?: 'active' | 'inactive' | 'expired'
   leadOwnerId?: number
+  country?: string
+  city?: string
+  createdFrom?: string
+  createdTo?: string
   page?: number
   perPage?: number
   sortBy?: string
@@ -43,6 +52,7 @@ export interface OrgCreateData {
   userLimit: number
   planStart?: string
   planEnd?: string
+  status?: 'active' | 'inactive' | 'expired'
   // Step 2 - modules/addons
   modules?: { moduleId: number; addonIds: number[] }[]
 }
@@ -54,31 +64,41 @@ export default class OrganizationRepository {
       tab = 'all',
       status,
       leadOwnerId,
+      country,
+      city,
+      createdFrom,
+      createdTo,
       page = 1,
-      perPage = 15,
+      perPage = 10,
       sortBy = 'created_at',
       sortDir = 'desc',
     } = filters
 
+    const today = new Date().toISOString().split('T')[0]
+    const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
     const query = Organization.query()
+      .select('organizations.*')
+      .select(db.raw('(SELECT COUNT(*) FROM organization_users WHERE org_id = organizations.id) as user_count'))
       .preload('leadOwner')
       .whereNull('deleted_at')
 
     if (tab === 'paid') {
-      query.where('plan_type', 'premium')
+      query.where('plan_type', P.premium).where('is_archived', false)
     } else if (tab === 'trial') {
-      query.where('plan_type', 'trial')
+      query.where('plan_type', P.trial).where('is_archived', false)
     } else if (tab === 'unsubscribed') {
-      query.where('status', 'inactive')
+      query.where('status', S.inactive).where('is_archived', false)
     } else if (tab === 'archived') {
       query.where('is_archived', true)
-    } else if (tab === 'exceeds') {
-      // orgs that have org_users count > user_limit
-      query.whereRaw(
-        '(SELECT COUNT(*) FROM organization_users WHERE org_id = organizations.id) > user_limit'
-      )
+    } else if (tab === 'expired') {
+      // Show orgs whose plan has expired (date in past or today) OR whose status is explicitly set to expired
+      query.where((q) => {
+        q.where('plan_end', '<=', today).orWhere('status', S.expired)
+      }).where('is_archived', false)
+    } else if (tab === 'near_expiry') {
+      query.where('plan_end', '>', today).where('plan_end', '<=', sevenDaysLater).where('status', '!=', S.expired).where('is_archived', false)
     } else {
-      // all: exclude archived
       query.where('is_archived', false)
     }
 
@@ -89,11 +109,27 @@ export default class OrganizationRepository {
     }
 
     if (status) {
-      query.where('status', status)
+      query.where('status', S[status] ?? S.active)
     }
 
     if (leadOwnerId) {
       query.where('lead_owner_id', leadOwnerId)
+    }
+
+    if (country) {
+      query.whereILike('country', `%${country}%`)
+    }
+
+    if (city) {
+      query.whereILike('city', `%${city}%`)
+    }
+
+    if (createdFrom) {
+      query.where('created_at', '>=', createdFrom)
+    }
+
+    if (createdTo) {
+      query.where('created_at', '<=', createdTo + ' 23:59:59')
     }
 
     query.orderBy(sortBy, sortDir)
@@ -134,6 +170,16 @@ export default class OrganizationRepository {
 
   async phoneExists(phone: string): Promise<boolean> {
     const found = await Organization.query().whereNull('deleted_at').where('phone', phone).first()
+    return !!found
+  }
+
+  async emailExistsExcluding(email: string, excludeId: number): Promise<boolean> {
+    const found = await Organization.query().whereNull('deleted_at').where('email', email).whereNot('id', excludeId).first()
+    return !!found
+  }
+
+  async phoneExistsExcluding(phone: string, excludeId: number): Promise<boolean> {
+    const found = await Organization.query().whereNull('deleted_at').where('phone', phone).whereNot('id', excludeId).first()
     return !!found
   }
 
@@ -217,7 +263,11 @@ export default class OrganizationRepository {
 
   async update(id: number, data: Partial<OrgCreateData>): Promise<Organization> {
     const org = await Organization.findOrFail(id)
-    await org.merge(data).save()
+    // Normalize formats the same way as create
+    const normalized: Partial<OrgCreateData> = { ...data }
+    if (normalized.dateFormat) normalized.dateFormat = normalized.dateFormat.toLowerCase()
+    if (normalized.timeFormat) normalized.timeFormat = normalized.timeFormat.startsWith('24') ? '24' : '12'
+    await org.merge(normalized).save()
     return org
   }
 
@@ -236,10 +286,10 @@ export default class OrganizationRepository {
   ): Promise<void> {
     switch (operation) {
       case 'activate':
-        await Organization.query().whereIn('id', ids).update({ status: 'active' })
+        await Organization.query().whereIn('id', ids).update({ status: S.active })
         break
       case 'deactivate':
-        await Organization.query().whereIn('id', ids).update({ status: 'inactive' })
+        await Organization.query().whereIn('id', ids).update({ status: S.inactive })
         break
       case 'archive':
         await Organization.query().whereIn('id', ids).update({ is_archived: true })
@@ -274,6 +324,26 @@ export default class OrganizationRepository {
     }
   }
 
+  async updateModules(
+    orgId: number,
+    modules: { moduleId: number; enabled: boolean; addonIds: number[] }[]
+  ): Promise<void> {
+    for (const mod of modules) {
+      const existing = await OrganizationModule.query()
+        .where('org_id', orgId)
+        .where('module_id', mod.moduleId)
+        .first()
+      const addonIds = mod.addonIds.map((id) => ({ id, enabled: true }))
+      if (existing) {
+        existing.enabled = mod.enabled
+        existing.addonIds = addonIds
+        await existing.save()
+      } else {
+        await OrganizationModule.create({ orgId, moduleId: mod.moduleId, enabled: mod.enabled, addonIds })
+      }
+    }
+  }
+
   async getDashboardStats() {
     const today = new Date().toISOString().split('T')[0]
     const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -283,14 +353,14 @@ export default class OrganizationRepository {
     const [total, subscribed, unsubscribed, archived, trialActive, trialExpired, premiumActive, premiumExpired, nearExpiry] =
       await Promise.all([
         Organization.query().whereNull('deleted_at').count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('status', 'active').where('is_archived', false).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('status', 'inactive').count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('status', S.active).where('is_archived', false).count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('status', S.inactive).count('* as count').first(),
         Organization.query().whereNull('deleted_at').where('is_archived', true).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', 'trial').where('status', 'active').count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', 'trial').where('plan_end', '<', today).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', 'premium').where('status', 'active').count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', 'premium').where('plan_end', '<', today).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_end', '>=', today).where('plan_end', '<=', sevenDaysLater).count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where('status', S.active).count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where((q) => q.where('plan_end', '<=', today).orWhere('status', S.expired)).count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where('status', S.active).count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where((q) => q.where('plan_end', '<=', today).orWhere('status', S.expired)).count('* as count').first(),
+        Organization.query().whereNull('deleted_at').where('plan_end', '>', today).where('plan_end', '<=', sevenDaysLater).where('status', '!=', S.expired).count('* as count').first(),
       ])
 
     const totalUsers = await db.from('organization_users').count('* as count').first()

@@ -25,6 +25,7 @@ export interface ApiDefinition {
     currencies: typeof routes['api.currencies']
     timezones: typeof routes['api.timezones']
     modules: typeof routes['api.modules']
+    leadOwners: typeof routes['api.lead_owners']
   }
   dashboard: typeof routes['dashboard']
   organizations: {
@@ -33,9 +34,25 @@ export interface ApiDefinition {
     store: typeof routes['organizations.store']
     bulk: typeof routes['organizations.bulk']
     export: typeof routes['organizations.export']
+    checkEmail: typeof routes['organizations.checkEmail']
+    checkPhone: typeof routes['organizations.checkPhone']
+    checkAdminPhone: typeof routes['organizations.checkAdminPhone']
     show: typeof routes['organizations.show']
     edit: typeof routes['organizations.edit']
     update: typeof routes['organizations.update']
+    superAdmin: {
+      update: typeof routes['organizations.superAdmin.update']
+    }
+    modules: {
+      update: typeof routes['organizations.modules.update']
+    }
     destroy: typeof routes['organizations.destroy']
+  }
+  leads: {
+    index: typeof routes['leads.index']
+    store: typeof routes['leads.store']
+    bulk: typeof routes['leads.bulk']
+    update: typeof routes['leads.update']
+    destroy: typeof routes['leads.destroy']
   }
 }

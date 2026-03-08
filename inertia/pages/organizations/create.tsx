@@ -1,11 +1,11 @@
-import { CreateOrgForm, type UserOption, type OrgOption } from '~/components/organizations/create-org-form'
+import { CreateOrgForm, type LeadOwnerOption, type OrgOption } from '~/components/organizations/create-org-form'
 
 interface Props {
-  users: UserOption[]
+  leadOwners: LeadOwnerOption[]
   organizations: OrgOption[]
 }
 
-export default function CreateOrganization({ users, organizations }: Props) {
+export default function CreateOrganization({ leadOwners, organizations }: Props) {
   return (
     <>
       <div className="ph">
@@ -15,7 +15,7 @@ export default function CreateOrganization({ users, organizations }: Props) {
         </div>
       </div>
 
-      <CreateOrgForm users={users} organizations={organizations} />
+      <CreateOrgForm leadOwners={leadOwners} organizations={organizations} />
     </>
   )
 }

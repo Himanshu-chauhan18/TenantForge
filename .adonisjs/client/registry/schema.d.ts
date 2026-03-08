@@ -161,6 +161,17 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/location_controller').default['modules']>>>
     }
   }
+  'api.lead_owners': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/lead-owners'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['apiList']>>>
+    }
+  }
   'dashboard': {
     methods: ["GET","HEAD"]
     pattern: '/dashboard'
@@ -227,6 +238,39 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['exportCsv']>>>
     }
   }
+  'organizations.checkEmail': {
+    methods: ["GET","HEAD"]
+    pattern: '/organizations/check-email'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['checkOrgEmail']>>>
+    }
+  }
+  'organizations.checkPhone': {
+    methods: ["GET","HEAD"]
+    pattern: '/organizations/check-phone'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['checkOrgPhone']>>>
+    }
+  }
+  'organizations.checkAdminPhone': {
+    methods: ["GET","HEAD"]
+    pattern: '/organizations/check-admin-phone'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['checkAdminPhone']>>>
+    }
+  }
   'organizations.show': {
     methods: ["GET","HEAD"]
     pattern: '/organizations/:id'
@@ -260,6 +304,28 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['update']>>>
     }
   }
+  'organizations.superAdmin.update': {
+    methods: ["PUT"]
+    pattern: '/organizations/:id/super-admin'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateSuperAdmin']>>>
+    }
+  }
+  'organizations.modules.update': {
+    methods: ["PUT"]
+    pattern: '/organizations/:id/modules'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/organization_validator').updateModulesValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/organization_validator').updateModulesValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateModules']>>>
+    }
+  }
   'organizations.destroy': {
     methods: ["DELETE"]
     pattern: '/organizations/:id'
@@ -269,6 +335,61 @@ export interface Registry {
       params: { id: ParamValue }
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['destroy']>>>
+    }
+  }
+  'leads.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/leads'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['index']>>>
+    }
+  }
+  'leads.store': {
+    methods: ["POST"]
+    pattern: '/leads'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['store']>>>
+    }
+  }
+  'leads.bulk': {
+    methods: ["POST"]
+    pattern: '/leads/bulk'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['bulk']>>>
+    }
+  }
+  'leads.update': {
+    methods: ["PUT"]
+    pattern: '/leads/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['update']>>>
+    }
+  }
+  'leads.destroy': {
+    methods: ["DELETE"]
+    pattern: '/leads/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['destroy']>>>
     }
   }
 }

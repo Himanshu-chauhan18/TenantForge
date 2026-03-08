@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronDown, Search, Check, X, Loader2 } from 'lucide-react'
 
 export interface CountryOption {
@@ -13,6 +14,8 @@ export interface CountryOption {
   phonecode: string | null
 }
 
+interface DropPos { top?: number; bottom?: number; left: number; width: number }
+
 export function CountrySelect({
   value,
   onChange,
@@ -20,24 +23,54 @@ export function CountrySelect({
   value: CountryOption | null
   onChange: (o: CountryOption | null) => void
 }) {
-  const [open, setOpen] = useState(false)
-  const [search, setSearch] = useState('')
+  const [open, setOpen]       = useState(false)
+  const [dropPos, setDropPos] = useState<DropPos | null>(null)
+  const [search, setSearch]   = useState('')
   const [options, setOptions] = useState<CountryOption[]>([])
   const [loading, setLoading] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ref     = useRef<HTMLDivElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const timer   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const fn = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      if (!ref.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node))
+        setOpen(false)
     }
     document.addEventListener('mousedown', fn)
     return () => document.removeEventListener('mousedown', fn)
   }, [])
 
+  // Close on scroll/resize so the fixed dropdown never drifts with the page
   useEffect(() => {
-    if (open) { setSearch(''); setOptions([]); load('') }
+    if (!open) return
+    const close = (e: Event) => {
+      if (dropRef.current?.contains(e.target as Node)) return
+      setOpen(false)
+    }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+    }
   }, [open])
+
+  function handleOpen() {
+    if (!open && ref.current) {
+      const rect       = ref.current.getBoundingClientRect()
+      const spaceBelow = window.innerHeight - rect.bottom
+      const dropH      = 340
+      if (spaceBelow < dropH && rect.top > dropH) {
+        setDropPos({ bottom: window.innerHeight - rect.top + 4, left: rect.left, width: rect.width })
+      } else {
+        setDropPos({ top: rect.bottom + 4, left: rect.left, width: rect.width })
+      }
+      setSearch('')
+      load('')
+    }
+    setOpen((o) => !o)
+  }
 
   async function load(q: string) {
     setLoading(true)
@@ -54,13 +87,88 @@ export function CountrySelect({
     timer.current = setTimeout(() => load(q), 300)
   }
 
+  const dropdown = open && dropPos ? (
+    <div
+      ref={dropRef}
+      style={{
+        position: 'fixed',
+        top: dropPos.top,
+        bottom: dropPos.bottom,
+        left: dropPos.left,
+        width: Math.max(dropPos.width, 240),
+        zIndex: 99999,
+        background: 'var(--surface)',
+        border: '1.5px solid var(--border)',
+        borderRadius: 10,
+        boxShadow: '0 8px 28px rgba(0,0,0,.14)',
+        overflow: 'hidden',
+        animation: 'calIn .13s ease',
+      }}
+      onWheel={(e) => e.stopPropagation()}
+    >
+      <div className="combo-search">
+        <div style={{ position: 'relative' }}>
+          <Search size={12} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none' }} />
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search country…"
+            style={{ paddingLeft: 18, width: '100%', fontSize: '.82rem', background: 'none', border: 'none', outline: 'none', color: 'var(--text1)' }}
+          />
+        </div>
+      </div>
+
+      <div style={{ maxHeight: 252, overflowY: 'auto' }}>
+        {loading ? (
+          <div className="combo-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+            <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Loading countries…
+          </div>
+        ) : options.length === 0 ? (
+          <div className="combo-empty">No countries found</div>
+        ) : (
+          options.map((c) => {
+            const isSel = value?.id === c.id
+            return (
+              <div
+                key={c.id}
+                className="combo-option"
+                data-selected={String(isSel)}
+                onClick={() => { onChange(c); setOpen(false); setSearch('') }}
+                style={{ cursor: 'pointer' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1 }}>
+                  <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}>{c.emoji || '🌍'}</span>
+                  <span style={{ flex: 1 }}>{c.name}</span>
+                  {c.currency && <span style={{ fontSize: '.7rem', color: isSel ? 'var(--p)' : 'var(--text4)', flexShrink: 0 }}>{c.currency}</span>}
+                </div>
+                {isSel && <Check size={13} style={{ color: 'var(--p)', flexShrink: 0, marginLeft: 6 }} />}
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {value && (
+        <div style={{ padding: '5px 8px', borderTop: '1px solid var(--border)' }}>
+          <button type="button"
+            style={{ fontSize: '.72rem', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
+            onClick={() => { onChange(null); setOpen(false) }}
+          >
+            <X size={11} /> Clear selection
+          </button>
+        </div>
+      )}
+    </div>
+  ) : null
+
   return (
     <div ref={ref} className="combo-wrap">
       <button
         type="button"
         className="fi"
         style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left' }}
-        onClick={() => setOpen((o) => !o)}
+        onClick={handleOpen}
       >
         {value ? (
           <>
@@ -78,63 +186,7 @@ export function CountrySelect({
         <ChevronDown size={13} style={{ flexShrink: 0, color: 'var(--text3)', transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
       </button>
 
-      {open && (
-        <div className="combo-options" style={{ zIndex: 300, boxShadow: '0 8px 28px rgba(0,0,0,.12)' }}>
-          <div className="combo-search">
-            <div style={{ position: 'relative' }}>
-              <Search size={12} style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none' }} />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Search country…"
-                style={{ paddingLeft: 18, width: '100%', fontSize: '.82rem', background: 'none', border: 'none', outline: 'none', color: 'var(--text1)' }}
-              />
-            </div>
-          </div>
-
-          <div style={{ maxHeight: 252, overflowY: 'auto' }}>
-            {loading ? (
-              <div className="combo-empty" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Loading countries…
-              </div>
-            ) : options.length === 0 ? (
-              <div className="combo-empty">No countries found</div>
-            ) : (
-              options.map((c) => {
-                const isSel = value?.id === c.id
-                return (
-                  <div
-                    key={c.id}
-                    className="combo-option"
-                    data-selected={String(isSel)}
-                    onClick={() => { onChange(c); setOpen(false); setSearch('') }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 1 }}>
-                      <span style={{ fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}>{c.emoji || '🌍'}</span>
-                      <span style={{ flex: 1 }}>{c.name}</span>
-                      {c.currency && <span style={{ fontSize: '.7rem', color: isSel ? 'var(--p)' : 'var(--text4)', flexShrink: 0 }}>{c.currency}</span>}
-                    </div>
-                    {isSel && <Check size={13} style={{ color: 'var(--p)', flexShrink: 0, marginLeft: 6 }} />}
-                  </div>
-                )
-              })
-            )}
-          </div>
-
-          {value && (
-            <div style={{ padding: '5px 8px', borderTop: '1px solid var(--border)' }}>
-              <button type="button"
-                style={{ fontSize: '.72rem', color: 'var(--text3)', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}
-                onClick={() => { onChange(null); setOpen(false) }}
-              >
-                <X size={11} /> Clear selection
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+      {typeof document !== 'undefined' && createPortal(dropdown, document.body)}
     </div>
   )
 }

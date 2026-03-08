@@ -43,7 +43,7 @@ export default class AuthController {
     return ally.use('google').redirect()
   }
 
-  async googleCallback({ ally, auth, response, session, inertia }: HttpContext) {
+  async googleCallback({ ally, auth, response, session }: HttpContext) {
     const google = ally.use('google')
 
     if (google.accessDenied()) {
@@ -88,7 +88,7 @@ export default class AuthController {
     return response.redirect().toPath('/auth/totp/verify')
   }
 
-  async totpSetup({ auth, inertia, response }: HttpContext) {
+  async totpSetup({ auth, inertia }: HttpContext) {
     const user = auth.user!
     const { secret, qrCode } = await authService.setupTotp(user.id)
     return inertia.render('auth/totp-setup', { qrCode, secret })

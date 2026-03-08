@@ -6,6 +6,7 @@
 export const controllers = {
   Auth: () => import('#controllers/auth_controller'),
   Dashboard: () => import('#controllers/dashboard_controller'),
+  LeadOwner: () => import('#controllers/lead_owner_controller'),
   Location: () => import('#controllers/location_controller'),
   NewAccount: () => import('#controllers/new_account_controller'),
   Organization: () => import('#controllers/organization_controller'),

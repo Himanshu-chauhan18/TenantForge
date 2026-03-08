@@ -1,17 +1,20 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
 import OrganizationService from '#services/organization_service'
-import UserRepository from '#repositories/user_repository'
+import OrganizationRepository from '#repositories/organization_repository'
+import LeadOwnerRepository from '#repositories/lead_owner_repository'
 import Organization from '#models/organization'
+import OrganizationUser from '#models/organization_user'
 import {
   organizationStep1Validator,
   organizationModulesValidator,
   organizationSuperAdminValidator,
   bulkOperationValidator,
+  updateModulesValidator,
 } from '#validators/organization_validator'
 
 const orgService = new OrganizationService()
-const userRepo = new UserRepository()
+const leadOwnerRepo = new LeadOwnerRepository()
 
 export default class OrganizationController {
   async index({ request, inertia }: HttpContext) {
@@ -21,29 +24,57 @@ export default class OrganizationController {
       tab: qs.tab,
       status: qs.status,
       leadOwnerId: qs.lead_owner_id ? Number(qs.lead_owner_id) : undefined,
+      country: qs.country,
+      city: qs.city,
+      createdFrom: qs.created_from,
+      createdTo: qs.created_to,
       page: qs.page ? Number(qs.page) : 1,
-      perPage: qs.per_page ? Number(qs.per_page) : 15,
+      perPage: qs.per_page ? Number(qs.per_page) : 10,
       sortBy: qs.sort_by || 'created_at',
       sortDir: qs.sort_dir || 'desc',
     })
 
-    const users = await userRepo.list()
+    const [leadOwners] = await Promise.all([leadOwnerRepo.list()])
 
+    // Serialize rows — CamelCaseNamingStrategy makes model fields camelCase.
+    // $extras (user_count subquery) are excluded from serialize() by default, so inject manually.
+    const orgRows = orgs.all()
+    const serialized = orgs.serialize()
+
+    // Build meta directly from paginator instance properties to avoid naming-strategy ambiguity
+    // (serialized.meta keys vary by naming strategy; paginator properties are always stable).
+    const meta = {
+      total: orgs.total,
+      perPage: orgs.perPage,
+      currentPage: orgs.currentPage,
+      lastPage: orgs.lastPage,
+    }
+
+    // @ts-ignore - inertia page type inference issue
     return inertia.render('organizations/index', {
-      orgs: orgs.serialize(),
-      users: users.map((u) => u.serialize()),
+      orgs: {
+        data: serialized.data.map((row: any, i: number) => ({
+          ...row,
+          userCount: Number(orgRows[i]?.$extras?.user_count ?? 0),
+        })),
+        meta,
+      },
+      leadOwners: leadOwners.map((o) => o.serialize()),
     })
   }
 
   async create({ inertia }: HttpContext) {
-    const users = await userRepo.list()
-    const parentOrgs = await Organization.query()
-      .whereNull('deleted_at')
-      .where('is_archived', false)
-      .select('id', 'name', 'org_id')
-      .orderBy('name', 'asc')
+    const [leadOwners, parentOrgs] = await Promise.all([
+      leadOwnerRepo.list(),
+      Organization.query()
+        .whereNull('deleted_at')
+        .where('is_archived', false)
+        .select('id', 'name', 'org_id')
+        .orderBy('name', 'asc'),
+    ])
+    // @ts-ignore - inertia page type inference issue
     return inertia.render('organizations/create', {
-      users: users.map((u) => u.serialize()),
+      leadOwners: leadOwners.map((o) => o.serialize()),
       organizations: parentOrgs.map((o) => ({ id: o.id, name: o.name, orgId: o.orgId })),
     })
   }
@@ -66,6 +97,7 @@ export default class OrganizationController {
       session.flash('success', `Organization "${org.name}" created successfully!`)
       return response.redirect().toRoute('organizations.index')
     } catch (error) {
+      // console.error('[OrgStore] create failed:', error)
       const msg: string = error.message || ''
       const CODE_MAP: Record<string, string> = {
         DUPLICATE_ORG_EMAIL: 'An organization with this email already exists. Use a different email.',
@@ -92,26 +124,32 @@ export default class OrganizationController {
   }
 
   async show({ params, inertia, response }: HttpContext) {
-    const org = await orgService.getDetail(Number(params.id))
+    const [org, leadOwners] = await Promise.all([
+      orgService.getDetail(Number(params.id)),
+      leadOwnerRepo.list(),
+    ])
     if (!org) {
       return response.status(404).send('Organization not found')
     }
-    const users = await userRepo.list()
-    return inertia.render('organizations/show', {
+    // @ts-ignore - inertia page type inference issue
+    return inertia.render('organizations/edit', {
       org: org.serialize(),
-      users: users.map((u) => u.serialize()),
+      leadOwners: leadOwners.map((o) => o.serialize()),
     })
   }
 
   async edit({ params, inertia, response }: HttpContext) {
-    const org = await orgService.getDetail(Number(params.id))
+    const [org, leadOwners] = await Promise.all([
+      orgService.getDetail(Number(params.id)),
+      leadOwnerRepo.list(),
+    ])
     if (!org) {
       return response.status(404).send('Organization not found')
     }
-    const users = await userRepo.list()
+    // @ts-ignore - inertia page type inference issue
     return inertia.render('organizations/edit', {
       org: org.serialize(),
-      users: users.map((u) => u.serialize()),
+      leadOwners: leadOwners.map((o) => o.serialize()),
     })
   }
 
@@ -120,7 +158,7 @@ export default class OrganizationController {
     try {
       const org = await orgService.update(Number(params.id), data as any)
       session.flash('success', 'Organization updated successfully!')
-      return response.redirect().toRoute('organizations.show', { id: org.id })
+      return response.redirect().toRoute('organizations.edit', { id: org.id })
     } catch (error) {
       session.flash('errors', { update: error.message || 'Failed to update organization.' })
       return response.redirect().back()
@@ -133,11 +171,75 @@ export default class OrganizationController {
     return response.redirect().toRoute('organizations.index')
   }
 
+  async updateModules({ params, request, response, session }: HttpContext) {
+    const { modules } = await request.validateUsing(updateModulesValidator)
+    await orgService.updateModules(
+      Number(params.id),
+      modules as { moduleId: number; enabled: boolean; addonIds: number[] }[]
+    )
+    session.flash('success', 'Modules updated successfully!')
+    return response.redirect().back()
+  }
+
   async bulk({ request, response, session }: HttpContext) {
     const { ids, operation, payload } = await request.validateUsing(bulkOperationValidator)
     await orgService.bulkOperation(ids, operation, payload as any)
     session.flash('success', `Bulk operation "${operation}" completed for ${ids.length} organization(s).`)
     return response.redirect().back()
+  }
+
+  async updateSuperAdmin({ params, request, response, session }: HttpContext) {
+    const { fullName, employeeCode, phone, gender, dateOfBirth } = request.only([
+      'fullName', 'employeeCode', 'phone', 'gender', 'dateOfBirth',
+    ])
+
+    const user = await OrganizationUser.query()
+      .where('org_id', params.id)
+      .orderBy('id', 'asc')
+      .first()
+
+    if (!user) {
+      session.flash('flashToasts', JSON.stringify(['Super admin not found for this organization.']))
+      return response.redirect().back()
+    }
+
+    if (fullName) user.fullName = String(fullName).trim()
+    user.employeeCode = employeeCode ? String(employeeCode).trim() : null
+    user.phone = phone ? String(phone).trim() : null
+    user.gender = gender && ['male', 'female', 'other'].includes(gender)
+      ? (gender as 'male' | 'female' | 'other')
+      : null
+    user.dateOfBirth = dateOfBirth ? String(dateOfBirth) : null
+    await user.save()
+
+    session.flash('success', 'Super admin updated successfully!')
+    return response.redirect().back()
+  }
+
+  async checkOrgEmail({ request, response }: HttpContext) {
+    const email = String(request.qs().email || '')
+    const excludeId = Number(request.qs().excludeId)
+    if (!email || !excludeId) return response.json({ exists: false })
+    const orgRepo = new OrganizationRepository()
+    const exists = await orgRepo.emailExistsExcluding(email, excludeId)
+    return response.json({ exists })
+  }
+
+  async checkOrgPhone({ request, response }: HttpContext) {
+    const phone = String(request.qs().phone || '')
+    const excludeId = Number(request.qs().excludeId)
+    if (!phone || !excludeId) return response.json({ exists: false })
+    const orgRepo = new OrganizationRepository()
+    const exists = await orgRepo.phoneExistsExcluding(phone, excludeId)
+    return response.json({ exists })
+  }
+
+  async checkAdminPhone({ request, response }: HttpContext) {
+    const phone = String(request.qs().phone || '')
+    const excludeUserId = Number(request.qs().excludeUserId)
+    if (!phone || !excludeUserId) return response.json({ exists: false })
+    const found = await OrganizationUser.query().where('phone', phone).whereNot('id', excludeUserId).first()
+    return response.json({ exists: !!found })
   }
 
   async exportCsv({ request, response }: HttpContext) {
@@ -146,21 +248,54 @@ export default class OrganizationController {
       search: qs.search,
       tab: qs.tab,
       status: qs.status,
+      leadOwnerId: qs.lead_owner_id ? Number(qs.lead_owner_id) : undefined,
+      country: qs.country,
+      city: qs.city,
+      createdFrom: qs.created_from,
+      createdTo: qs.created_to,
       perPage: 10000,
     })
 
     const serialized = orgs.serialize()
     const rows = serialized.data as any[]
 
-    const headers = ['Org ID', 'Name', 'Plan', 'Status', 'User Limit', 'Plan Start', 'Plan End', 'Created']
+    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    function fmtDate(val: string | null | undefined): string {
+      if (!val) return ''
+      const d = new Date(val)
+      if (isNaN(d.getTime())) return ''
+      return `${String(d.getDate()).padStart(2,'0')} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+    }
+
+    function escapeCsv(val: unknown): string {
+      const s = val == null ? '' : String(val)
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`
+      }
+      return s
+    }
+
+    // CamelCaseNamingStrategy serialises columns as camelCase
+    const headers = ['Org ID', 'Name', 'Plan', 'Status', 'User Limit', 'Plan Start', 'Plan End', 'Country', 'City', 'Created']
     const csv = [
       headers.join(','),
       ...rows.map((r) =>
-        [r.org_id, r.name, r.plan_type, r.status, r.user_limit, r.plan_start, r.plan_end, r.created_at].join(',')
+        [
+          r.orgId,
+          r.name,
+          r.planType,
+          r.status,
+          r.userLimit,
+          fmtDate(r.planStart),
+          fmtDate(r.planEnd),
+          r.country,
+          r.city,
+          fmtDate(r.createdAt),
+        ].map(escapeCsv).join(',')
       ),
     ].join('\n')
 
-    response.header('Content-Type', 'text/csv')
+    response.header('Content-Type', 'text/csv; charset=utf-8')
     response.header('Content-Disposition', 'attachment; filename="organizations.csv"')
     return response.send(csv)
   }

@@ -61,6 +61,10 @@ export default class OrganizationService {
     return this.repo.update(id, data)
   }
 
+  async updateModules(orgId: number, modules: { moduleId: number; enabled: boolean; addonIds: number[] }[]) {
+    return this.repo.updateModules(orgId, modules)
+  }
+
   async delete(id: number) {
     return this.repo.softDelete(id)
   }

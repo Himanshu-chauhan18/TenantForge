@@ -71,6 +71,7 @@ export function groupAddonItems(addons: ModuleAddonOption[]): { label: string; i
 
 // ─── types ────────────────────────────────────────────────────────────────────
 export interface UserOption { id: number; email: string; full_name?: string }
+export interface LeadOwnerOption { id: number; name: string; email: string; designation?: string | null }
 export interface OrgOption { id: number; name: string; orgId: string }
 export interface ModuleAddonOption { id: number; name: string; type: 'default' | 'custom' | 'advance' }
 export interface ModuleOption {
@@ -88,7 +89,15 @@ export interface ModuleOption {
 const Req = () => <span style={{ color: 'var(--danger)', marginLeft: 2 }}>*</span>
 
 // ─── StepHeader ───────────────────────────────────────────────────────────────
-function StepHeader({ currentStep }: { currentStep: number }) {
+function StepHeader({
+  currentStep,
+  maxStep,
+  onStepClick,
+}: {
+  currentStep: number
+  maxStep: number
+  onStepClick: (n: number) => void
+}) {
   const steps = [
     { n: 1, label: 'Company Info', desc: 'Details, contact & plan' },
     { n: 2, label: 'Modules', desc: 'Enable features' },
@@ -99,8 +108,15 @@ function StepHeader({ currentStep }: { currentStep: number }) {
       <div className="stepper">
         {steps.map((s) => {
           const state = currentStep > s.n ? 'done' : currentStep === s.n ? 'active' : ''
+          const clickable = s.n !== currentStep && s.n <= maxStep
           return (
-            <div key={s.n} className={`step-item ${state}`}>
+            <div
+              key={s.n}
+              className={`step-item ${state}`}
+              onClick={() => clickable && onStepClick(s.n)}
+              style={{ cursor: clickable ? 'pointer' : 'default' }}
+              title={clickable ? `Go to step ${s.n}` : undefined}
+            >
               <div className="step-n-row">
                 <div className="step-circle">
                   {currentStep > s.n ? <Check size={12} /> : s.n}
@@ -119,17 +135,18 @@ function StepHeader({ currentStep }: { currentStep: number }) {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface CreateOrgFormProps {
-  users: UserOption[]
+  leadOwners: LeadOwnerOption[]
   organizations: OrgOption[]
 }
 
 // ─── Main Form Component ──────────────────────────────────────────────────────
-export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
+export function CreateOrgForm({ leadOwners, organizations }: CreateOrgFormProps) {
   const fyDef = fiscalDefaults()
   const planDef = planDateDefaults()
 
   const [step, setStep] = useState(1)
   const [stepKey, setStepKey] = useState(0)
+  const [maxStep, setMaxStep] = useState(1)
   const [errs, setErrs] = useState<Record<string, string>>({})
 
   // Company details
@@ -207,6 +224,18 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
       .then((r) => r.ok ? r.json() : [])
       .then((data: { value: string; label: string }[]) => setTimezoneOptions(data))
       .catch(() => {})
+    // Default country to India
+    fetch('/api/countries?search=India')
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CountryOption[]) => {
+        const india = data.find((c) => c.iso2 === 'IN') ?? data[0]
+        if (india) {
+          setSelectedCountry(india)
+          if (india.currency) setCurrency(india.currency)
+          if (india.timezone) setTimezone(india.timezone)
+        }
+      })
+      .catch(() => {})
     fetch('/api/modules')
       .then((r) => r.ok ? r.json() : [])
       .then((data: ModuleOption[]) => {
@@ -228,6 +257,7 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
   function goToStep(n: number) {
     setStep(n)
     setStepKey((k) => k + 1)
+    setMaxStep((prev) => Math.max(prev, n))
   }
 
   function handleCountryChange(option: CountryOption | null) {
@@ -358,7 +388,7 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
   }
 
   // Build option arrays
-  const userOptions = users.map((u) => ({ value: String(u.id), label: u.full_name || u.email, sub: u.email }))
+  const leadOwnerOptions = leadOwners.map((o) => ({ value: String(o.id), label: o.name, sub: o.designation || o.email }))
   const orgOptions = organizations.map((o) => ({ value: String(o.id), label: o.name, sub: o.orgId }))
   const sizeOptions = COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))
   const industryOptions = INDUSTRIES.map((i) => ({ value: i, label: i }))
@@ -421,7 +451,7 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
         .mod-inactive-hint { border-top: 1px solid var(--border); padding: 10px 16px; background: var(--bg); }
       `}</style>
 
-      <StepHeader currentStep={step} />
+      <StepHeader currentStep={step} maxStep={maxStep} onStepClick={goToStep} />
 
       {/* ═══════════════════ STEP 1 ═══════════════════ */}
       {step === 1 && (
@@ -632,7 +662,7 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
 
                 <div className="fg col2" data-err={errs.leadOwner ? '' : undefined}>
                   <label>Lead Owner <Req /></label>
-                  <SelectSearch value={leadOwnerId} onChange={(v) => { setLeadOwnerId(v); clearErr('leadOwner') }} options={userOptions} placeholder={userOptions.length === 0 ? 'No users available' : 'Select lead owner…'} />
+                  <SelectSearch value={leadOwnerId} onChange={(v) => { setLeadOwnerId(v); clearErr('leadOwner') }} options={leadOwnerOptions} placeholder={leadOwnerOptions.length === 0 ? 'No lead owners available' : 'Select lead owner…'} />
                   {errs.leadOwner && <div className="err-msg">{errs.leadOwner}</div>}
                 </div>
               </div>
@@ -1021,7 +1051,7 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
                 <label>Full Name <Req /></label>
                 <input className={`fi${errs.fullName ? ' fi-err' : ''}`} value={fullName}
                   onChange={(e) => { setFullName(e.target.value); clearErr('fullName') }}
-                  placeholder="John Doe" />
+                  placeholder="Full Name" />
                 {errs.fullName && <div className="err-msg">{errs.fullName}</div>}
               </div>
 
@@ -1140,7 +1170,7 @@ export function CreateOrgForm({ users, organizations }: CreateOrgFormProps) {
                   )}
                   {leadOwnerId && (
                     <div style={{ marginTop: 6, fontSize: '.68rem', color: 'var(--text4)' }}>
-                      Lead: {users.find(u => String(u.id) === leadOwnerId)?.full_name || users.find(u => String(u.id) === leadOwnerId)?.email || '—'}
+                      Lead: {leadOwners.find(o => String(o.id) === leadOwnerId)?.name || '—'}
                     </div>
                   )}
                 </div>

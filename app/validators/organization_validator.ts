@@ -60,6 +60,18 @@ export const organizationSuperAdminValidator = vine.compile(
   })
 )
 
+export const updateModulesValidator = vine.compile(
+  vine.object({
+    modules: vine.array(
+      vine.object({
+        moduleId: vine.number().min(1),
+        enabled: vine.boolean(),
+        addonIds: vine.array(vine.number().min(1)),
+      })
+    ),
+  })
+)
+
 export const bulkOperationValidator = vine.compile(
   vine.object({
     ids: vine.array(vine.number()).minLength(1),

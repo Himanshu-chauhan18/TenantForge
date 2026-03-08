@@ -5,6 +5,7 @@ const AuthController = () => import('#controllers/auth_controller')
 const DashboardController = () => import('#controllers/dashboard_controller')
 const OrganizationController = () => import('#controllers/organization_controller')
 const LocationController = () => import('#controllers/location_controller')
+const LeadOwnerController = () => import('#controllers/lead_owner_controller')
 
 // Root redirect
 router.on('/').redirectToPath('/dashboard')
@@ -39,6 +40,7 @@ router.get('/api/cities', [LocationController, 'cities']).as('api.cities')
 router.get('/api/currencies', [LocationController, 'currencies']).as('api.currencies')
 router.get('/api/timezones', [LocationController, 'timezones']).as('api.timezones')
 router.get('/api/modules', [LocationController, 'modules']).as('api.modules')
+router.get('/api/lead-owners', [LeadOwnerController, 'apiList']).as('api.lead_owners')
 
 // Authenticated routes
 router
@@ -54,11 +56,30 @@ router
         router.post('/', [OrganizationController, 'store']).as('organizations.store')
         router.post('/bulk', [OrganizationController, 'bulk']).as('organizations.bulk')
         router.get('/export', [OrganizationController, 'exportCsv']).as('organizations.export')
+        router.get('/check-email', [OrganizationController, 'checkOrgEmail']).as('organizations.checkEmail')
+        router.get('/check-phone', [OrganizationController, 'checkOrgPhone']).as('organizations.checkPhone')
+        router.get('/check-admin-phone', [OrganizationController, 'checkAdminPhone']).as('organizations.checkAdminPhone')
         router.get('/:id', [OrganizationController, 'show']).as('organizations.show')
         router.get('/:id/edit', [OrganizationController, 'edit']).as('organizations.edit')
         router.put('/:id', [OrganizationController, 'update']).as('organizations.update')
+        router.put('/:id/super-admin', [OrganizationController, 'updateSuperAdmin']).as('organizations.superAdmin.update')
+        router.put('/:id/modules', [OrganizationController, 'updateModules']).as('organizations.modules.update')
         router.delete('/:id', [OrganizationController, 'destroy']).as('organizations.destroy')
       })
       .prefix('organizations')
+
+    // Lead Owners
+    router
+      .group(() => {
+        router.get('/', [LeadOwnerController, 'index']).as('leads.index')
+        router.post('/', [LeadOwnerController, 'store']).as('leads.store')
+        router.post('/bulk', [LeadOwnerController, 'bulk']).as('leads.bulk')
+        router.put('/:id', [LeadOwnerController, 'update']).as('leads.update')
+        router.delete('/:id', [LeadOwnerController, 'destroy']).as('leads.destroy')
+      })
+      .prefix('leads')
+
+    // Catch-all: redirect authenticated users hitting unknown routes to dashboard
+    router.any('*', ({ response }) => response.redirect('/dashboard'))
   })
   .use(middleware.auth())

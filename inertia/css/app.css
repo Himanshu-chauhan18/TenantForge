@@ -162,7 +162,9 @@ label { font-size: .73rem; font-weight: 700; color: var(--text2); margin-bottom:
 .ph-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 /* CARDS */
-.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+/* overflow: clip (not hidden) clips normal content at border-radius but does NOT create a
+   scroll container, so position:absolute dropdowns inside can escape the card boundary */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); overflow: clip; }
 .card-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
 .card-title { font-family: var(--fd); font-size: .9rem; font-weight: 700; color: var(--text1); }
 .card-sub { font-size: .7rem; color: var(--text3); margin-top: 2px; }
@@ -212,7 +214,9 @@ label { font-size: .73rem; font-weight: 700; color: var(--text2); margin-bottom:
 .bx-no-dot::before { display: none; }
 
 /* TABLES */
-.tw { overflow-x: auto; }
+/* overflow-x: auto clips position:absolute dropdowns — any floating dropdowns inside the
+   table must use position:fixed with viewport-relative coordinates */
+.tw { overflow-x: auto; overflow-y: visible; }
 .dt { width: 100%; border-collapse: collapse; }
 .dt th { font-size: .68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--text3); padding: 10px 14px; text-align: left; border-bottom: 1.5px solid var(--border); background: var(--bg2); white-space: nowrap; }
 .dt td { padding: 11px 14px; font-size: .8rem; color: var(--text2); border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -260,7 +264,7 @@ label { font-size: .73rem; font-weight: 700; color: var(--text2); margin-bottom:
 
 /* PAGINATION */
 .pg { display: flex; align-items: center; gap: 5px; }
-.pgb { width: 30px; height: 30px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; cursor: pointer; transition: var(--t); border: 1px solid var(--border); color: var(--text2); background: var(--surface); }
+.pgb { min-width: 30px; height: 30px; padding: 0 8px; border-radius: 7px; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: .73rem; font-weight: 600; cursor: pointer; transition: var(--t); border: 1px solid var(--border); color: var(--text2); background: var(--surface); white-space: nowrap; }
 .pgb:hover { border-color: var(--p); color: var(--p); }
 .pgb.on { background: var(--p); color: #fff; border-color: var(--p); }
 .pgb:disabled { opacity: .4; cursor: not-allowed; }
@@ -408,6 +412,54 @@ label { font-size: .73rem; font-weight: 700; color: var(--text2); margin-bottom:
 .drop-item.danger { color: var(--danger); }
 .drop-item.danger:hover { background: var(--danger-lt); }
 .drop-sep { height: 1px; background: var(--border); margin: 4px 0; }
+
+/* Fixed dropdown open/close animation */
+@keyframes fd-in  { from { opacity: 0; transform: translateY(-6px) scale(.97); } to   { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes fd-out { from { opacity: 1; transform: translateY(0) scale(1);      } to   { opacity: 0; transform: translateY(-5px) scale(.97); } }
+.fd-panel         { animation: fd-in  .14s cubic-bezier(.22,.68,0,1.2) both; transform-origin: top center; }
+.fd-panel.fd-out  { animation: fd-out .12s ease both; }
+
+/* Calendar / SelectSearch fixed-position popup */
+@keyframes calIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* Bulk-action bar smooth slide */
+.bulk-bar {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.28s cubic-bezier(0.4,0,0.2,1), opacity 0.22s ease;
+}
+.bulk-bar.open {
+  max-height: 80px;
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* DATATABLE */
+.dt-wrap { display: flex; flex-direction: column; min-height: 0; }
+.dt-loading { opacity: .5; pointer-events: none; }
+@keyframes shimmer { from { opacity: .4 } to { opacity: .9 } }
+.dt-skeleton td { animation: shimmer 1.2s ease-in-out infinite alternate; background: var(--bg2) !important; color: transparent !important; border-radius: 4px; }
+
+/* BADGES — rgba backgrounds work in both light and dark mode */
+.bdg { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.bdg-dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.bdg-green  { background: rgba(16,185,129,.13);  color: #10b981; }
+.bdg-teal   { background: rgba(13,148,136,.13);  color: #0d9488; }
+.bdg-blue   { background: rgba(14,165,233,.13);  color: #0ea5e9; }
+.bdg-red    { background: rgba(239,68,68,.13);   color: #ef4444; }
+.bdg-yellow { background: rgba(245,158,11,.13);  color: #f59e0b; }
+.bdg-gray   { background: rgba(107,114,128,.13); color: #8b95a1; }
+.bdg-purple { background: rgba(139,92,246,.13);  color: #8b5cf6; }
+
+/* TABS — segmented control with smooth sliding indicator */
+.tab-bar { display: flex; align-items: center; padding: 8px 12px; overflow-x: auto; overflow-y: hidden; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+.tab-bar::-webkit-scrollbar { height: 0; }
+.tab-seg { display: inline-flex; align-items: center; position: relative; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 1px; }
+.tab-btn { padding: 5px 14px; border-radius: 7px; font-size: .79rem; font-weight: 500; color: var(--text3); cursor: pointer; white-space: nowrap; transition: color .18s ease; border: none; background: transparent; position: relative; z-index: 1; }
+.tab-btn:hover:not(.active) { color: var(--text1); }
+.tab-btn.active { color: var(--p); font-weight: 700; }
 
 /* UTILS */
 .flex { display: flex; }

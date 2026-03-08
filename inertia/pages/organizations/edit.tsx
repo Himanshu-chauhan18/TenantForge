@@ -1,318 +1,185 @@
-import { useState } from 'react'
-import { router } from '@inertiajs/react'
-import { Link } from '@inertiajs/react'
-import {
-  Building2, MapPin, Globe, Calendar, Shield, ArrowLeft, Check,
-} from 'lucide-react'
+import { useState, useRef, useLayoutEffect } from 'react'
+import { Link, router } from '@inertiajs/react'
+import { ArrowLeft, ExternalLink, Trash2, AlertTriangle } from 'lucide-react'
+import { Modal } from '~/components/modal'
+import type { Org, LeadOwnerOption } from './edit/types'
+import { TABS, safeDate } from './edit/data'
+import { OverviewTab } from './edit/OverviewTab'
+import { BillingTab } from './edit/BillingTab'
+import { UsersTab } from './edit/UsersTab'
+import { ModulesTab } from './edit/ModulesTab'
+import { FiscalTab } from './edit/FiscalTab'
 
-interface Org {
-  id: number
-  org_id: string
-  name: string
-  company_size: string | null
-  industry: string | null
-  website: string | null
-  about: string | null
-  gst_no: string | null
-  fiscal_name: string | null
-  fiscal_start: string | null
-  fiscal_end: string | null
-  country: string | null
-  city: string | null
-  phone: string | null
-  email: string | null
-  address: string | null
-  lead_owner_id: number | null
-  currency: string
-  timezone: string
-  date_format: string
-  time_format: string
-  plan_type: 'trial' | 'premium'
-  user_limit: number
-  plan_start: string | null
-  plan_end: string | null
-  status: 'active' | 'inactive' | 'expired'
-}
+// ─── Props ────────────────────────────────────────────────────────────────────
 
 interface Props {
   org: Org
-  users: Array<{ id: number; email: string; full_name?: string }>
-  flash?: { success?: string; errors?: Record<string, string> }
+  leadOwners: LeadOwnerOption[]
 }
 
-const INDUSTRIES = [
-  'Technology', 'Healthcare', 'Finance & Banking', 'Education', 'Manufacturing',
-  'Retail & E-commerce', 'Real Estate', 'Hospitality', 'Logistics & Transport',
-  'Media & Entertainment', 'Legal', 'Non-profit', 'Government', 'Other',
-]
-const TIMEZONES = [
-  'Asia/Kolkata', 'Asia/Dubai', 'Asia/Singapore', 'Europe/London',
-  'Europe/Paris', 'America/New_York', 'America/Chicago', 'America/Los_Angeles',
-  'Australia/Sydney', 'Pacific/Auckland',
-]
-const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD']
-const DATE_FORMATS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD', 'DD-MM-YYYY']
-const TIME_FORMATS = ['12h', '24h']
-const COMPANY_SIZES = ['1-10', '11-50', '51-200', '201-500', '501-1000', '1001+']
-const STATUSES = ['active', 'inactive', 'expired'] as const
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-function SectionHead({ icon, title, sub }: { icon: React.ReactNode; title: string; sub?: string }) {
-  return (
-    <div className="sec-head">
-      <div className="sec-icon" style={{ background: 'var(--p-lt)', color: 'var(--p)' }}>{icon}</div>
-      <div>
-        <div className="sec-title">{title}</div>
-        {sub && <div className="sec-sub">{sub}</div>}
-      </div>
-    </div>
-  )
-}
+export default function EditOrganization({ org, leadOwners }: Props) {
+  const [activeTab,     setActiveTab]     = useState('overview')
+  const [deleteConfirm, setDeleteConfirm] = useState(false)
 
-export default function EditOrganization({ org, users, flash }: Props) {
-  const [processing, setProcessing] = useState(false)
+  // ── Tab slider (matches org datatable tab UI) ──
+  const tabSegRef  = useRef<HTMLDivElement>(null)
+  const tabBtnRefs = useRef<Record<string, HTMLButtonElement | null>>({})
+  const [slider, setSlider] = useState({ left: 0, width: 0, ready: false })
 
-  const [name, setName] = useState(org.name)
-  const [companySize, setCompanySize] = useState(org.company_size || '')
-  const [industry, setIndustry] = useState(org.industry || '')
-  const [website, setWebsite] = useState(org.website || '')
-  const [about, setAbout] = useState(org.about || '')
-  const [gstNo, setGstNo] = useState(org.gst_no || '')
-  const [fiscalName, setFiscalName] = useState(org.fiscal_name || '')
-  const [fiscalStart, setFiscalStart] = useState(org.fiscal_start ? org.fiscal_start.split('T')[0] : '')
-  const [fiscalEnd, setFiscalEnd] = useState(org.fiscal_end ? org.fiscal_end.split('T')[0] : '')
-  const [country, setCountry] = useState(org.country || '')
-  const [city, setCity] = useState(org.city || '')
-  const [phone, setPhone] = useState(org.phone || '')
-  const [email, setEmail] = useState(org.email || '')
-  const [address, setAddress] = useState(org.address || '')
-  const [leadOwnerId, setLeadOwnerId] = useState(org.lead_owner_id ? String(org.lead_owner_id) : '')
-  const [currency, setCurrency] = useState(org.currency)
-  const [timezone, setTimezone] = useState(org.timezone)
-  const [dateFormat, setDateFormat] = useState(org.date_format)
-  const [timeFormat, setTimeFormat] = useState(org.time_format)
-  const [planType, setPlanType] = useState<'trial' | 'premium'>(org.plan_type)
-  const [userLimit, setUserLimit] = useState(org.user_limit)
-  const [planStart, setPlanStart] = useState(org.plan_start ? org.plan_start.split('T')[0] : '')
-  const [planEnd, setPlanEnd] = useState(org.plan_end ? org.plan_end.split('T')[0] : '')
-  const [status, setStatus] = useState(org.status)
+  useLayoutEffect(() => {
+    const seg = tabSegRef.current
+    const btn = tabBtnRefs.current[activeTab]
+    if (!seg || !btn) return
+    const sr = seg.getBoundingClientRect()
+    const br = btn.getBoundingClientRect()
+    setSlider({ left: br.left - sr.left, width: br.width, ready: true })
+  }, [activeTab])
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!name.trim()) { alert('Organization name is required.'); return }
-    setProcessing(true)
-    router.put(`/organizations/${org.id}`, {
-      name, company_size: companySize, industry, website, about, gst_no: gstNo,
-      fiscal_name: fiscalName, fiscal_start: fiscalStart || undefined, fiscal_end: fiscalEnd || undefined,
-      country, city, phone, email, address,
-      lead_owner_id: leadOwnerId || undefined,
-      currency, timezone, date_format: dateFormat, time_format: timeFormat,
-      plan_type: planType, user_limit: userLimit, status,
-      plan_start: planStart || undefined, plan_end: planEnd || undefined,
-    }, {
-      onFinish: () => setProcessing(false),
-    })
+  // ── Derived values for alerts (page-level) ──
+  const planEndTs    = org.planEnd
+    ? new Date(org.planEnd.includes('T') ? org.planEnd : org.planEnd + 'T00:00:00').getTime()
+    : null
+  const daysLeft     = planEndTs !== null ? Math.ceil((planEndTs - Date.now()) / 86400000) : null
+  const isNearExpiry = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7
+  const isExpired    = daysLeft !== null && daysLeft < 0
+
+  function handleDelete() {
+    router.delete(`/organizations/${org.id}`)
+    setDeleteConfirm(false)
   }
 
   return (
     <>
+      {/* ── Alerts ── */}
+      {isNearExpiry && (
+        <div className="alert alert-warn" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AlertTriangle size={15} />
+          Plan expires in <strong>{daysLeft} day{daysLeft !== 1 ? 's' : ''}</strong>. Contact the organization to renew.
+        </div>
+      )}
+      {isExpired && (
+        <div className="alert alert-danger" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <AlertTriangle size={15} />
+          Plan expired <strong>{Math.abs(daysLeft!)} day{Math.abs(daysLeft!) !== 1 ? 's' : ''} ago</strong>.
+        </div>
+      )}
+
+      {/* ── Page header ── */}
       <div className="ph">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href={`/organizations/${org.id}`} className="ibtn">
-            <ArrowLeft size={16} />
-          </Link>
+          <Link href="/organizations" className="ibtn"><ArrowLeft size={16} /></Link>
           <div>
-            <div className="ph-title">Edit Organization</div>
-            <div className="ph-sub">{org.org_id} · {org.name}</div>
+            <div className="ph-title">{org.name}</div>
+            <div className="ph-sub">{org.orgId} · Created {safeDate(org.createdAt)}</div>
           </div>
         </div>
         <div className="ph-right">
-          <Link href={`/organizations/${org.id}`} className="btn btn-ghost btn-sm">Cancel</Link>
-          <button className="btn btn-p" onClick={handleSubmit} disabled={processing}>
-            <Check size={14} /> {processing ? 'Saving…' : 'Save Changes'}
+          <button className="btn btn-danger btn-sm" onClick={() => setDeleteConfirm(true)}>
+            <Trash2 size={13} /> Delete
           </button>
         </div>
       </div>
 
-      {flash?.errors && Object.values(flash.errors).map((e, i) => (
-        <div key={i} className="alert alert-danger">{e}</div>
-      ))}
-
-      <form onSubmit={handleSubmit}>
-        <div className="card">
-          <div className="card-b">
-
-            {/* Company Details */}
-            <div className="fs">
-              <SectionHead icon={<Building2 size={15} />} title="Company Details" />
-              <div className="g2">
-                <div className="fg col2">
-                  <label>Organization Name <span className="req">*</span></label>
-                  <input className="fi" value={name} onChange={(e) => setName(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>Company Size</label>
-                  <select className="fi fi-sel" value={companySize} onChange={(e) => setCompanySize(e.target.value)}>
-                    <option value="">Select size</option>
-                    {COMPANY_SIZES.map((s) => <option key={s} value={s}>{s} employees</option>)}
-                  </select>
-                </div>
-                <div className="fg">
-                  <label>Industry</label>
-                  <select className="fi fi-sel" value={industry} onChange={(e) => setIndustry(e.target.value)}>
-                    <option value="">Select industry</option>
-                    {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
-                  </select>
-                </div>
-                <div className="fg">
-                  <label>Website</label>
-                  <input className="fi" value={website} onChange={(e) => setWebsite(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>GST Number</label>
-                  <input className="fi" value={gstNo} onChange={(e) => setGstNo(e.target.value)} />
-                </div>
-                <div className="fg col2">
-                  <label>About</label>
-                  <textarea className="fi" rows={3} value={about} onChange={(e) => setAbout(e.target.value)} style={{ resize: 'vertical' }} />
-                </div>
+      {/* ── Hero gradient card + tab bar ── */}
+      <div className="card" style={{ marginBottom: 16 }}>
+        {/* Gradient hero */}
+        <div style={{ background: 'linear-gradient(135deg, var(--p) 0%, var(--s) 100%)', padding: '24px', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: -50, right: -30, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,.06)', pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', bottom: -20, right: 110, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,.04)', pointerEvents: 'none' }} />
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, position: 'relative' }}>
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,.25)', border: '2px solid rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 900, color: '#fff', fontFamily: 'var(--fd)', flexShrink: 0 }}>
+              {org.name.slice(0, 2).toUpperCase()}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontFamily: 'var(--fd)', fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginBottom: 4 }}>{org.name}</div>
+              <div style={{ fontSize: '.76rem', color: 'rgba(255,255,255,.8)', marginBottom: 10 }}>
+                {org.orgId}{org.industry && ` · ${org.industry}`}{org.website && ` · ${org.website.replace(/^https?:\/\//, '')}`}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
+                {[
+                  org.planType === 'premium' ? 'Premium' : 'Trial',
+                  org.status.charAt(0).toUpperCase() + org.status.slice(1),
+                  ...(org.city || org.country ? [[org.city, org.country].filter(Boolean).join(', ')] : []),
+                  ...(org.leadOwner ? [`Lead: ${org.leadOwner.name || org.leadOwner.email}`] : []),
+                  ...(org.isArchived ? ['Archived'] : []),
+                ].map((pill, i) => (
+                  <span key={i} style={{ padding: '4px 12px', borderRadius: 20, background: 'rgba(255,255,255,.2)', fontSize: '.72rem', fontWeight: 700, color: '#fff', border: '1px solid rgba(255,255,255,.25)' }}>
+                    {pill}
+                  </span>
+                ))}
               </div>
             </div>
-
-            {/* Fiscal Year */}
-            <div className="fs">
-              <SectionHead icon={<Calendar size={15} />} title="Fiscal Year" />
-              <div className="g3">
-                <div className="fg">
-                  <label>Fiscal Year Name</label>
-                  <input className="fi" value={fiscalName} onChange={(e) => setFiscalName(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>Start Date</label>
-                  <input type="date" className="fi" value={fiscalStart} onChange={(e) => setFiscalStart(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>End Date</label>
-                  <input type="date" className="fi" value={fiscalEnd} onChange={(e) => setFiscalEnd(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Details */}
-            <div className="fs">
-              <SectionHead icon={<MapPin size={15} />} title="Contact Details" />
-              <div className="g2">
-                <div className="fg">
-                  <label>Country</label>
-                  <input className="fi" value={country} onChange={(e) => setCountry(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>City</label>
-                  <input className="fi" value={city} onChange={(e) => setCity(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>Phone</label>
-                  <input className="fi" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>Email</label>
-                  <input type="email" className="fi" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="fg col2">
-                  <label>Address</label>
-                  <textarea className="fi" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} style={{ resize: 'vertical' }} />
-                </div>
-                <div className="fg col2">
-                  <label>Lead Owner</label>
-                  <select className="fi fi-sel" value={leadOwnerId} onChange={(e) => setLeadOwnerId(e.target.value)}>
-                    <option value="">No lead owner</option>
-                    {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.full_name || u.email}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Locale */}
-            <div className="fs">
-              <SectionHead icon={<Globe size={15} />} title="Locale Settings" />
-              <div className="g2">
-                <div className="fg">
-                  <label>Currency</label>
-                  <select className="fi fi-sel" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="fg">
-                  <label>Timezone</label>
-                  <select className="fi fi-sel" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-                    {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-                  </select>
-                </div>
-                <div className="fg">
-                  <label>Date Format</label>
-                  <select className="fi fi-sel" value={dateFormat} onChange={(e) => setDateFormat(e.target.value)}>
-                    {DATE_FORMATS.map((f) => <option key={f} value={f}>{f}</option>)}
-                  </select>
-                </div>
-                <div className="fg">
-                  <label>Time Format</label>
-                  <select className="fi fi-sel" value={timeFormat} onChange={(e) => setTimeFormat(e.target.value)}>
-                    {TIME_FORMATS.map((f) => <option key={f} value={f}>{f === '12h' ? '12-hour (AM/PM)' : '24-hour'}</option>)}
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Details */}
-            <div className="fs">
-              <SectionHead icon={<Shield size={15} />} title="Plan & Status" />
-              <div className="g2">
-                <div className="fg col2">
-                  <label>Plan Type</label>
-                  <div className="radio-g">
-                    <label className={`rc ${planType === 'trial' ? 'on' : ''}`} style={{ cursor: 'pointer' }}>
-                      <input type="radio" name="plan_type" value="trial" checked={planType === 'trial'} onChange={() => setPlanType('trial')} />
-                      <div className="rc-dot" />
-                      <div><div className="rc-title">Trial</div><div className="rc-desc">Free trial period</div></div>
-                    </label>
-                    <label className={`rc ${planType === 'premium' ? 'on' : ''}`} style={{ cursor: 'pointer' }}>
-                      <input type="radio" name="plan_type" value="premium" checked={planType === 'premium'} onChange={() => setPlanType('premium')} />
-                      <div className="rc-dot" />
-                      <div><div className="rc-title">Premium</div><div className="rc-desc">Paid subscription</div></div>
-                    </label>
-                  </div>
-                </div>
-                <div className="fg">
-                  <label>Status</label>
-                  <select className="fi fi-sel" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-                    {STATUSES.map((s) => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
-                  </select>
-                </div>
-                <div className="fg">
-                  <label>User Limit</label>
-                  <input type="number" className="fi" min={1} value={userLimit} onChange={(e) => setUserLimit(Number(e.target.value))} />
-                </div>
-                <div className="fg">
-                  <label>Plan Start Date</label>
-                  <input type="date" className="fi" value={planStart} onChange={(e) => setPlanStart(e.target.value)} />
-                </div>
-                <div className="fg">
-                  <label>Plan End Date</label>
-                  <input type="date" className="fi" value={planEnd} onChange={(e) => setPlanEnd(e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <Link href={`/organizations/${org.id}`} className="btn btn-ghost">Cancel</Link>
-              <button type="submit" className="btn btn-p" disabled={processing}>
-                <Check size={14} /> {processing ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
+            {org.website && (
+              <a href={org.website} target="_blank" rel="noopener noreferrer"
+                style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 13px', borderRadius: 8, background: 'rgba(255,255,255,.18)', color: '#fff', fontSize: '.75rem', fontWeight: 600, border: '1px solid rgba(255,255,255,.25)', textDecoration: 'none', flexShrink: 0 }}>
+                <ExternalLink size={12} /> Visit
+              </a>
+            )}
           </div>
         </div>
-      </form>
+
+        {/* Tab bar — same style as org datatable */}
+        <div className="tab-bar">
+          <div ref={tabSegRef} className="tab-seg">
+            {/* Sliding indicator */}
+            <div style={{
+              position: 'absolute',
+              top: 3, bottom: 3,
+              left: slider.left,
+              width: slider.width,
+              background: 'var(--surface)',
+              borderRadius: 7,
+              boxShadow: '0 1px 4px rgba(0,0,0,.1)',
+              transition: slider.ready ? 'left .22s cubic-bezier(.4,0,.2,1), width .22s cubic-bezier(.4,0,.2,1)' : 'none',
+              opacity: slider.ready ? 1 : 0,
+              pointerEvents: 'none',
+              zIndex: 0,
+            }} />
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                ref={(el) => { tabBtnRefs.current[t.key] = el }}
+                className={`tab-btn${activeTab === t.key ? ' active' : ''}`}
+                onClick={() => setActiveTab(t.key)}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tab content ── */}
+      {activeTab === 'overview' && <OverviewTab org={org} leadOwners={leadOwners} />}
+      {activeTab === 'plan'     && <BillingTab org={org} />}
+      {activeTab === 'users'    && <UsersTab org={org} />}
+      {activeTab === 'modules'  && <ModulesTab org={org} />}
+      {activeTab === 'fiscal'   && <FiscalTab org={org} />}
+
+      {/* ── Delete confirmation modal ── */}
+      <Modal
+        open={deleteConfirm}
+        onClose={() => setDeleteConfirm(false)}
+        title="Delete Organization"
+        size="sm"
+        icon={<Trash2 size={15} />}
+        variant="danger"
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setDeleteConfirm(false)}>Cancel</button>
+            <button className="btn btn-danger" onClick={handleDelete}><Trash2 size={13} /> Delete</button>
+          </>
+        }
+      >
+        <p style={{ fontSize: '.85rem', color: 'var(--text2)', marginBottom: 10 }}>
+          Are you sure you want to delete <strong>{org.name}</strong>?
+        </p>
+        <p style={{ fontSize: '.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
+          This will permanently delete the organization and all associated data. This action <strong>cannot be undone</strong>.
+        </p>
+      </Modal>
     </>
   )
 }
