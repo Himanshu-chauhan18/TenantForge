@@ -10,5 +10,8 @@ export const controllers = {
   Location: () => import('#controllers/location_controller'),
   NewAccount: () => import('#controllers/new_account_controller'),
   Organization: () => import('#controllers/organization_controller'),
+  OrganizationProfile: () => import('#controllers/organization_profile_controller'),
   Session: () => import('#controllers/session_controller'),
+  Masters: () => import('#controllers/masters_controller'),
+  Settings: () => import('#controllers/settings_controller'),
 }

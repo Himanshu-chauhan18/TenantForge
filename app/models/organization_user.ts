@@ -1,5 +1,7 @@
-import { BaseModel, column } from '@adonisjs/lucid/orm'
+import { BaseModel, belongsTo, column } from '@adonisjs/lucid/orm'
+import type { BelongsTo } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
+import OrganizationProfile from '#models/organization_profile'
 
 export default class OrganizationUser extends BaseModel {
   static table = 'organization_users'
@@ -9,6 +11,9 @@ export default class OrganizationUser extends BaseModel {
 
   @column()
   declare orgId: number
+
+  @column()
+  declare profileId: number | null
 
   @column()
   declare employeeCode: string | null
@@ -42,4 +47,7 @@ export default class OrganizationUser extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+
+  @belongsTo(() => OrganizationProfile, { foreignKey: 'profileId' })
+  declare profile: BelongsTo<typeof OrganizationProfile>
 }

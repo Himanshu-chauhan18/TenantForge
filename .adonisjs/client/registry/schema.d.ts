@@ -183,6 +183,17 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_controller').default['index']>>>
     }
   }
+  'api.orgs.search': {
+    methods: ["GET","HEAD"]
+    pattern: '/api/orgs/search'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['searchOrgs']>>>
+    }
+  }
   'organizations.index': {
     methods: ["GET","HEAD"]
     pattern: '/organizations'
@@ -326,6 +337,94 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateModules']>>>
     }
   }
+  'organizations.users.store': {
+    methods: ["POST"]
+    pattern: '/organizations/:id/users'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['storeUser']>>>
+    }
+  }
+  'organizations.users.update': {
+    methods: ["PUT"]
+    pattern: '/organizations/:id/users/:userId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; userId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateUser']>>>
+    }
+  }
+  'organizations.users.bulk': {
+    methods: ["POST"]
+    pattern: '/organizations/:id/users/bulk'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['bulkUsers']>>>
+    }
+  }
+  'organizations.profiles.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/organizations/:id/profiles'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['index']>>>
+    }
+  }
+  'organizations.profiles.store': {
+    methods: ["POST"]
+    pattern: '/organizations/:id/profiles'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['store']>>>
+    }
+  }
+  'organizations.profiles.update': {
+    methods: ["PUT"]
+    pattern: '/organizations/:id/profiles/:profileId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; profileId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['update']>>>
+    }
+  }
+  'organizations.profiles.destroy': {
+    methods: ["DELETE"]
+    pattern: '/organizations/:id/profiles/:profileId'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; profileId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['destroy']>>>
+    }
+  }
+  'organizations.profiles.permissions.update': {
+    methods: ["PUT"]
+    pattern: '/organizations/:id/profiles/:profileId/permissions'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue, ParamValue]
+      params: { id: ParamValue; profileId: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['updatePermissions']>>>
+    }
+  }
   'organizations.destroy': {
     methods: ["DELETE"]
     pattern: '/organizations/:id'
@@ -390,6 +489,171 @@ export interface Registry {
       params: { id: ParamValue }
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['destroy']>>>
+    }
+  }
+  'masters.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/masters'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['index']>>>
+    }
+  }
+  'masters.modules.store': {
+    methods: ["POST"]
+    pattern: '/masters/modules'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['storeModule']>>>
+    }
+  }
+  'masters.modules.update': {
+    methods: ["PUT"]
+    pattern: '/masters/modules/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['updateModule']>>>
+    }
+  }
+  'masters.addons.store': {
+    methods: ["POST"]
+    pattern: '/masters/addons'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['storeAddon']>>>
+    }
+  }
+  'masters.addons.update': {
+    methods: ["PUT"]
+    pattern: '/masters/addons/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['updateAddon']>>>
+    }
+  }
+  'settings.index': {
+    methods: ["GET","HEAD"]
+    pattern: '/settings'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['index']>>>
+    }
+  }
+  'settings.profile.update': {
+    methods: ["PUT"]
+    pattern: '/settings/profile'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateProfile']>>>
+    }
+  }
+  'settings.password.update': {
+    methods: ["PUT"]
+    pattern: '/settings/password'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['changePassword']>>>
+    }
+  }
+  'settings.totp.disable': {
+    methods: ["DELETE"]
+    pattern: '/settings/totp'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['disableTotp']>>>
+    }
+  }
+  'settings.platform.update': {
+    methods: ["PUT"]
+    pattern: '/settings/platform'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updatePlatform']>>>
+    }
+  }
+  'settings.orgDefaults.update': {
+    methods: ["PUT"]
+    pattern: '/settings/org-defaults'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateOrgDefaults']>>>
+    }
+  }
+  'settings.users.store': {
+    methods: ["POST"]
+    pattern: '/settings/users'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['storeUser']>>>
+    }
+  }
+  'settings.users.update': {
+    methods: ["PUT"]
+    pattern: '/settings/users/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateUser']>>>
+    }
+  }
+  'settings.users.toggle': {
+    methods: ["PUT"]
+    pattern: '/settings/users/:id/toggle'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['toggleUser']>>>
+    }
+  }
+  'settings.users.resetPassword': {
+    methods: ["PUT"]
+    pattern: '/settings/users/:id/reset-password'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['resetUserPassword']>>>
     }
   }
 }

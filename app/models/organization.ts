@@ -4,7 +4,7 @@ import { DateTime } from 'luxon'
 import LeadOwner from '#models/lead_owner'
 import OrganizationModule from '#models/organization_module'
 import OrganizationUser from '#models/organization_user'
-import UserProfile from '#models/user_profile'
+import OrganizationProfile from '#models/organization_profile'
 import FiscalYear from '#models/fiscal_year'
 
 export default class Organization extends BaseModel {
@@ -126,8 +126,8 @@ export default class Organization extends BaseModel {
   @hasMany(() => OrganizationUser, { foreignKey: 'orgId' })
   declare orgUsers: HasMany<typeof OrganizationUser>
 
-  @hasMany(() => UserProfile, { foreignKey: 'orgId' })
-  declare userProfiles: HasMany<typeof UserProfile>
+  @hasMany(() => OrganizationProfile, { foreignKey: 'orgId' })
+  declare profiles: HasMany<typeof OrganizationProfile>
 
   @hasMany(() => FiscalYear, { foreignKey: 'orgId' })
   declare fiscalYears: HasMany<typeof FiscalYear>

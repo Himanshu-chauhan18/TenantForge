@@ -12,6 +12,7 @@ const dbConfig = defineConfig({
         user: process.env.MYSQL_USER,
         password: process.env.MYSQL_PASSWORD,
         database: process.env.MYSQL_DB_NAME,
+        timezone: '+05:30',
       },
       migrations: {
         naturalSort: true,

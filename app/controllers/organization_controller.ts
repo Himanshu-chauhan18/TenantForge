@@ -1,5 +1,6 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import app from '@adonisjs/core/services/app'
+import hash from '@adonisjs/core/services/hash'
 import OrganizationService from '#services/organization_service'
 import OrganizationRepository from '#repositories/organization_repository'
 import LeadOwnerRepository from '#repositories/lead_owner_repository'
@@ -216,6 +217,35 @@ export default class OrganizationController {
     return response.redirect().back()
   }
 
+  // ── GET /api/orgs/search ───────────────────────────────────────────────────
+  async searchOrgs({ request, response }: HttpContext) {
+    const q = String(request.qs().q || '').trim()
+    if (!q) return response.json([])
+
+    const numericId = Number.isInteger(Number(q)) && Number(q) > 0 ? Number(q) : null
+
+    const query = Organization.query()
+      .whereNull('deleted_at')
+      .where((b) => {
+        b.where('name', 'like', `%${q}%`)
+          .orWhere('org_id', 'like', `%${q}%`)
+        if (numericId) b.orWhere('id', numericId)
+      })
+      .orderBy('name', 'asc')
+      .limit(8)
+
+    const orgs = await query
+    return response.json(orgs.map((o) => ({
+      id:       o.id,
+      orgId:    o.orgId,
+      name:     o.name,
+      status:   o.status,
+      planType: o.planType,
+      country:  o.country,
+      city:     o.city,
+    })))
+  }
+
   async checkOrgEmail({ request, response }: HttpContext) {
     const email = String(request.qs().email || '')
     const excludeId = Number(request.qs().excludeId)
@@ -298,5 +328,91 @@ export default class OrganizationController {
     response.header('Content-Type', 'text/csv; charset=utf-8')
     response.header('Content-Disposition', 'attachment; filename="organizations.csv"')
     return response.send(csv)
+  }
+
+  async storeUser({ params, request, response, session }: HttpContext) {
+    const { fullName, companyEmail, password, employeeCode, phone, gender, dateOfBirth, sendWelcomeMail, isActive, profileId } =
+      request.only(['fullName', 'companyEmail', 'password', 'employeeCode', 'phone', 'gender', 'dateOfBirth', 'sendWelcomeMail', 'isActive', 'profileId'])
+
+    if (!fullName || !companyEmail || !password) {
+      session.flash('flashToasts', JSON.stringify(['Name, email, and password are required.']))
+      return response.redirect().back()
+    }
+
+    const exists = await OrganizationUser.query().where('company_email', String(companyEmail).trim().toLowerCase()).first()
+    if (exists) {
+      session.flash('flashToasts', JSON.stringify(['This email is already registered in an organization.']))
+      return response.redirect().back()
+    }
+
+    const passwordHash = await hash.make(String(password))
+    await OrganizationUser.create({
+      orgId: Number(params.id),
+      profileId: profileId ? Number(profileId) : null,
+      fullName: String(fullName).trim(),
+      companyEmail: String(companyEmail).trim().toLowerCase(),
+      passwordHash,
+      employeeCode: employeeCode ? String(employeeCode).trim() : null,
+      phone: phone ? String(phone).trim() : null,
+      gender: gender && ['male', 'female', 'other'].includes(gender) ? (gender as 'male' | 'female' | 'other') : null,
+      dateOfBirth: dateOfBirth ? String(dateOfBirth) : null,
+      sendWelcomeMail: sendWelcomeMail === true || sendWelcomeMail === 'true' || sendWelcomeMail === '1',
+      isActive: isActive !== false && isActive !== 'false' && isActive !== '0',
+    })
+
+    session.flash('success', `User "${String(fullName).trim()}" added successfully!`)
+    return response.redirect().back()
+  }
+
+  async updateUser({ params, request, response, session }: HttpContext) {
+    const { fullName, employeeCode, phone, gender, dateOfBirth, isActive, password, profileId } =
+      request.only(['fullName', 'employeeCode', 'phone', 'gender', 'dateOfBirth', 'isActive', 'password', 'profileId'])
+
+    const user = await OrganizationUser.query()
+      .where('id', params.userId)
+      .where('org_id', params.id)
+      .first()
+
+    if (!user) {
+      session.flash('flashToasts', JSON.stringify(['User not found.']))
+      return response.redirect().back()
+    }
+
+    if (fullName) user.fullName = String(fullName).trim()
+    user.profileId = profileId ? Number(profileId) : null
+    user.employeeCode = employeeCode ? String(employeeCode).trim() : null
+    user.phone = phone ? String(phone).trim() : null
+    user.gender = gender && ['male', 'female', 'other'].includes(gender)
+      ? (gender as 'male' | 'female' | 'other')
+      : null
+    user.dateOfBirth = dateOfBirth ? String(dateOfBirth) : null
+    user.isActive = isActive !== false && isActive !== 'false' && isActive !== '0'
+
+    if (password && String(password).trim()) {
+      user.passwordHash = await hash.make(String(password).trim())
+    }
+
+    await user.save()
+    session.flash('success', 'User updated successfully!')
+    return response.redirect().back()
+  }
+
+  async bulkUsers({ params, request, response, session }: HttpContext) {
+    const { ids, operation } = request.only(['ids', 'operation'])
+    if (!Array.isArray(ids) || !ids.length) {
+      session.flash('flashToasts', JSON.stringify(['No users selected.']))
+      return response.redirect().back()
+    }
+    const orgId = Number(params.id)
+    if (operation === 'activate') {
+      await OrganizationUser.query().whereIn('id', ids).where('org_id', orgId).update({ isActive: true })
+      session.flash('success', `${ids.length} user(s) activated.`)
+    } else if (operation === 'deactivate') {
+      await OrganizationUser.query().whereIn('id', ids).where('org_id', orgId).update({ isActive: false })
+      session.flash('success', `${ids.length} user(s) deactivated.`)
+    } else {
+      session.flash('flashToasts', JSON.stringify(['Unknown operation.']))
+    }
+    return response.redirect().back()
   }
 }

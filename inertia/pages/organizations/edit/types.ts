@@ -14,8 +14,29 @@ export interface OrgModule {
   }
 }
 
+export interface OrgProfilePermission {
+  id: number
+  orgId: number
+  profileId: number
+  moduleId: number
+  /** Keys: "module" for module-level, or addon_id (string) for addon-level. Values: {v,a,e,d} (0|1). */
+  permissions: Record<string, { v: number; a: number; e: number; d: number }>
+}
+
+export interface OrgProfile {
+  id: number
+  orgId: number
+  name: string
+  description: string | null
+  dataAccess: 'all' | 'organization' | 'self' | 'custom'
+  permissions: OrgProfilePermission[]
+  createdAt: string
+}
+
 export interface OrgUser {
   id: number
+  profileId: number | null
+  profile: OrgProfile | null
   employeeCode: string | null
   fullName: string
   gender: string | null
@@ -77,6 +98,7 @@ export interface Org {
   leadOwner: LeadOwner | null
   modules: OrgModule[]
   orgUsers: OrgUser[]
+  profiles: OrgProfile[]
   fiscalYears: FiscalYear[]
 }
 

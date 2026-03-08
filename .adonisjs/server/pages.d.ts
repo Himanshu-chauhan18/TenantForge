@@ -28,8 +28,11 @@ declare module '@adonisjs/inertia/types' {
     'organizations/edit/FiscalTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/FiscalTab.tsx'))['default']>
     'organizations/edit/ModulesTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/ModulesTab.tsx'))['default']>
     'organizations/edit/OverviewTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/OverviewTab.tsx'))['default']>
+    'organizations/edit/RolesTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/RolesTab.tsx'))['default']>
     'organizations/edit/types': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/types.ts'))['default']>
     'organizations/edit/UsersTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/UsersTab.tsx'))['default']>
     'organizations/index': ExtractProps<(typeof import('../../inertia/pages/organizations/index.tsx'))['default']>
+    'masters/index': ExtractProps<(typeof import('../../inertia/pages/masters/index.tsx'))['default']>
+    'settings/index': ExtractProps<(typeof import('../../inertia/pages/settings/index.tsx'))['default']>
   }
 }

@@ -4,8 +4,11 @@ import router from '@adonisjs/core/services/router'
 const AuthController = () => import('#controllers/auth_controller')
 const DashboardController = () => import('#controllers/dashboard_controller')
 const OrganizationController = () => import('#controllers/organization_controller')
+const OrganizationProfileController = () => import('#controllers/organization_profile_controller')
 const LocationController = () => import('#controllers/location_controller')
 const LeadOwnerController = () => import('#controllers/lead_owner_controller')
+const MastersController = () => import('#controllers/masters_controller')
+const SettingsController = () => import('#controllers/settings_controller')
 
 // Root redirect
 router.on('/').redirectToPath('/dashboard')
@@ -48,6 +51,9 @@ router
     // Dashboard
     router.get('dashboard', [DashboardController, 'index']).as('dashboard')
 
+    // Search API (authenticated)
+    router.get('/api/orgs/search', [OrganizationController, 'searchOrgs']).as('api.orgs.search')
+
     // Organizations
     router
       .group(() => {
@@ -64,6 +70,15 @@ router
         router.put('/:id', [OrganizationController, 'update']).as('organizations.update')
         router.put('/:id/super-admin', [OrganizationController, 'updateSuperAdmin']).as('organizations.superAdmin.update')
         router.put('/:id/modules', [OrganizationController, 'updateModules']).as('organizations.modules.update')
+        router.post('/:id/users', [OrganizationController, 'storeUser']).as('organizations.users.store')
+        router.put('/:id/users/:userId', [OrganizationController, 'updateUser']).as('organizations.users.update')
+        router.post('/:id/users/bulk', [OrganizationController, 'bulkUsers']).as('organizations.users.bulk')
+        // Profiles & permissions
+        router.get('/:id/profiles', [OrganizationProfileController, 'index']).as('organizations.profiles.index')
+        router.post('/:id/profiles', [OrganizationProfileController, 'store']).as('organizations.profiles.store')
+        router.put('/:id/profiles/:profileId', [OrganizationProfileController, 'update']).as('organizations.profiles.update')
+        router.delete('/:id/profiles/:profileId', [OrganizationProfileController, 'destroy']).as('organizations.profiles.destroy')
+        router.put('/:id/profiles/:profileId/permissions', [OrganizationProfileController, 'updatePermissions']).as('organizations.profiles.permissions.update')
         router.delete('/:id', [OrganizationController, 'destroy']).as('organizations.destroy')
       })
       .prefix('organizations')
@@ -78,6 +93,34 @@ router
         router.delete('/:id', [LeadOwnerController, 'destroy']).as('leads.destroy')
       })
       .prefix('leads')
+
+    // Manage Masters
+    router
+      .group(() => {
+        router.get('/', [MastersController, 'index']).as('masters.index')
+        router.post('/modules', [MastersController, 'storeModule']).as('masters.modules.store')
+        router.put('/modules/:id', [MastersController, 'updateModule']).as('masters.modules.update')
+        router.post('/addons', [MastersController, 'storeAddon']).as('masters.addons.store')
+        router.put('/addons/:id', [MastersController, 'updateAddon']).as('masters.addons.update')
+      })
+      .prefix('masters')
+
+    // Settings
+    router
+      .group(() => {
+        router.get('/', [SettingsController, 'index']).as('settings.index')
+        router.put('/profile', [SettingsController, 'updateProfile']).as('settings.profile.update')
+        router.put('/password', [SettingsController, 'changePassword']).as('settings.password.update')
+        router.delete('/totp', [SettingsController, 'disableTotp']).as('settings.totp.disable')
+        router.put('/platform', [SettingsController, 'updatePlatform']).as('settings.platform.update')
+        router.put('/org-defaults', [SettingsController, 'updateOrgDefaults']).as('settings.orgDefaults.update')
+        // User management
+        router.post('/users', [SettingsController, 'storeUser']).as('settings.users.store')
+        router.put('/users/:id', [SettingsController, 'updateUser']).as('settings.users.update')
+        router.put('/users/:id/toggle', [SettingsController, 'toggleUser']).as('settings.users.toggle')
+        router.put('/users/:id/reset-password', [SettingsController, 'resetUserPassword']).as('settings.users.resetPassword')
+      })
+      .prefix('settings')
 
     // Catch-all: redirect authenticated users hitting unknown routes to dashboard
     router.any('*', ({ response }) => response.redirect('/dashboard'))

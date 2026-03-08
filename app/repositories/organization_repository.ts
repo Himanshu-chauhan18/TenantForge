@@ -141,8 +141,8 @@ export default class OrganizationRepository {
       .where('id', id)
       .preload('leadOwner')
       .preload('modules', (q) => q.preload('module', (mq) => mq.preload('addons')))
-      .preload('orgUsers')
-      .preload('userProfiles', (q) => q.preload('permissions'))
+      .preload('orgUsers', (q) => q.preload('profile'))
+      .preload('profiles', (q) => q.preload('permissions'))
       .preload('fiscalYears')
       .first()
   }
