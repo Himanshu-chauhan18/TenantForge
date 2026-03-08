@@ -21,6 +21,7 @@ declare module '@adonisjs/inertia/types' {
     'errors/server_error': ExtractProps<(typeof import('../../inertia/pages/errors/server_error.tsx'))['default']>
     'home': ExtractProps<(typeof import('../../inertia/pages/home.tsx'))['default']>
     'leads/index': ExtractProps<(typeof import('../../inertia/pages/leads/index.tsx'))['default']>
+    'masters/index': ExtractProps<(typeof import('../../inertia/pages/masters/index.tsx'))['default']>
     'organizations/create': ExtractProps<(typeof import('../../inertia/pages/organizations/create.tsx'))['default']>
     'organizations/edit': ExtractProps<(typeof import('../../inertia/pages/organizations/edit.tsx'))['default']>
     'organizations/edit/BillingTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/BillingTab.tsx'))['default']>
@@ -32,7 +33,6 @@ declare module '@adonisjs/inertia/types' {
     'organizations/edit/types': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/types.ts'))['default']>
     'organizations/edit/UsersTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/UsersTab.tsx'))['default']>
     'organizations/index': ExtractProps<(typeof import('../../inertia/pages/organizations/index.tsx'))['default']>
-    'masters/index': ExtractProps<(typeof import('../../inertia/pages/masters/index.tsx'))['default']>
     'settings/index': ExtractProps<(typeof import('../../inertia/pages/settings/index.tsx'))['default']>
   }
 }

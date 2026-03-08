@@ -346,53 +346,111 @@ export default class OrganizationRepository {
 
   async getDashboardStats() {
     const today = new Date().toISOString().split('T')[0]
-    const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split('T')[0]
+    const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+    const sixtyDaysAgo  = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
 
-    const [total, subscribed, unsubscribed, archived, trialActive, trialExpired, premiumActive, premiumExpired, nearExpiry] =
-      await Promise.all([
-        Organization.query().whereNull('deleted_at').count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('status', S.active).where('is_archived', false).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('status', S.inactive).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('is_archived', true).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where('status', S.active).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where((q) => q.where('plan_end', '<=', today).orWhere('status', S.expired)).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where('status', S.active).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where((q) => q.where('plan_end', '<=', today).orWhere('status', S.expired)).count('* as count').first(),
-        Organization.query().whereNull('deleted_at').where('plan_end', '>', today).where('plan_end', '<=', sevenDaysLater).where('status', '!=', S.expired).count('* as count').first(),
-      ])
+    const n = (r: any) => Number(r?.$extras?.count || 0)
+    const nc = (r: any) => Number(r?.count || 0)
 
-    const totalUsers = await db.from('organization_users').count('* as count').first()
+    const [
+      total, paidOrgs, trialOrgs,
+      paidActive, paidExpired, paidNearExpiry,
+      trialActive, trialExpired, trialNearExpiry,
+      nearExpiry, inactive, archived, archivedPaid, archivedTrial,
+      totalLast30, totalPrior30,
+      paidLast30,  paidPrior30,
+      trialLast30, trialPrior30,
+    ] = await Promise.all([
+      Organization.query().whereNull('deleted_at').count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.premium).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.trial).count('* as count').first(),
+
+      Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where('status', S.active).where('is_archived', false).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where((q) => q.where('plan_end', '<=', today).orWhere('status', S.expired)).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where('plan_end', '>', today).where('plan_end', '<=', sevenDaysLater).where('status', '!=', S.expired).count('* as count').first(),
+
+      Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where('status', S.active).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where((q) => q.where('plan_end', '<=', today).orWhere('status', S.expired)).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where('plan_end', '>', today).where('plan_end', '<=', sevenDaysLater).where('status', '!=', S.expired).count('* as count').first(),
+
+      Organization.query().whereNull('deleted_at').where('plan_end', '>', today).where('plan_end', '<=', sevenDaysLater).where('status', '!=', S.expired).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('status', S.inactive).where('is_archived', false).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('is_archived', true).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('is_archived', true).where('plan_type', P.premium).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('is_archived', true).where('plan_type', P.trial).count('* as count').first(),
+
+      // Growth: last 30 days vs prior 30 days
+      Organization.query().whereNull('deleted_at').where('created_at', '>=', thirtyDaysAgo).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('created_at', '>=', sixtyDaysAgo).where('created_at', '<', thirtyDaysAgo).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where('created_at', '>=', thirtyDaysAgo).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.premium).where('created_at', '>=', sixtyDaysAgo).where('created_at', '<', thirtyDaysAgo).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where('created_at', '>=', thirtyDaysAgo).count('* as count').first(),
+      Organization.query().whereNull('deleted_at').where('plan_type', P.trial).where('created_at', '>=', sixtyDaysAgo).where('created_at', '<', thirtyDaysAgo).count('* as count').first(),
+    ])
+
+    const totalUsersRow = await db.from('organization_users').count('* as count').first()
+    const totalUsersCount = nc(totalUsersRow)
+    const totalCount = n(total)
+
+    const usersLast30  = await db.from('organization_users').where('created_at', '>=', thirtyDaysAgo).count('* as count').first()
+    const usersPrior30 = await db.from('organization_users').where('created_at', '>=', sixtyDaysAgo).where('created_at', '<', thirtyDaysAgo).count('* as count').first()
+
+    function growthPct(current: number, prior: number): number {
+      if (prior === 0) return current > 0 ? 100 : 0
+      return Math.round(((current - prior) / prior) * 100)
+    }
 
     const monthlyData = await db
       .from('organizations')
-      .select(db.raw('DATE_FORMAT(created_at, "%Y-%m") as month'))
-      .count('* as count')
+      .select(db.raw('DATE_FORMAT(created_at, "%b %y") as month'))
+      .select(db.raw('SUM(CASE WHEN plan_type = 1 THEN 1 ELSE 0 END) as paid'))
+      .select(db.raw('SUM(CASE WHEN plan_type = 0 THEN 1 ELSE 0 END) as trial'))
+      .count('* as total')
       .whereNull('deleted_at')
       .whereRaw('created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)')
-      .groupByRaw('DATE_FORMAT(created_at, "%Y-%m")')
-      .orderBy('month', 'asc')
+      .groupByRaw('DATE_FORMAT(created_at, "%Y-%m"), DATE_FORMAT(created_at, "%b %y")')
+      .orderByRaw('DATE_FORMAT(created_at, "%Y-%m") asc')
 
     const recentOrgs = await Organization.query()
       .whereNull('deleted_at')
+      .select('organizations.*')
+      .select(db.raw('(SELECT COUNT(*) FROM organization_users WHERE org_id = organizations.id) as user_count'))
       .preload('leadOwner')
       .orderBy('created_at', 'desc')
-      .limit(10)
+      .limit(8)
 
     return {
-      total: Number((total as any)?.$extras?.count || 0),
-      subscribed: Number((subscribed as any)?.$extras?.count || 0),
-      unsubscribed: Number((unsubscribed as any)?.$extras?.count || 0),
-      archived: Number((archived as any)?.$extras?.count || 0),
-      trialActive: Number((trialActive as any)?.$extras?.count || 0),
-      trialExpired: Number((trialExpired as any)?.$extras?.count || 0),
-      premiumActive: Number((premiumActive as any)?.$extras?.count || 0),
-      premiumExpired: Number((premiumExpired as any)?.$extras?.count || 0),
-      nearExpiry: Number((nearExpiry as any)?.$extras?.count || 0),
-      totalUsers: Number((totalUsers as any)?.count || 0),
-      monthlyData,
-      recentOrgs: recentOrgs.map((o) => o.serialize()),
+      total: totalCount,
+      paidOrgs: n(paidOrgs),
+      trialOrgs: n(trialOrgs),
+      paidActive: n(paidActive),
+      paidExpired: n(paidExpired),
+      paidNearExpiry: n(paidNearExpiry),
+      trialActive: n(trialActive),
+      trialExpired: n(trialExpired),
+      trialNearExpiry: n(trialNearExpiry),
+      nearExpiry: n(nearExpiry),
+      inactive: n(inactive),
+      archived: n(archived),
+      archivedPaid: n(archivedPaid),
+      archivedTrial: n(archivedTrial),
+      totalUsers: totalUsersCount,
+      avgUsersPerOrg: totalCount > 0 ? Math.round((totalUsersCount / totalCount) * 10) / 10 : 0,
+      totalGrowth: growthPct(n(totalLast30), n(totalPrior30)),
+      paidGrowth: growthPct(n(paidLast30), n(paidPrior30)),
+      trialGrowth: growthPct(n(trialLast30), n(trialPrior30)),
+      usersGrowth: growthPct(nc(usersLast30), nc(usersPrior30)),
+      monthlyData: monthlyData.map((d: any) => ({
+        month: d.month,
+        paid:  Number(d.paid  || 0),
+        trial: Number(d.trial || 0),
+        total: Number(d.total || 0),
+      })),
+      recentOrgs: recentOrgs.map((o) => ({
+        ...o.serialize(),
+        userCount: Number(o.$extras.user_count ?? 0),
+      })),
     }
   }
 }

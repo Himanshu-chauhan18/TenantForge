@@ -8,10 +8,10 @@ export const controllers = {
   Dashboard: () => import('#controllers/dashboard_controller'),
   LeadOwner: () => import('#controllers/lead_owner_controller'),
   Location: () => import('#controllers/location_controller'),
+  Masters: () => import('#controllers/masters_controller'),
   NewAccount: () => import('#controllers/new_account_controller'),
   Organization: () => import('#controllers/organization_controller'),
   OrganizationProfile: () => import('#controllers/organization_profile_controller'),
   Session: () => import('#controllers/session_controller'),
-  Masters: () => import('#controllers/masters_controller'),
   Settings: () => import('#controllers/settings_controller'),
 }

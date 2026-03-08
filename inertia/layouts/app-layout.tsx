@@ -20,6 +20,9 @@ import {
   MapPin,
   ArrowRight,
   Loader2,
+  Zap,
+  User,
+  ChevronUp,
 } from 'lucide-react'
 
 interface SharedProps {
@@ -50,12 +53,23 @@ interface OrgResult {
   city: string | null
 }
 
-const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard',      icon: <LayoutDashboard size={16} />, href: '/dashboard',     routeName: 'dashboard' },
-  { label: 'Organizations',  icon: <Building2 size={16} />,       href: '/organizations', routeName: 'organizations.index' },
-  { label: 'Leads & Owners', icon: <UserCheck size={16} />,       href: '/leads',         routeName: 'leads.index' },
-  { label: 'Manage Masters', icon: <Database size={16} />,        href: '/masters',       routeName: 'masters.index' },
-  { label: 'Settings',       icon: <Settings size={16} />,        href: '/settings',      routeName: 'settings.index' },
+const NAV_DASHBOARD: NavItem = { label: 'Dashboard', icon: <LayoutDashboard size={16} />, href: '/dashboard', routeName: 'dashboard' }
+
+const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+  {
+    label: 'Management',
+    items: [
+      { label: 'Organizations',  icon: <Building2 size={16} />, href: '/organizations', routeName: 'organizations.index' },
+      { label: 'Leads & Owners', icon: <UserCheck size={16} />, href: '/leads',         routeName: 'leads.index' },
+      { label: 'Manage Masters', icon: <Database size={16} />,  href: '/masters',       routeName: 'masters.index' },
+    ],
+  },
+  {
+    label: 'Configuration',
+    items: [
+      { label: 'Settings', icon: <Settings size={16} />, href: '/settings', routeName: 'settings.index' },
+    ],
+  },
 ]
 
 const STATUS_META = {
@@ -220,51 +234,86 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="sb-scroll">
-            <div className="sb-label">Main Menu</div>
-            {NAV_ITEMS.map((item) => {
-              const active   = isActive(item)
-              const expanded = openNav === item.label
+            <Link href={NAV_DASHBOARD.href!} className={`sb-item${isActive(NAV_DASHBOARD) ? ' active' : ''}`}>
+              <span className="sb-icon">{NAV_DASHBOARD.icon}</span>
+              {NAV_DASHBOARD.label}
+            </Link>
 
-              if (item.children) {
-                return (
-                  <div key={item.label}>
-                    <div className={`sb-item${active ? ' active' : ''}`} onClick={() => setOpenNav(expanded ? null : item.label)}>
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label}>
+                <div className="sb-label">{group.label}</div>
+                {group.items.map((item) => {
+                  const active   = isActive(item)
+                  const expanded = openNav === item.label
+
+                  if (item.children) {
+                    return (
+                      <div key={item.label}>
+                        <div className={`sb-item${active ? ' active' : ''}`} onClick={() => setOpenNav(expanded ? null : item.label)}>
+                          <span className="sb-icon">{item.icon}</span>
+                          {item.label}
+                          <ChevronDown size={12} className={`chevron${expanded ? ' open' : ''}`} />
+                        </div>
+                        <div className={`sb-sub${expanded || active ? ' open' : ''}`}>
+                          {item.children.map((child) => (
+                            <Link key={child.href} href={child.href} className={`sb-sub-item${url === child.href ? ' active' : ''}`}>
+                              <span className="sb-sub-dot" />{child.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <Link key={item.label} href={item.href!} className={`sb-item${active ? ' active' : ''}`}>
                       <span className="sb-icon">{item.icon}</span>
                       {item.label}
-                      <ChevronDown size={12} className={`chevron${expanded ? ' open' : ''}`} />
-                    </div>
-                    <div className={`sb-sub${expanded || active ? ' open' : ''}`}>
-                      {item.children.map((child) => (
-                        <Link key={child.href} href={child.href} className={`sb-sub-item${url === child.href ? ' active' : ''}`}>
-                          <span className="sb-sub-dot" />{child.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )
-              }
-
-              return (
-                <Link key={item.label} href={item.href!} className={`sb-item${active ? ' active' : ''}`}>
-                  <span className="sb-icon">{item.icon}</span>
-                  {item.label}
-                </Link>
-              )
-            })}
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
           </div>
 
           {user && (
             <div className="sb-footer">
-              <div className="user-pill">
-                <div className="av">{user.initials}</div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="u-name truncate">{user.fullName || user.email}</div>
-                  <div className="u-role">Administrator</div>
+              <Link
+                href="/settings?tab=profile"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, textDecoration: 'none', transition: 'background .15s', flex: 1, minWidth: 0 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(var(--p-rgb, 13,148,136),.08)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              >
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--p)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '.72rem', flexShrink: 0, fontFamily: 'var(--fd)', letterSpacing: '.04em' }}>
+                  {user.initials}
                 </div>
-                <button onClick={logout} className="ibtn" title="Logout">
-                  <LogOut size={14} />
-                </button>
-              </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '.79rem', fontWeight: 700, color: 'var(--text1)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.3 }}>
+                    {user.fullName || user.email}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', flexShrink: 0 }} />
+                    <span style={{ fontSize: '.63rem', color: 'var(--text4)' }}>Administrator</span>
+                  </div>
+                </div>
+                <User size={13} style={{ color: 'var(--text4)', flexShrink: 0 }} />
+              </Link>
+              <div style={{ height: '1px', background: 'var(--border)', margin: '0 4px' }} />
+              <button
+                onClick={logout}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  width: '100%', padding: '9px 12px',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  borderRadius: 10, transition: 'background .15s, color .15s',
+                  color: 'var(--text3)', fontSize: '.78rem', fontWeight: 600,
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,.08)'; (e.currentTarget as HTMLButtonElement).style.color = '#EF4444' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text3)' }}
+              >
+                <LogOut size={14} />
+                Sign out
+              </button>
             </div>
           )}
         </aside>
@@ -309,11 +358,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
               </button>
 
-              {user && (
-                <div className="av" style={{ cursor: 'pointer' }} title={user.email}>
-                  {user.initials}
-                </div>
-              )}
             </div>
           </header>
 
@@ -482,19 +526,44 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className={`dov${drawerOpen ? ' open' : ''}`} onClick={() => setDrawerOpen(false)} />
       <div className={`drawer${drawerOpen ? ' open' : ''}`}>
         <div className="dh">
-          <span style={{ fontFamily: 'var(--fd)', fontWeight: 800, fontSize: '.92rem' }}>Notifications</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Bell size={15} style={{ color: 'var(--text2)' }} />
+            <span style={{ fontFamily: 'var(--fd)', fontWeight: 800, fontSize: '.92rem' }}>Notifications</span>
+          </div>
           <button className="xbtn" onClick={() => setDrawerOpen(false)}><X size={16} /></button>
         </div>
         <div className="db">
-          <div className="ni unread">
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--p-lt)', color: 'var(--p)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Building2 size={14} />
+          <div style={{ padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, textAlign: 'center' }}>
+            <div style={{
+              width: 68, height: 68, borderRadius: 20,
+              background: 'linear-gradient(135deg, rgba(124,58,237,.15), rgba(124,58,237,.05))',
+              border: '1px solid rgba(124,58,237,.2)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Zap size={28} style={{ color: '#7C3AED' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text1)', marginBottom: 6 }}>Coming Soon</div>
+              <div style={{ fontSize: '.76rem', color: 'var(--text3)', lineHeight: 1.6, maxWidth: 220 }}>
+                Smart notifications for plan expirations, new sign-ups, and alerts are in development.
               </div>
-              <div>
-                <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text1)', lineHeight: 1.4 }}>Welcome to TenantForge!</div>
-                <div style={{ fontSize: '.68rem', color: 'var(--text3)', marginTop: 3 }}>Get started by adding your first organization.</div>
-              </div>
+            </div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 20, background: 'rgba(124,58,237,.08)', border: '1px solid rgba(124,58,237,.2)', fontSize: '.68rem', fontWeight: 700, color: '#7C3AED' }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />
+              In Development
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%', marginTop: 8 }}>
+              {['Plan expiry alerts', 'New org signups', 'System health updates'].map((item) => (
+                <div key={item} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '9px 14px', borderRadius: 10,
+                  background: 'var(--bg)', border: '1px solid var(--border)',
+                  opacity: .45,
+                }}>
+                  <Bell size={12} style={{ color: 'var(--text4)', flexShrink: 0 }} />
+                  <span style={{ fontSize: '.72rem', color: 'var(--text3)' }}>{item}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
