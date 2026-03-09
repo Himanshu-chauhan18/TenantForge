@@ -1,4 +1,4 @@
-import { CreateOrgForm, type LeadOwnerOption, type OrgOption } from '~/components/organizations/create-org-form'
+import { CreateOrgForm, type LeadOwnerOption, type OrgOption } from './add/create-org-form'
 
 interface Props {
   leadOwners: LeadOwnerOption[]

@@ -22,6 +22,8 @@ declare module '@adonisjs/inertia/types' {
     'home': ExtractProps<(typeof import('../../inertia/pages/home.tsx'))['default']>
     'leads/index': ExtractProps<(typeof import('../../inertia/pages/leads/index.tsx'))['default']>
     'masters/index': ExtractProps<(typeof import('../../inertia/pages/masters/index.tsx'))['default']>
+    'organizations/add/create-org-form': ExtractProps<(typeof import('../../inertia/pages/organizations/add/create-org-form.tsx'))['default']>
+    'organizations/add/create-org-modal': ExtractProps<(typeof import('../../inertia/pages/organizations/add/create-org-modal.tsx'))['default']>
     'organizations/create': ExtractProps<(typeof import('../../inertia/pages/organizations/create.tsx'))['default']>
     'organizations/edit': ExtractProps<(typeof import('../../inertia/pages/organizations/edit.tsx'))['default']>
     'organizations/edit/BillingTab': ExtractProps<(typeof import('../../inertia/pages/organizations/edit/BillingTab.tsx'))['default']>
