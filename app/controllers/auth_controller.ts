@@ -29,10 +29,17 @@ export default class AuthController {
       return response.redirect().back()
     }
 
-    // If TOTP is set up, require it
+    // If TOTP is already set up, always require verification
     if (user.totpVerified) {
       session.put('totp_pending_user_id', user.id)
       return response.redirect().toPath('/auth/totp/verify')
+    }
+
+    // If TOTP setup is mandatory, force setup before login
+    const totpRequired = await settingsRepo.getTotpRequired()
+    if (totpRequired) {
+      session.put('totp_setup_pending_user_id', user.id)
+      return response.redirect().toPath('/auth/totp/setup')
     }
 
     await auth.use('web').login(user)
@@ -67,6 +74,14 @@ export default class AuthController {
       return response.redirect().toPath('/login')
     }
 
+    // Only allow Google login for users already registered in the system
+    const { default: User } = await import('#models/user')
+    const registeredUser = await User.findBy('email', googleUser.email.trim().toLowerCase())
+    if (!registeredUser) {
+      session.flash('errors', { auth: 'Your Google account email is not registered on this platform. Contact your administrator to add your account.' })
+      return response.redirect().toPath('/login')
+    }
+
     const user = await authService.handleGoogleUser({
       id: googleUser.id,
       email: googleUser.email,
@@ -78,30 +93,68 @@ export default class AuthController {
       return response.redirect().toPath('/login')
     }
 
-    // Require TOTP (setup or verify)
-    if (!user.totpVerified) {
-      await auth.use('web').login(user)
+    // User has TOTP set up — require verification
+    if (user.totpVerified) {
+      session.put('totp_pending_user_id', user.id)
+      return response.redirect().toPath('/auth/totp/verify')
+    }
+
+    // TOTP not set up yet — check if mandatory
+    const totpRequired = await settingsRepo.getTotpRequired()
+    if (totpRequired) {
+      // Force setup WITHOUT logging in (prevents bypass)
+      session.put('totp_setup_pending_user_id', user.id)
       return response.redirect().toPath('/auth/totp/setup')
     }
 
-    session.put('totp_pending_user_id', user.id)
-    return response.redirect().toPath('/auth/totp/verify')
+    // TOTP not required — just login
+    await auth.use('web').login(user)
+    return response.redirect().toRoute('dashboard')
   }
 
-  async totpSetup({ auth, inertia }: HttpContext) {
-    const user = auth.user!
-    const { secret, qrCode } = await authService.setupTotp(user.id)
+  async totpSetup({ auth, session, inertia, response }: HttpContext) {
+    // Allow either: already authenticated user (from settings page)
+    // OR: a user pending forced TOTP setup (from login flow)
+    let userId: number
+
+    if (await auth.check()) {
+      userId = auth.user!.id
+    } else {
+      const pendingId = session.get('totp_setup_pending_user_id')
+      if (!pendingId) return response.redirect().toPath('/login')
+      userId = Number(pendingId)
+    }
+
+    const { secret, qrCode } = await authService.setupTotp(userId)
     return inertia.render('auth/totp-setup', { qrCode, secret })
   }
 
-  async totpEnable({ request, auth, response, session }: HttpContext) {
+  async totpEnable({ request, auth, session, response }: HttpContext) {
     const { token } = await request.validateUsing(totpEnableValidator)
-    const user = auth.user!
-    const valid = await authService.enableTotp(user.id, token)
 
+    let userId: number
+    const isAlreadyAuthed = await auth.check()
+
+    if (isAlreadyAuthed) {
+      userId = auth.user!.id
+    } else {
+      const pendingId = session.get('totp_setup_pending_user_id')
+      if (!pendingId) return response.redirect().toPath('/login')
+      userId = Number(pendingId)
+    }
+
+    const valid = await authService.enableTotp(userId, token)
     if (!valid) {
       session.flash('errors', { totp: 'Invalid code. Please try again.' })
       return response.redirect().back()
+    }
+
+    // If user wasn't logged in (forced setup flow), log them in now
+    if (!isAlreadyAuthed) {
+      const { default: User } = await import('#models/user')
+      const user = await User.findOrFail(userId)
+      await auth.use('web').login(user)
+      session.forget('totp_setup_pending_user_id')
     }
 
     session.flash('success', 'Two-factor authentication enabled successfully!')

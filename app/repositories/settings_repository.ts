@@ -21,13 +21,19 @@ export default class SettingsRepository {
     return (value as 'password' | 'google' | 'both') ?? 'password'
   }
 
+  async getTotpRequired(): Promise<boolean> {
+    const value = await this.get('totp_required')
+    return value === 'true'
+  }
+
   async getPlatformSettings() {
     const rows = await SystemSetting.query()
-      .whereIn('key', ['login_method'])
+      .whereIn('key', ['login_method', 'totp_required'])
     const map: Record<string, string> = {}
     for (const r of rows) if (r.value !== null) map[r.key] = r.value
     return {
-      loginMethod: (map['login_method'] ?? 'password') as 'password' | 'google' | 'both',
+      loginMethod:  (map['login_method'] ?? 'password') as 'password' | 'google' | 'both',
+      totpRequired: map['totp_required'] === 'true',
     }
   }
 
@@ -42,4 +48,5 @@ export default class SettingsRepository {
       plan:       (map['org_default_plan'] ?? 'trial') as 'trial' | 'premium',
     }
   }
+
 }

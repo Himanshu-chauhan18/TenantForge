@@ -110,7 +110,7 @@ export default class SettingsController {
   // ── PUT /settings/platform ─────────────────────────────────────────────────
 
   async updatePlatform({ request, response, session }: HttpContext) {
-    const { loginMethod } = request.only(['loginMethod'])
+    const { loginMethod, totpRequired } = request.only(['loginMethod', 'totpRequired'])
 
     const validMethods = ['password', 'google', 'both']
     if (!validMethods.includes(loginMethod)) {
@@ -118,7 +118,10 @@ export default class SettingsController {
       return response.redirect().back()
     }
 
-    await settingsRepo.set('login_method', loginMethod)
+    await settingsRepo.setMany({
+      login_method:  loginMethod,
+      totp_required: totpRequired === true || totpRequired === 'true' ? 'true' : 'false',
+    })
     session.flash('success', 'Platform settings updated.')
     return response.redirect().back()
   }
@@ -258,4 +261,5 @@ export default class SettingsController {
     session.flash('success', 'Password reset successfully.')
     return response.redirect().back()
   }
+
 }

@@ -35,6 +35,7 @@ interface PlatformUser {
 
 interface Platform {
   loginMethod: 'password' | 'google' | 'both'
+  totpRequired: boolean
 }
 
 interface OrgDefaults {
@@ -125,12 +126,13 @@ export default function SettingsIndex({ settingsUser, platform, orgDefaults, use
   }
 
   // ── Platform ──────────────────────────────────────────────────────────────
-  const [loginMethod, setLoginMethod] = useState(platform.loginMethod)
+  const [loginMethod,   setLoginMethod]   = useState(platform.loginMethod)
+  const [totpRequired,  setTotpRequired]  = useState(platform.totpRequired)
   const [platformSaving, setPlatformSaving] = useState(false)
 
   function savePlatform() {
     setPlatformSaving(true)
-    router.put('/settings/platform', { loginMethod }, {
+    router.put('/settings/platform', { loginMethod, totpRequired }, {
       onFinish: () => setPlatformSaving(false),
     })
   }
@@ -704,6 +706,37 @@ export default function SettingsIndex({ settingsUser, platform, orgDefaults, use
                   <Info size={13} style={{ flexShrink: 0, marginTop: 1 }} />
                   <span>Changing the login method affects all users. Switching to "Google Only" will prevent password-only users from signing in.</span>
                 </div>
+
+                <div style={{ height: 1, background: 'var(--border)', margin: '4px 0 16px' }} />
+
+                <label style={{ marginBottom: 8, display: 'block' }}>Two-Factor Authentication (2FA)</label>
+                <div
+                  onClick={() => setTotpRequired((v) => !v)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 14px', borderRadius: 10, border: `1px solid ${totpRequired ? 'var(--p-mid)' : 'var(--border)'}`, background: totpRequired ? 'var(--p-lt)' : 'var(--bg)', cursor: 'pointer', marginBottom: 14, transition: 'all .15s' }}
+                >
+                  <div style={{ width: 36, height: 36, borderRadius: 10, background: totpRequired ? 'var(--p)' : 'var(--bg2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background .15s' }}>
+                    <Smartphone size={17} style={{ color: totpRequired ? '#fff' : 'var(--text3)' }} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '.82rem', fontWeight: 700, color: 'var(--text1)' }}>Require 2FA for all users</div>
+                    <div style={{ fontSize: '.73rem', color: 'var(--text3)', marginTop: 2 }}>
+                      {totpRequired
+                        ? 'Users must set up and verify a TOTP authenticator app before accessing the platform.'
+                        : '2FA is optional — users can log in without setting up an authenticator app.'}
+                    </div>
+                  </div>
+                  {/* Toggle switch */}
+                  <div style={{ width: 42, height: 24, borderRadius: 12, background: totpRequired ? 'var(--p)' : 'var(--bg2)', border: `1px solid ${totpRequired ? 'var(--p)' : 'var(--border)'}`, position: 'relative', flexShrink: 0, transition: 'background .15s' }}>
+                    <div style={{ position: 'absolute', top: 3, left: totpRequired ? 20 : 3, width: 16, height: 16, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 4px rgba(0,0,0,.2)', transition: 'left .15s' }} />
+                  </div>
+                </div>
+
+                {totpRequired && (
+                  <div className="alert alert-warn" style={{ marginBottom: 14 }}>
+                    <Info size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <span>When enabled, users without 2FA set up will be <strong>forced to configure it</strong> on their next login before they can access the platform.</span>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button className="btn btn-p btn-sm" disabled={platformSaving} onClick={savePlatform}>

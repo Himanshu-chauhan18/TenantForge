@@ -27,12 +27,9 @@ router
 router.get('auth/totp/verify', [AuthController, 'showTotpVerify']).as('auth.totp.verify')
 router.post('auth/totp/verify', [AuthController, 'totpVerify']).as('auth.totp.verify.store')
 
-// TOTP setup (requires being logged in via Google before TOTP confirmed)
-router
-  .get('auth/totp/setup', [AuthController, 'totpSetup'])
-  .as('auth.totp.setup')
-  .use(middleware.auth())
-router.post('auth/totp/setup', [AuthController, 'totpEnable']).as('auth.totp.setup.store').use(middleware.auth())
+// TOTP setup (no auth middleware — controller handles both voluntary setup and forced login flow)
+router.get('auth/totp/setup', [AuthController, 'totpSetup']).as('auth.totp.setup')
+router.post('auth/totp/setup', [AuthController, 'totpEnable']).as('auth.totp.setup.store')
 
 // Logout
 router.post('logout', [AuthController, 'logout']).as('auth.logout').use(middleware.auth())
