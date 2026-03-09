@@ -81,6 +81,12 @@ function groupAddons(addons: AddonDef[]): AddonGroup[] {
   return ORDER.filter((g) => map[g]?.length).map((g) => ({ label: g, items: map[g] }))
 }
 
+/** Returns only the addons explicitly enabled for this org (via addonIds). */
+function getOrgEnabledAddons(mod: OrgModule): Array<{ id: number; name: string; type: string }> {
+  const enabledSet = new Set(mod.addonIds.filter((a) => a.enabled).map((a) => a.id))
+  return mod.module.addons.filter((a) => enabledSet.has(a.id))
+}
+
 function permsToMap(permissions: OrgProfilePermission[], modules: OrgModule[]): PermMap {
   // Build moduleId → moduleKey and addonId → addon name lookups
   const keyById: Record<number, string> = {}
@@ -111,20 +117,20 @@ function permsToMap(permissions: OrgProfilePermission[], modules: OrgModule[]): 
 
 /**
  * Build a perm map from saved DB rows, then cascade module-level perms down to
- * any addons that have NO saved row yet (e.g. seeded profiles, or profiles saved
- * before the cascade feature existed). If an addon already has its own row, that
- * row is used as-is — so granular per-addon overrides are always respected.
+ * org-enabled addons that have no explicit saved row.
+ * - Only org-enabled addons (filtered via getOrgEnabledAddons) are included.
+ * - Addons with an explicit saved row keep their own value unchanged.
+ * - Non-org-enabled addons are never added to the map (they don't appear in UI).
  */
 function buildPermMap(permissions: OrgProfilePermission[], modules: OrgModule[]): PermMap {
   const map = permsToMap(permissions, modules)
   for (const mod of modules) {
     if (!mod.enabled) continue
-    const mKey      = mod.module.key
-    const modLevel  = map[mKey]?.['module']
-    if (!modLevel) continue                      // no module-level perm → nothing to cascade
-    for (const addon of mod.module.addons) {
+    const mKey     = mod.module.key
+    const modLevel = map[mKey]?.['module']
+    if (!modLevel) continue  // no module-level perm saved → nothing to cascade
+    for (const addon of getOrgEnabledAddons(mod)) {
       if (map[mKey]?.[addon.name] === undefined) {
-        // No saved row for this addon → inherit module-level perm
         if (!map[mKey]) map[mKey] = {}
         map[mKey][addon.name] = { ...modLevel }
       }
@@ -213,7 +219,9 @@ export function RolesTab({ org }: Props) {
   }
 
   function getAddonNames(mKey: string): string[] {
-    return modules.find((m) => m.module.key === mKey)?.module.addons.map((a) => a.name) ?? []
+    const mod = modules.find((m) => m.module.key === mKey)
+    if (!mod) return []
+    return getOrgEnabledAddons(mod).map((a) => a.name)
   }
 
   function setPerm(mKey: string, fKey: string, key: typeof PERM_KEYS[number], val: boolean) {
@@ -498,11 +506,11 @@ export function RolesTab({ org }: Props) {
                     </div>
                   </div>
 
-                  {/* Addon type sections */}
-                  {selectedMod.module.addons.length > 0 && (
+                  {/* Addon type sections — only org-enabled addons */}
+                  {getOrgEnabledAddons(selectedMod).length > 0 && (
                     <div style={{ margin: '0 16px 16px' }}>
                       {(['default', 'custom', 'advance'] as const).map((type) => {
-                        const typeAddons = selectedMod.module.addons.filter((a) => a.type === type)
+                        const typeAddons = getOrgEnabledAddons(selectedMod).filter((a) => a.type === type)
                         if (typeAddons.length === 0) return null
                         const groups     = groupAddons(typeAddons)
                         const meta       = TYPE_META[type]

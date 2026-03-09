@@ -18,11 +18,7 @@ export default class OrganizationProfile extends BaseModel {
   @column()
   declare description: string | null
 
-  // DB stores 0=all 1=organization 2=self 3=custom; prepare/consume map to/from string
-  @column({
-    prepare: (v: string) => ({ all: 0, organization: 1, self: 2, custom: 3 }[v] ?? 2),
-    consume: (v: number) => (['all', 'organization', 'self', 'custom'][v] ?? 'self') as 'all' | 'organization' | 'self' | 'custom',
-  })
+  @column()
   declare dataAccess: 'all' | 'organization' | 'self' | 'custom'
 
   @column.dateTime({ autoCreate: true })
