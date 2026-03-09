@@ -169,18 +169,7 @@ export interface Registry {
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['apiList']>>>
-    }
-  }
-  'dashboard': {
-    methods: ["GET","HEAD"]
-    pattern: '/dashboard'
-    types: {
-      body: {}
-      paramsTuple: []
-      params: {}
-      query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/dashboard_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/lead_owner_controller').default['apiList']>>>
     }
   }
   'api.orgs.search': {
@@ -191,469 +180,491 @@ export interface Registry {
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['searchOrgs']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['searchOrgs']>>>
+    }
+  }
+  'dashboard': {
+    methods: ["GET","HEAD"]
+    pattern: '/orgbuilder/dashboard'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/dashboard_controller').default['index']>>>
     }
   }
   'organizations.index': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations'
+    pattern: '/orgbuilder/organizations'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['index']>>>
     }
   }
   'organizations.create': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/create'
+    pattern: '/orgbuilder/organizations/create'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['create']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['create']>>>
     }
   }
   'organizations.store': {
     methods: ["POST"]
-    pattern: '/organizations'
+    pattern: '/orgbuilder/organizations'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/organization_validator').organizationStep1Validator)>|InferInput<(typeof import('#validators/organization_validator').organizationModulesValidator)>|InferInput<(typeof import('#validators/organization_validator').organizationSuperAdminValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationStep1Validator)>|InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationModulesValidator)>|InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationSuperAdminValidator)>>
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/organization_validator').organizationStep1Validator)>|InferInput<(typeof import('#validators/organization_validator').organizationModulesValidator)>|InferInput<(typeof import('#validators/organization_validator').organizationSuperAdminValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['store']>>>
+      query: ExtractQuery<InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationStep1Validator)>|InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationModulesValidator)>|InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationSuperAdminValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['store']>>>
     }
   }
   'organizations.bulk': {
     methods: ["POST"]
-    pattern: '/organizations/bulk'
+    pattern: '/orgbuilder/organizations/bulk'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/organization_validator').bulkOperationValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#orgbuilder/validators/organization_validator').bulkOperationValidator)>>
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/organization_validator').bulkOperationValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['bulk']>>>
+      query: ExtractQuery<InferInput<(typeof import('#orgbuilder/validators/organization_validator').bulkOperationValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['bulk']>>>
     }
   }
   'organizations.export': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/export'
+    pattern: '/orgbuilder/organizations/export'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['exportCsv']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['exportCsv']>>>
     }
   }
   'organizations.checkEmail': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/check-email'
+    pattern: '/orgbuilder/organizations/check-email'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['checkOrgEmail']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['checkOrgEmail']>>>
     }
   }
   'organizations.checkPhone': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/check-phone'
+    pattern: '/orgbuilder/organizations/check-phone'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['checkOrgPhone']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['checkOrgPhone']>>>
     }
   }
   'organizations.checkAdminPhone': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/check-admin-phone'
+    pattern: '/orgbuilder/organizations/check-admin-phone'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['checkAdminPhone']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['checkAdminPhone']>>>
     }
   }
   'organizations.show': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/:id'
+    pattern: '/orgbuilder/organizations/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['show']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['show']>>>
     }
   }
   'organizations.edit': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/:id/edit'
+    pattern: '/orgbuilder/organizations/:id/edit'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['edit']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['edit']>>>
     }
   }
   'organizations.update': {
     methods: ["PUT"]
-    pattern: '/organizations/:id'
+    pattern: '/orgbuilder/organizations/:id'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/organization_validator').organizationStep1Validator)>>
+      body: ExtractBody<InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationStep1Validator)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/organization_validator').organizationStep1Validator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['update']>>>
+      query: ExtractQuery<InferInput<(typeof import('#orgbuilder/validators/organization_validator').organizationStep1Validator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['update']>>>
     }
   }
   'organizations.superAdmin.update': {
     methods: ["PUT"]
-    pattern: '/organizations/:id/super-admin'
+    pattern: '/orgbuilder/organizations/:id/super-admin'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateSuperAdmin']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['updateSuperAdmin']>>>
+    }
+  }
+  'organizations.superAdmin.resetPassword': {
+    methods: ["POST"]
+    pattern: '/orgbuilder/organizations/:id/super-admin/reset-password'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['resetSuperAdminPassword']>>>
     }
   }
   'organizations.modules.update': {
     methods: ["PUT"]
-    pattern: '/organizations/:id/modules'
+    pattern: '/orgbuilder/organizations/:id/modules'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/organization_validator').updateModulesValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#orgbuilder/validators/organization_validator').updateModulesValidator)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/organization_validator').updateModulesValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateModules']>>>
+      query: ExtractQuery<InferInput<(typeof import('#orgbuilder/validators/organization_validator').updateModulesValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['updateModules']>>>
     }
   }
   'organizations.users.store': {
     methods: ["POST"]
-    pattern: '/organizations/:id/users'
+    pattern: '/orgbuilder/organizations/:id/users'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['storeUser']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['storeUser']>>>
     }
   }
   'organizations.users.update': {
     methods: ["PUT"]
-    pattern: '/organizations/:id/users/:userId'
+    pattern: '/orgbuilder/organizations/:id/users/:userId'
     types: {
       body: {}
       paramsTuple: [ParamValue, ParamValue]
       params: { id: ParamValue; userId: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateUser']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['updateUser']>>>
     }
   }
   'organizations.users.bulk': {
     methods: ["POST"]
-    pattern: '/organizations/:id/users/bulk'
+    pattern: '/orgbuilder/organizations/:id/users/bulk'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['bulkUsers']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['bulkUsers']>>>
     }
   }
   'organizations.profiles.index': {
     methods: ["GET","HEAD"]
-    pattern: '/organizations/:id/profiles'
+    pattern: '/orgbuilder/organizations/:id/profiles'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_profile_controller').default['index']>>>
     }
   }
   'organizations.profiles.store': {
     methods: ["POST"]
-    pattern: '/organizations/:id/profiles'
+    pattern: '/orgbuilder/organizations/:id/profiles'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['store']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_profile_controller').default['store']>>>
     }
   }
   'organizations.profiles.update': {
     methods: ["PUT"]
-    pattern: '/organizations/:id/profiles/:profileId'
+    pattern: '/orgbuilder/organizations/:id/profiles/:profileId'
     types: {
       body: {}
       paramsTuple: [ParamValue, ParamValue]
       params: { id: ParamValue; profileId: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['update']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_profile_controller').default['update']>>>
     }
   }
   'organizations.profiles.destroy': {
     methods: ["DELETE"]
-    pattern: '/organizations/:id/profiles/:profileId'
+    pattern: '/orgbuilder/organizations/:id/profiles/:profileId'
     types: {
       body: {}
       paramsTuple: [ParamValue, ParamValue]
       params: { id: ParamValue; profileId: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['destroy']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_profile_controller').default['destroy']>>>
     }
   }
   'organizations.profiles.permissions.update': {
     methods: ["PUT"]
-    pattern: '/organizations/:id/profiles/:profileId/permissions'
+    pattern: '/orgbuilder/organizations/:id/profiles/:profileId/permissions'
     types: {
       body: {}
       paramsTuple: [ParamValue, ParamValue]
       params: { id: ParamValue; profileId: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_profile_controller').default['updatePermissions']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_profile_controller').default['updatePermissions']>>>
     }
   }
   'organizations.destroy': {
     methods: ["DELETE"]
-    pattern: '/organizations/:id'
+    pattern: '/orgbuilder/organizations/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['destroy']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/organization_controller').default['destroy']>>>
     }
   }
   'leads.index': {
     methods: ["GET","HEAD"]
-    pattern: '/leads'
+    pattern: '/orgbuilder/leads'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/lead_owner_controller').default['index']>>>
     }
   }
   'leads.store': {
     methods: ["POST"]
-    pattern: '/leads'
+    pattern: '/orgbuilder/leads'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#orgbuilder/validators/lead_owner_validator').leadOwnerValidator)>>
       paramsTuple: []
       params: {}
-      query: ExtractQuery<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['store']>>>
+      query: ExtractQuery<InferInput<(typeof import('#orgbuilder/validators/lead_owner_validator').leadOwnerValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/lead_owner_controller').default['store']>>>
     }
   }
   'leads.bulk': {
     methods: ["POST"]
-    pattern: '/leads/bulk'
+    pattern: '/orgbuilder/leads/bulk'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['bulk']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/lead_owner_controller').default['bulk']>>>
     }
   }
   'leads.update': {
     methods: ["PUT"]
-    pattern: '/leads/:id'
+    pattern: '/orgbuilder/leads/:id'
     types: {
-      body: ExtractBody<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
+      body: ExtractBody<InferInput<(typeof import('#orgbuilder/validators/lead_owner_validator').leadOwnerValidator)>>
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
-      query: ExtractQuery<InferInput<(typeof import('#validators/lead_owner_validator').leadOwnerValidator)>>
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['update']>>>
+      query: ExtractQuery<InferInput<(typeof import('#orgbuilder/validators/lead_owner_validator').leadOwnerValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/lead_owner_controller').default['update']>>>
     }
   }
   'leads.destroy': {
     methods: ["DELETE"]
-    pattern: '/leads/:id'
+    pattern: '/orgbuilder/leads/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/lead_owner_controller').default['destroy']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/lead_owner_controller').default['destroy']>>>
     }
   }
   'masters.index': {
     methods: ["GET","HEAD"]
-    pattern: '/masters'
+    pattern: '/orgbuilder/masters'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/masters_controller').default['index']>>>
     }
   }
   'masters.modules.store': {
     methods: ["POST"]
-    pattern: '/masters/modules'
+    pattern: '/orgbuilder/masters/modules'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['storeModule']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/masters_controller').default['storeModule']>>>
     }
   }
   'masters.modules.update': {
     methods: ["PUT"]
-    pattern: '/masters/modules/:id'
+    pattern: '/orgbuilder/masters/modules/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['updateModule']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/masters_controller').default['updateModule']>>>
     }
   }
   'masters.addons.store': {
     methods: ["POST"]
-    pattern: '/masters/addons'
+    pattern: '/orgbuilder/masters/addons'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['storeAddon']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/masters_controller').default['storeAddon']>>>
     }
   }
   'masters.addons.update': {
     methods: ["PUT"]
-    pattern: '/masters/addons/:id'
+    pattern: '/orgbuilder/masters/addons/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['updateAddon']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/masters_controller').default['updateAddon']>>>
     }
   }
   'settings.index': {
     methods: ["GET","HEAD"]
-    pattern: '/settings'
+    pattern: '/orgbuilder/settings'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['index']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['index']>>>
     }
   }
   'settings.profile.update': {
     methods: ["PUT"]
-    pattern: '/settings/profile'
+    pattern: '/orgbuilder/settings/profile'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateProfile']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['updateProfile']>>>
     }
   }
   'settings.password.update': {
     methods: ["PUT"]
-    pattern: '/settings/password'
+    pattern: '/orgbuilder/settings/password'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['changePassword']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['changePassword']>>>
     }
   }
   'settings.totp.disable': {
     methods: ["DELETE"]
-    pattern: '/settings/totp'
+    pattern: '/orgbuilder/settings/totp'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['disableTotp']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['disableTotp']>>>
     }
   }
   'settings.platform.update': {
     methods: ["PUT"]
-    pattern: '/settings/platform'
+    pattern: '/orgbuilder/settings/platform'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updatePlatform']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['updatePlatform']>>>
     }
   }
   'settings.orgDefaults.update': {
     methods: ["PUT"]
-    pattern: '/settings/org-defaults'
+    pattern: '/orgbuilder/settings/org-defaults'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateOrgDefaults']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['updateOrgDefaults']>>>
     }
   }
   'settings.users.store': {
     methods: ["POST"]
-    pattern: '/settings/users'
+    pattern: '/orgbuilder/settings/users'
     types: {
       body: {}
       paramsTuple: []
       params: {}
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['storeUser']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['storeUser']>>>
     }
   }
   'settings.users.update': {
     methods: ["PUT"]
-    pattern: '/settings/users/:id'
+    pattern: '/orgbuilder/settings/users/:id'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['updateUser']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['updateUser']>>>
     }
   }
   'settings.users.toggle': {
     methods: ["PUT"]
-    pattern: '/settings/users/:id/toggle'
+    pattern: '/orgbuilder/settings/users/:id/toggle'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['toggleUser']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['toggleUser']>>>
     }
   }
   'settings.users.resetPassword': {
     methods: ["PUT"]
-    pattern: '/settings/users/:id/reset-password'
+    pattern: '/orgbuilder/settings/users/:id/reset-password'
     types: {
       body: {}
       paramsTuple: [ParamValue]
       params: { id: ParamValue }
       query: {}
-      response: ExtractResponse<Awaited<ReturnType<import('#controllers/settings_controller').default['resetUserPassword']>>>
+      response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['resetUserPassword']>>>
     }
   }
 }

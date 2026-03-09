@@ -45,6 +45,7 @@ export interface ApiDefinition {
     update: typeof routes['organizations.update']
     superAdmin: {
       update: typeof routes['organizations.superAdmin.update']
+      resetPassword: typeof routes['organizations.superAdmin.resetPassword']
     }
     modules: {
       update: typeof routes['organizations.modules.update']

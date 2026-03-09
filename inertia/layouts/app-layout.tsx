@@ -53,21 +53,21 @@ interface OrgResult {
   city: string | null
 }
 
-const NAV_DASHBOARD: NavItem = { label: 'Dashboard', icon: <LayoutDashboard size={16} />, href: '/dashboard', routeName: 'dashboard' }
+const NAV_DASHBOARD: NavItem = { label: 'Dashboard', icon: <LayoutDashboard size={16} />, href: '/orgbuilder/dashboard', routeName: 'dashboard' }
 
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Management',
     items: [
-      { label: 'Organizations',  icon: <Building2 size={16} />, href: '/organizations', routeName: 'organizations.index' },
-      { label: 'Leads & Owners', icon: <UserCheck size={16} />, href: '/leads',         routeName: 'leads.index' },
-      { label: 'Manage Masters', icon: <Database size={16} />,  href: '/masters',       routeName: 'masters.index' },
+      { label: 'Organizations',  icon: <Building2 size={16} />, href: '/orgbuilder/organizations', routeName: 'organizations.index' },
+      { label: 'Leads & Owners', icon: <UserCheck size={16} />, href: '/orgbuilder/leads',         routeName: 'leads.index' },
+      { label: 'Manage Masters', icon: <Database size={16} />,  href: '/orgbuilder/masters',       routeName: 'masters.index' },
     ],
   },
   {
     label: 'Configuration',
     items: [
-      { label: 'Settings', icon: <Settings size={16} />, href: '/settings', routeName: 'settings.index' },
+      { label: 'Settings', icon: <Settings size={16} />, href: '/orgbuilder/settings', routeName: 'settings.index' },
     ],
   },
 ]
@@ -174,7 +174,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (e.key === 'Enter' && searchFocused >= 0) {
       e.preventDefault()
       const hit = searchResults[searchFocused]
-      router.visit(`/organizations/${hit.id}`)
+      router.visit(`/orgbuilder/organizations/${hit.id}`)
       setSearchOpen(false)
     }
   }
@@ -190,16 +190,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const breadcrumbs = (() => {
     const parts = url.split('/').filter(Boolean)
-    const crumbs = [{ label: 'Home', href: '/dashboard' }]
-    if (parts[0] === 'dashboard')    crumbs.push({ label: 'Dashboard',       href: '/dashboard' })
-    if (parts[0] === 'organizations') {
-      crumbs.push({ label: 'Organizations', href: '/organizations' })
-      if (parts[1] === 'create') crumbs.push({ label: 'Add Organization', href: '/organizations/create' })
-      else if (parts[1]) crumbs.push({ label: 'Detail', href: url })
+    // parts[0] is the module prefix (e.g. 'orgbuilder'), parts[1] is the section
+    const section = parts[0] === 'orgbuilder' ? parts[1] : parts[0]
+    const rest    = parts[0] === 'orgbuilder' ? parts.slice(1) : parts
+    const crumbs = [{ label: 'Home', href: '/orgbuilder/dashboard' }]
+    if (section === 'dashboard')    crumbs.push({ label: 'Dashboard',       href: '/orgbuilder/dashboard' })
+    if (section === 'organizations') {
+      crumbs.push({ label: 'Organizations', href: '/orgbuilder/organizations' })
+      if (rest[1] === 'create') crumbs.push({ label: 'Add Organization', href: '/orgbuilder/organizations/create' })
+      else if (rest[1]) crumbs.push({ label: 'Detail', href: url })
     }
-    if (parts[0] === 'leads')   crumbs.push({ label: 'Leads & Owners', href: '/leads' })
-    if (parts[0] === 'masters') crumbs.push({ label: 'Manage Masters',  href: '/masters' })
-    if (parts[0] === 'settings') crumbs.push({ label: 'Settings',       href: '/settings' })
+    if (section === 'leads')   crumbs.push({ label: 'Leads & Owners', href: '/orgbuilder/leads' })
+    if (section === 'masters') crumbs.push({ label: 'Manage Masters',  href: '/orgbuilder/masters' })
+    if (section === 'settings') crumbs.push({ label: 'Settings',       href: '/orgbuilder/settings' })
     return crumbs
   })()
 
@@ -210,7 +213,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   function goToOrg(id: number) {
-    router.visit(`/organizations/${id}`)
+    router.visit(`/orgbuilder/organizations/${id}`)
     closeSearch()
   }
 
@@ -279,7 +282,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {user && (
             <div className="sb-footer">
               <Link
-                href="/settings?tab=profile"
+                href="/orgbuilder/settings?tab=profile"
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 12, textDecoration: 'none', transition: 'background .15s', flex: 1, minWidth: 0 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'rgba(var(--p-rgb, 13,148,136),.08)' }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -400,8 +403,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             {!searchQuery && (
               <div style={{ padding: '28px 20px' }}>
                 <div style={{ fontSize: '.68rem', fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 8 }}>Quick Actions</div>
-                <QuickLink href="/organizations/create" icon={<Plus size={14} />} label="Add Organization" desc="Create a new tenant organization" onClick={closeSearch} />
-                <QuickLink href="/organizations" icon={<Building2 size={14} />} label="All Organizations" desc="Browse the full organization list" onClick={closeSearch} />
+                <QuickLink href="/orgbuilder/organizations/create" icon={<Plus size={14} />} label="Add Organization" desc="Create a new tenant organization" onClick={closeSearch} />
+                <QuickLink href="/orgbuilder/organizations" icon={<Building2 size={14} />} label="All Organizations" desc="Browse the full organization list" onClick={closeSearch} />
                 <div style={{ marginTop: 20, padding: '12px 14px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 10 }}>
                   <Search size={13} style={{ color: 'var(--text4)', flexShrink: 0 }} />
                   <span style={{ fontSize: '.76rem', color: 'var(--text4)' }}>Type to search organizations by name, Org ID, or numeric ID</span>
@@ -433,7 +436,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div style={{ fontSize: '.86rem', fontWeight: 700, color: 'var(--text2)', marginBottom: 4 }}>No organizations found</div>
                 <div style={{ fontSize: '.75rem', color: 'var(--text4)' }}>Try searching by a different name, Org ID, or number</div>
                 <Link
-                  href={`/organizations?search=${encodeURIComponent(searchQuery)}`}
+                  href={`/orgbuilder/organizations?search=${encodeURIComponent(searchQuery)}`}
                   onClick={closeSearch}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginTop: 14, fontSize: '.77rem', color: 'var(--p)', fontWeight: 600 }}
                 >
@@ -495,7 +498,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <span>ESC close</span>
                   </div>
                   <Link
-                    href={`/organizations?search=${encodeURIComponent(searchQuery)}`}
+                    href={`/orgbuilder/organizations?search=${encodeURIComponent(searchQuery)}`}
                     onClick={closeSearch}
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '.73rem', color: 'var(--p)', fontWeight: 600 }}
                   >

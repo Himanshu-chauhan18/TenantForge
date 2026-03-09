@@ -23,7 +23,15 @@
       "#database/*": ["./database/*.js"],
       "#tests/*": ["./tests/*.js"],
       "#start/*": ["./start/*.js"],
-      "#config/*": ["./config/*.js"]
+      "#config/*": ["./config/*.js"],
+      "#orgbuilder/controllers/*": ["./app/orgbuilder/controllers/*.js"],
+      "#orgbuilder/services/*": ["./app/orgbuilder/services/*.js"],
+      "#orgbuilder/repositories/*": ["./app/orgbuilder/repositories/*.js"],
+      "#orgbuilder/validators/*": ["./app/orgbuilder/validators/*.js"],
+      "#hrms/controllers/*": ["./app/hrms/controllers/*.js"],
+      "#hrms/services/*": ["./app/hrms/services/*.js"],
+      "#hrms/repositories/*": ["./app/hrms/repositories/*.js"],
+      "#hrms/validators/*": ["./app/hrms/validators/*.js"]
     }
   },
   "references": [{ "path": "./tsconfig.inertia.json" }]

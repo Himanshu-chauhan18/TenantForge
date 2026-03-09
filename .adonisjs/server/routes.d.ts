@@ -19,8 +19,8 @@ export type ScannedRoutes = {
     'api.timezones': { paramsTuple?: []; params?: {} }
     'api.modules': { paramsTuple?: []; params?: {} }
     'api.lead_owners': { paramsTuple?: []; params?: {} }
-    'dashboard': { paramsTuple?: []; params?: {} }
     'api.orgs.search': { paramsTuple?: []; params?: {} }
+    'dashboard': { paramsTuple?: []; params?: {} }
     'organizations.index': { paramsTuple?: []; params?: {} }
     'organizations.create': { paramsTuple?: []; params?: {} }
     'organizations.store': { paramsTuple?: []; params?: {} }
@@ -33,6 +33,7 @@ export type ScannedRoutes = {
     'organizations.edit': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.superAdmin.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'organizations.superAdmin.resetPassword': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.modules.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.update': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'userId': ParamValue} }
@@ -76,8 +77,8 @@ export type ScannedRoutes = {
     'api.timezones': { paramsTuple?: []; params?: {} }
     'api.modules': { paramsTuple?: []; params?: {} }
     'api.lead_owners': { paramsTuple?: []; params?: {} }
-    'dashboard': { paramsTuple?: []; params?: {} }
     'api.orgs.search': { paramsTuple?: []; params?: {} }
+    'dashboard': { paramsTuple?: []; params?: {} }
     'organizations.index': { paramsTuple?: []; params?: {} }
     'organizations.create': { paramsTuple?: []; params?: {} }
     'organizations.export': { paramsTuple?: []; params?: {} }
@@ -103,8 +104,8 @@ export type ScannedRoutes = {
     'api.timezones': { paramsTuple?: []; params?: {} }
     'api.modules': { paramsTuple?: []; params?: {} }
     'api.lead_owners': { paramsTuple?: []; params?: {} }
-    'dashboard': { paramsTuple?: []; params?: {} }
     'api.orgs.search': { paramsTuple?: []; params?: {} }
+    'dashboard': { paramsTuple?: []; params?: {} }
     'organizations.index': { paramsTuple?: []; params?: {} }
     'organizations.create': { paramsTuple?: []; params?: {} }
     'organizations.export': { paramsTuple?: []; params?: {} }
@@ -125,6 +126,7 @@ export type ScannedRoutes = {
     'auth.logout': { paramsTuple?: []; params?: {} }
     'organizations.store': { paramsTuple?: []; params?: {} }
     'organizations.bulk': { paramsTuple?: []; params?: {} }
+    'organizations.superAdmin.resetPassword': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.bulk': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.profiles.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
