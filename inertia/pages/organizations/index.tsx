@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react'
+import { DateTime } from 'luxon'
 import { router } from '@inertiajs/react'
 import {
   Building2, Plus, Search, Download,
@@ -63,23 +64,21 @@ export interface Props {
 
 function fmtDate(val: string | null | undefined): string {
   if (!val || val.startsWith('0000')) return '—'
-  const iso = val.includes('T') ? val : val.replace(' ', 'T')
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const dt = DateTime.fromISO(val.includes('T') ? val : val + 'T00:00:00')
+  return dt.isValid ? dt.toFormat('dd MMM yyyy') : '—'
 }
 
 function isExpired(planEnd: string | null): boolean {
   if (!planEnd || planEnd.startsWith('0000')) return false
-  const d = new Date(planEnd.includes('T') ? planEnd : planEnd.replace(' ', 'T'))
-  return !isNaN(d.getTime()) && d.getTime() < Date.now()
+  const dt = DateTime.fromISO(planEnd.includes('T') ? planEnd : planEnd + 'T00:00:00')
+  return dt.isValid && dt < DateTime.now()
 }
 
 function isNearExpiry(planEnd: string | null): boolean {
   if (!planEnd || planEnd.startsWith('0000')) return false
-  const d = new Date(planEnd.includes('T') ? planEnd : planEnd.replace(' ', 'T'))
-  if (isNaN(d.getTime())) return false
-  const diff = d.getTime() - Date.now()
+  const dt = DateTime.fromISO(planEnd.includes('T') ? planEnd : planEnd + 'T00:00:00')
+  if (!dt.isValid) return false
+  const diff = dt.diff(DateTime.now(), 'milliseconds').milliseconds
   return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
 }
 
@@ -971,7 +970,7 @@ export default function OrganizationsIndex({ orgs, leadOwners }: Props) {
         </p>
         <div className="fg">
           <label>New Plan End Date <span className="req">*</span></label>
-          <DatePicker value={extendDate} onChange={setExtendDate} placeholder="Select end date" min={new Date().toISOString().split('T')[0]} />
+          <DatePicker value={extendDate} onChange={setExtendDate} placeholder="Select end date" min={DateTime.now().toISODate()!} />
         </div>
       </Modal>
 

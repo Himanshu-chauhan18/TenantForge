@@ -2,15 +2,14 @@
 
 import { type DTColumn } from '~/components/data-table'
 import type { BillingRecord, FiscalYear } from './types'
+import { DateTime } from 'luxon'
 
 // ── Date helper ───────────────────────────────────────────────────────────────
 
 export function safeDate(val: string | null | undefined): string {
   if (!val) return '—'
-  const s = val.includes('T') ? val : val + 'T00:00:00'
-  const d = new Date(s)
-  if (isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  const dt = DateTime.fromISO(val.includes('T') ? val : val + 'T00:00:00')
+  return dt.isValid ? dt.toFormat('dd MMM yyyy') : '—'
 }
 
 // ── Avatar helpers ────────────────────────────────────────────────────────────

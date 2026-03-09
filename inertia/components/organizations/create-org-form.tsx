@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { DateTime } from 'luxon'
 import { router } from '@inertiajs/react'
 import { toast } from 'sonner'
 import {
@@ -7,7 +8,7 @@ import {
   X, Sparkles, Puzzle,
 } from 'lucide-react'
 import { SelectSearch } from '~/components/select-search'
-import { DatePicker, fmtDate } from '~/components/date-picker'
+import { DatePicker } from '~/components/date-picker'
 import { RadioGroup } from '~/components/radio-group'
 import { Checkbox } from '~/components/checkbox'
 import { Toggle } from '~/components/toggle'
@@ -19,9 +20,9 @@ import { INDUSTRIES, COMPANY_SIZES, DATE_FORMATS } from '~/data/org-options'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function fiscalDefaults() {
-  const today = new Date()
-  const m = today.getMonth() + 1
-  const y = today.getFullYear()
+  const now = DateTime.now()
+  const m = now.month
+  const y = now.year
   const fyStart = m >= 4 ? y : y - 1
   const fyEnd = fyStart + 1
   return {
@@ -32,10 +33,10 @@ function fiscalDefaults() {
 }
 
 function planDateDefaults() {
-  const today = new Date()
-  const end = new Date(today)
-  end.setDate(end.getDate() + 15)
-  return { start: fmtDate(today), end: fmtDate(end) }
+  return {
+    start: DateTime.now().toISODate()!,
+    end:   DateTime.now().plus({ days: 15 }).toISODate()!,
+  }
 }
 
 function generatePassword() {

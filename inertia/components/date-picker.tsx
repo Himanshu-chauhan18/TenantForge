@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { DateTime } from 'luxon'
 
 const CAL_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const CAL_DAYS   = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
-export function fmtDate(d: Date) { return d.toISOString().slice(0, 10) }
+export function fmtDate(d: Date) { return DateTime.fromJSDate(d).toISODate()! }
 
 interface CalPos {
   top?: number
@@ -31,7 +32,7 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
   // ref for the trigger; calRef for the portal calendar
   const ref    = useRef<HTMLDivElement>(null)
   const calRef = useRef<HTMLDivElement>(null)
-  const today  = fmtDate(new Date())
+  const today  = DateTime.now().toISODate()!
 
   // Close on outside click — check BOTH the trigger AND the portal calendar
   useEffect(() => {
@@ -76,10 +77,10 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
 
   useEffect(() => {
     if (open) {
-      const base = value ? new Date(value + 'T00:00:00') : new Date()
-      const y    = base.getFullYear()
+      const base = value ? DateTime.fromISO(value) : DateTime.now()
+      const y    = base.year
       setViewYear(y)
-      setViewMonth(base.getMonth())
+      setViewMonth(base.month - 1)  // Luxon months 1-based → 0-based for view
       setViewMode('month')
       setYearRangeStart(Math.floor(y / 12) * 12)
     }
@@ -87,12 +88,14 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
 
   function formatDisplay(v: string) {
     if (!v) return ''
-    const d = new Date(v + 'T00:00:00')
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    return DateTime.fromISO(v).toFormat('dd MMM yyyy')
   }
 
-  function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate() }
-  function getFirstDay(y: number, m: number)    { return new Date(y, m, 1).getDay() }
+  function getDaysInMonth(y: number, m: number) { return DateTime.local(y, m + 1, 1).daysInMonth! }
+  function getFirstDay(y: number, m: number) {
+    const wd = DateTime.local(y, m + 1, 1).weekday  // 1=Mon…7=Sun
+    return wd === 7 ? 0 : wd                          // → 0=Sun,1=Mon…6=Sat
+  }
 
   function isDisabled(dateStr: string) {
     if (min && dateStr < min) return true
@@ -177,7 +180,7 @@ export function DatePicker({ value, onChange, min, max, placeholder }: {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
           {years.map((y) => {
             const isCur = y === viewYear
-            const isNow = y === new Date().getFullYear()
+            const isNow = y === DateTime.now().year
             return (
               <button key={y} type="button" onClick={() => selectYear(y)}
                 style={{ padding: '7px 4px', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: '.78rem', fontWeight: isCur ? 700 : isNow ? 600 : 400, background: isCur ? 'var(--p)' : isNow ? 'var(--p-lt)' : 'transparent', color: isCur ? '#fff' : isNow ? 'var(--p)' : 'var(--text1)', transition: 'background .12s, color .12s' }}>

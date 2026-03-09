@@ -3,6 +3,7 @@ import Module from '#models/module'
 import OrganizationModule from '#models/organization_module'
 import FiscalYear from '#models/fiscal_year'
 import db from '@adonisjs/lucid/services/db'
+import { DateTime } from 'luxon'
 
 // Numeric mappings for tinyint columns — used in raw query builder calls
 // (Lucid model prepare/consume only applies to INSERT/UPDATE via model, not raw QB WHERE/UPDATE)
@@ -74,8 +75,8 @@ export default class OrganizationRepository {
       sortDir = 'desc',
     } = filters
 
-    const today = new Date().toISOString().split('T')[0]
-    const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const today = DateTime.now().toISODate()!
+    const sevenDaysLater = DateTime.now().plus({ days: 7 }).toISODate()!
 
     const query = Organization.query()
       .select('organizations.*')
@@ -272,7 +273,7 @@ export default class OrganizationRepository {
   }
 
   async softDelete(id: number): Promise<void> {
-    await Organization.query().where('id', id).update({ deleted_at: new Date() })
+    await Organization.query().where('id', id).update({ deleted_at: DateTime.now().toJSDate() })
   }
 
   async restore(id: number): Promise<void> {
@@ -298,7 +299,7 @@ export default class OrganizationRepository {
         await Organization.query().whereIn('id', ids).update({ is_archived: false })
         break
       case 'delete':
-        await Organization.query().whereIn('id', ids).update({ deleted_at: new Date() })
+        await Organization.query().whereIn('id', ids).update({ deleted_at: DateTime.now().toJSDate() })
         break
       case 'extend_plan':
         if (payload?.planEnd) {
@@ -345,10 +346,10 @@ export default class OrganizationRepository {
   }
 
   async getDashboardStats() {
-    const today = new Date().toISOString().split('T')[0]
-    const sevenDaysLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    const sixtyDaysAgo  = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000)
+    const today         = DateTime.now().toISODate()!
+    const sevenDaysLater = DateTime.now().plus({ days: 7 }).toISODate()!
+    const thirtyDaysAgo = DateTime.now().minus({ days: 30 }).toJSDate()
+    const sixtyDaysAgo  = DateTime.now().minus({ days: 60 }).toJSDate()
 
     const n = (r: any) => Number(r?.$extras?.count || 0)
     const nc = (r: any) => Number(r?.count || 0)

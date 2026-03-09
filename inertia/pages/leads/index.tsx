@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { DateTime } from 'luxon'
 import { router } from '@inertiajs/react'
 import {
   UserCheck, Plus, Search, Pencil, Trash2, X,
@@ -66,10 +67,8 @@ type BulkConfirm = { op: 'activate' | 'deactivate'; count: number } | null
 
 function fmtDate(val: string | null | undefined): string {
   if (!val || val.startsWith('0000')) return '—'
-  const iso = val.includes('T') ? val : val.replace(' ', 'T')
-  const d = new Date(iso)
-  if (isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+  const dt = DateTime.fromISO(val.includes('T') ? val : val.replace(' ', 'T'))
+  return dt.isValid ? dt.toFormat('dd MMM yyyy') : '—'
 }
 
 function emptyForm() {

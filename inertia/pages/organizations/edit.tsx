@@ -1,4 +1,5 @@
 import { useState, useRef, useLayoutEffect } from 'react'
+import { DateTime } from 'luxon'
 import { Link, router } from '@inertiajs/react'
 import { ArrowLeft, ExternalLink, Trash2, AlertTriangle } from 'lucide-react'
 import { Modal } from '~/components/modal'
@@ -38,10 +39,8 @@ export default function EditOrganization({ org, leadOwners }: Props) {
   }, [activeTab])
 
   // ── Derived values for alerts (page-level) ──
-  const planEndTs    = org.planEnd
-    ? new Date(org.planEnd.includes('T') ? org.planEnd : org.planEnd + 'T00:00:00').getTime()
-    : null
-  const daysLeft     = planEndTs !== null ? Math.ceil((planEndTs - Date.now()) / 86400000) : null
+  const planEndDt    = org.planEnd ? DateTime.fromISO(org.planEnd.includes('T') ? org.planEnd : org.planEnd + 'T00:00:00') : null
+  const daysLeft     = planEndDt?.isValid ? Math.ceil(planEndDt.diff(DateTime.now(), 'days').days) : null
   const isNearExpiry = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7
   const isExpired    = daysLeft !== null && daysLeft < 0
 

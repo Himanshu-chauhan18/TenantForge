@@ -289,12 +289,11 @@ export default class OrganizationController {
     const serialized = orgs.serialize()
     const rows = serialized.data as any[]
 
-    const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+    const { DateTime } = await import('luxon')
     function fmtDate(val: string | null | undefined): string {
       if (!val) return ''
-      const d = new Date(val)
-      if (isNaN(d.getTime())) return ''
-      return `${String(d.getDate()).padStart(2,'0')} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`
+      const dt = DateTime.fromISO(val)
+      return dt.isValid ? dt.toFormat('dd MMM yyyy') : ''
     }
 
     function escapeCsv(val: unknown): string {

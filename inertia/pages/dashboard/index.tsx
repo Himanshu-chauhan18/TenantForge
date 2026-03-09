@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { DateTime } from 'luxon'
 import { Link, usePage, router } from '@inertiajs/react'
 import {
   Building2, Users, CreditCard, Clock, AlertTriangle, Archive,
@@ -218,13 +219,13 @@ export default function Dashboard({ stats }: { stats: DashStats }) {
   }
 
   const greeting = (() => {
-    const h = new Date().getHours()
+    const h = DateTime.now().hour
     if (h < 12) return 'Good morning'
     if (h < 17) return 'Good afternoon'
     return 'Good evening'
   })()
 
-  const dateStr = new Date().toLocaleDateString('en-IN', {
+  const dateStr = DateTime.now().setLocale('en-IN').toLocaleString({
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
   })
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { DateTime } from 'luxon'
 import { router } from '@inertiajs/react'
 import {
   Building2, MapPin, Globe, Shield,
@@ -11,7 +12,7 @@ import { SelectSearch } from '~/components/select-search'
 import { CountrySelect, type CountryOption } from '~/components/country-select'
 import { CitySelect, type CityOption } from '~/components/city-select'
 import { PhoneInput } from '~/components/phone-input'
-import { DatePicker, fmtDate } from '~/components/date-picker'
+import { DatePicker } from '~/components/date-picker'
 import { INDUSTRIES, COMPANY_SIZES, DATE_FORMATS } from '~/data/org-options'
 import type { Org, LeadOwnerOption } from './types'
 import { safeDate, avColor, initials } from './data'
@@ -211,13 +212,10 @@ export function OverviewTab({ org, leadOwners }: Props) {
   }, [])
 
   // ── Derived values ──
-  const planEndTs   = org.planEnd
-    ? new Date(org.planEnd.includes('T') ? org.planEnd : org.planEnd + 'T00:00:00').getTime()
-    : null
-  const planStartTs = org.planStart
-    ? new Date(org.planStart.includes('T') ? org.planStart : org.planStart + 'T00:00:00').getTime()
-    : null
-  const daysLeft      = planEndTs !== null ? Math.ceil((planEndTs - Date.now()) / 86400000) : null
+  const now         = DateTime.now()
+  const planEndDt   = org.planEnd ? DateTime.fromISO(org.planEnd.includes('T') ? org.planEnd : org.planEnd + 'T00:00:00') : null
+  const planStartDt = org.planStart ? DateTime.fromISO(org.planStart.includes('T') ? org.planStart : org.planStart + 'T00:00:00') : null
+  const daysLeft      = planEndDt?.isValid ? Math.ceil(planEndDt.diff(now, 'days').days) : null
   const isNearExpiry  = daysLeft !== null && daysLeft >= 0 && daysLeft <= 7
   const isExpired     = daysLeft !== null && daysLeft < 0
   const enabledModules = (org.modules || []).filter((m) => m.enabled)
@@ -226,8 +224,8 @@ export function OverviewTab({ org, leadOwners }: Props) {
   const modPct  = (org.modules || []).length > 0
     ? Math.round((enabledModules.length / (org.modules || []).length) * 100)
     : 0
-  const planPct = (planStartTs && planEndTs && planEndTs > planStartTs)
-    ? Math.min(100, Math.max(0, Math.round(((Date.now() - planStartTs) / (planEndTs - planStartTs)) * 100)))
+  const planPct = (planStartDt?.isValid && planEndDt?.isValid && planEndDt > planStartDt)
+    ? Math.min(100, Math.max(0, Math.round((now.diff(planStartDt, 'milliseconds').milliseconds / planEndDt.diff(planStartDt, 'milliseconds').milliseconds) * 100)))
     : 0
   const planBarColor = isExpired || planPct >= 90 ? '#ef4444' : planPct >= 70 ? '#f59e0b' : 'var(--p)'
   const userBarColor = userCount > org.userLimit ? '#ef4444' : userPct > 80 ? '#f59e0b' : '#0ea5e9'
@@ -665,7 +663,7 @@ export function OverviewTab({ org, leadOwners }: Props) {
                 </div>
                 <div className="fg">
                   <label>Date of Birth</label>
-                  <DatePicker value={aDob} onChange={setADob} placeholder="Select date of birth…" max={fmtDate(new Date())} />
+                  <DatePicker value={aDob} onChange={setADob} placeholder="Select date of birth…" max={DateTime.now().toISODate()!} />
                 </div>
                 <div className="fg">
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

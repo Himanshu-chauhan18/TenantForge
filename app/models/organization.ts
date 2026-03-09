@@ -134,12 +134,11 @@ export default class Organization extends BaseModel {
 
   get isExpired(): boolean {
     if (!this.planEnd) return false
-    return new Date(this.planEnd) < new Date()
+    return DateTime.fromISO(this.planEnd) < DateTime.now()
   }
 
   get daysUntilExpiry(): number | null {
     if (!this.planEnd) return null
-    const diff = new Date(this.planEnd).getTime() - Date.now()
-    return Math.ceil(diff / (1000 * 60 * 60 * 24))
+    return Math.ceil(DateTime.fromISO(this.planEnd).diff(DateTime.now(), 'days').days)
   }
 }
