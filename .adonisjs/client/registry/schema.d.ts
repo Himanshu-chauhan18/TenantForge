@@ -700,6 +700,17 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/auth_controller').default['logout']>>>
     }
   }
+  'hrms.self-service': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/self-service'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/self_service_controller').default['index']>>>
+    }
+  }
   'hrms.dashboard': {
     methods: ["GET","HEAD"]
     pattern: '/hrms/dashboard'

@@ -7,8 +7,8 @@ import { hrmsLoginValidator } from '#hrms/validators/auth_validator'
 export default class HrmsAuthController {
   async showLogin({ inertia, session, response }: HttpContext) {
     const existing = session.get('hrms_session')
-    if (existing?.employeeId) return response.redirect('/hrms/dashboard')
-    return inertia.render('hrms/auth/login')
+    if (existing?.employeeId) return response.redirect('/hrms/self-service')
+    return inertia.render('hrms/auth/login', {})
   }
 
   async login({ request, response, session, inertia }: HttpContext) {
@@ -47,7 +47,7 @@ export default class HrmsAuthController {
 
     // Store HRMS session
     session.put('hrms_session', { employeeId: employee.id, orgId: org.id })
-    return response.redirect('/hrms/dashboard')
+    return response.redirect('/hrms/self-service')
   }
 
   async logout({ session, response }: HttpContext) {

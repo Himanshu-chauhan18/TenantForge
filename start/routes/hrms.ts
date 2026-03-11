@@ -3,6 +3,7 @@ import { middleware } from '#start/kernel'
 
 const HrmsAuthController = () => import('#hrms/controllers/auth_controller')
 const HrmsDashboardController = () => import('#hrms/controllers/dashboard_controller')
+const HrmsSelfServiceController = () => import('#hrms/controllers/self_service_controller')
 const HrmsCompanyController = () => import('#hrms/controllers/company_controller')
 const HrmsRolesController = () => import('#hrms/controllers/roles_controller')
 const HrmsHierarchyController = () => import('#hrms/controllers/hierarchy_controller')
@@ -15,6 +16,7 @@ export default function hrmsRoutes() {
 
   router
     .group(() => {
+      router.get('/self-service', [HrmsSelfServiceController, 'index']).as('hrms.self-service')
       router.get('/dashboard', [HrmsDashboardController, 'index']).as('hrms.dashboard')
 
       router.get('/organization/company', [HrmsCompanyController, 'show']).as('hrms.org.company')
@@ -101,7 +103,7 @@ export default function hrmsRoutes() {
       router.get('/organization/settings/notifications', [HrmsSettingsController, 'notificationsIndex']).as('hrms.notifications')
       router.get('/organization/settings/fiscal-year', [HrmsSettingsController, 'fiscalYearIndex']).as('hrms.fiscal-year')
 
-      router.get('/*', ({ response }) => response.redirect('/hrms/dashboard'))
+      router.get('/*', ({ response }) => response.redirect('/hrms/self-service'))
     })
     .prefix('/hrms')
     .use(middleware.hrmsAuth())

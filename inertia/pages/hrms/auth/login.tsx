@@ -3,7 +3,6 @@ import { useForm, usePage } from '@inertiajs/react'
 import {
   Eye, EyeOff, Lock, ArrowRight, ChevronLeft,
   AlertCircle, CheckCircle2, Sun, Moon,
-  Users, CalendarCheck, ShieldCheck, Zap, Globe,
 } from 'lucide-react'
 
 /* ─── helpers ──────────────────────────────────────────────────────────────── */
@@ -15,136 +14,103 @@ function getIdentifierType(v: string): 'email' | 'phone' | null {
   return null
 }
 
-/* ─── theme tokens ──────────────────────────────────────────────────────────── */
+/* ─── theme ──────────────────────────────────────────────────────────────── */
 const T = {
   dark: {
-    pageBg:            '#060f0e',
-    pageGrad:          'linear-gradient(135deg,#060f0e 0%,#0b1d1a 55%,#071410 100%)',
-    leftPanelBg:       'linear-gradient(160deg,#0a1f1c 0%,#0d2922 45%,#071a16 100%)',
-    leftShadow:        '4px 0 40px rgba(0,0,0,.5)',
-    gridColor:         'rgba(13,148,136,.055)',
-    headlineSub:       'rgba(255,255,255,.45)',
-    logoText:          '#ffffff',
-    logoTag:           'rgba(255,255,255,.3)',
-    /* right-side decorative */
-    orb1:              'rgba(13,148,136,.14)',
-    orb2:              'rgba(5,150,105,.09)',
-    orb3:              'rgba(52,211,153,.07)',
-    dotColor:          'rgba(13,148,136,.045)',
-    ringColor:         'rgba(13,148,136,.07)',
-    /* card */
-    cardBg:            'rgba(255,255,255,.055)',
-    cardBorder:        'rgba(255,255,255,.1)',
-    cardShadow:        '0 32px 100px rgba(0,0,0,.65),0 1px 0 rgba(255,255,255,.08) inset',
-    /* form */
-    progressInact:     'rgba(255,255,255,.12)',
-    stepLabel:         '#34d399',
-    stepTitle:         '#ffffff',
-    stepSub:           'rgba(255,255,255,.4)',
-    inputBg:           'rgba(255,255,255,.065)',
-    inputBorder:       'rgba(255,255,255,.13)',
-    inputText:         '#ffffff',
-    inputPlaceholder:  'rgba(255,255,255,.3)',
-    inputIcon:         'rgba(255,255,255,.3)',
-    labelText:         'rgba(255,255,255,.6)',
-    backBtn:           'rgba(255,255,255,.5)',
-    backBtnHover:      'rgba(255,255,255,.88)',
-    chipBg:            'rgba(13,148,136,.12)',
-    chipBorder:        'rgba(13,148,136,.22)',
-    chipText:          'rgba(255,255,255,.7)',
-    avatarTitle:       '#ffffff',
-    avatarSub:         'rgba(255,255,255,.35)',
-    errorBg:           'rgba(239,68,68,.1)',
-    errorBorder:       'rgba(239,68,68,.25)',
-    errorText:         '#fca5a5',
-    tagBg:             'rgba(13,148,136,.15)',
-    tagBorder:         'rgba(13,148,136,.25)',
-    tagText:           '#34d399',
-    footer:            'rgba(255,255,255,.25)',
-    toggleBg:          'rgba(255,255,255,.08)',
-    toggleBorder:      'rgba(255,255,255,.13)',
-    toggleIcon:        'rgba(255,255,255,.6)',
-    pwToggle:          'rgba(255,255,255,.35)',
-    pwToggleHover:     'rgba(255,255,255,.72)',
+    pageBg:         '#050e0c',
+    cardBg:         'rgba(10,25,22,.85)',
+    cardBorder:     'rgba(13,148,136,.28)',
+    cardGlow:       '0 0 0 1px rgba(13,148,136,.18), 0 32px 80px rgba(0,0,0,.75), 0 8px 32px rgba(13,148,136,.08)',
+    logoText:       '#ffffff',
+    logoSub:        'rgba(255,255,255,.3)',
+    divider:        'rgba(255,255,255,.07)',
+    progressInact:  'rgba(255,255,255,.1)',
+    stepLabel:      '#34d399',
+    stepTitle:      '#ffffff',
+    stepSub:        'rgba(255,255,255,.38)',
+    inputBg:        'rgba(255,255,255,.05)',
+    inputBorder:    'rgba(255,255,255,.1)',
+    inputText:      '#ffffff',
+    inputPH:        'rgba(255,255,255,.26)',
+    inputIcon:      'rgba(255,255,255,.28)',
+    label:          'rgba(255,255,255,.52)',
+    backBtn:        'rgba(255,255,255,.4)',
+    backHover:      'rgba(255,255,255,.85)',
+    chipBg:         'rgba(13,148,136,.1)',
+    chipBorder:     'rgba(13,148,136,.2)',
+    chipText:       'rgba(255,255,255,.6)',
+    avatarTitle:    '#ffffff',
+    avatarSub:      'rgba(255,255,255,.3)',
+    errBg:          'rgba(239,68,68,.1)',
+    errBorder:      'rgba(239,68,68,.22)',
+    errText:        '#fca5a5',
+    footer:         'rgba(255,255,255,.2)',
+    toggleBg:       'rgba(255,255,255,.06)',
+    toggleBorder:   'rgba(255,255,255,.1)',
+    toggleIcon:     'rgba(255,255,255,.5)',
+    pwToggle:       'rgba(255,255,255,.28)',
+    pwToggleHover:  'rgba(255,255,255,.7)',
+    /* bg decorations */
+    blob1: 'rgba(13,148,136,.3)',
+    blob2: 'rgba(5,150,105,.2)',
+    blob3: 'rgba(52,211,153,.12)',
+    blob4: 'rgba(6,78,59,.25)',
+    gridLine: 'rgba(13,148,136,.04)',
+    ring:  'rgba(13,148,136,.09)',
+    dot:   'rgba(13,148,136,.55)',
   },
   light: {
-    pageBg:            '#edfaf5',
-    pageGrad:          'linear-gradient(135deg,#f0fdf9 0%,#e4faf3 55%,#eafaf5 100%)',
-    leftPanelBg:       'linear-gradient(160deg,#0a2420 0%,#0d3028 45%,#071e19 100%)',
-    leftShadow:        '4px 0 40px rgba(0,0,0,.2)',
-    gridColor:         'rgba(52,211,153,.08)',
-    headlineSub:       'rgba(255,255,255,.55)',
-    logoText:          '#ffffff',
-    logoTag:           'rgba(255,255,255,.45)',
-    /* right-side decorative */
-    orb1:              'rgba(13,148,136,.1)',
-    orb2:              'rgba(5,150,105,.07)',
-    orb3:              'rgba(52,211,153,.06)',
-    dotColor:          'rgba(13,148,136,.07)',
-    ringColor:         'rgba(13,148,136,.1)',
-    /* card */
-    cardBg:            'rgba(255,255,255,.9)',
-    cardBorder:        'rgba(13,148,136,.18)',
-    cardShadow:        '0 24px 80px rgba(13,148,136,.12),0 1px 0 rgba(255,255,255,.98) inset,0 8px 32px rgba(0,0,0,.04)',
-    /* form */
-    progressInact:     'rgba(13,148,136,.15)',
-    stepLabel:         '#059669',
-    stepTitle:         '#0f2420',
-    stepSub:           'rgba(15,36,32,.5)',
-    inputBg:           'rgba(255,255,255,.92)',
-    inputBorder:       'rgba(13,148,136,.2)',
-    inputText:         '#0f2420',
-    inputPlaceholder:  'rgba(15,36,32,.35)',
-    inputIcon:         'rgba(13,148,136,.55)',
-    labelText:         'rgba(15,36,32,.65)',
-    backBtn:           'rgba(15,36,32,.45)',
-    backBtnHover:      '#0f2420',
-    chipBg:            'rgba(13,148,136,.08)',
-    chipBorder:        'rgba(13,148,136,.2)',
-    chipText:          'rgba(15,36,32,.75)',
-    avatarTitle:       '#0f2420',
-    avatarSub:         'rgba(15,36,32,.45)',
-    errorBg:           'rgba(239,68,68,.06)',
-    errorBorder:       'rgba(239,68,68,.2)',
-    errorText:         '#dc2626',
-    tagBg:             'rgba(52,211,153,.15)',
-    tagBorder:         'rgba(52,211,153,.28)',
-    tagText:           '#059669',
-    footer:            'rgba(15,36,32,.35)',
-    toggleBg:          'rgba(255,255,255,.18)',
-    toggleBorder:      'rgba(255,255,255,.28)',
-    toggleIcon:        'rgba(255,255,255,.85)',
-    pwToggle:          'rgba(15,36,32,.35)',
-    pwToggleHover:     'rgba(15,36,32,.72)',
+    pageBg:         '#e8faf4',
+    cardBg:         'rgba(255,255,255,.9)',
+    cardBorder:     'rgba(13,148,136,.2)',
+    cardGlow:       '0 0 0 1px rgba(13,148,136,.12), 0 24px 64px rgba(13,148,136,.12), 0 4px 16px rgba(0,0,0,.04)',
+    logoText:       '#0f2420',
+    logoSub:        'rgba(15,36,32,.35)',
+    divider:        'rgba(13,148,136,.1)',
+    progressInact:  'rgba(13,148,136,.13)',
+    stepLabel:      '#059669',
+    stepTitle:      '#0f2420',
+    stepSub:        'rgba(15,36,32,.45)',
+    inputBg:        'rgba(255,255,255,.95)',
+    inputBorder:    'rgba(13,148,136,.18)',
+    inputText:      '#0f2420',
+    inputPH:        'rgba(15,36,32,.3)',
+    inputIcon:      'rgba(13,148,136,.5)',
+    label:          'rgba(15,36,32,.58)',
+    backBtn:        'rgba(15,36,32,.4)',
+    backHover:      '#0f2420',
+    chipBg:         'rgba(13,148,136,.07)',
+    chipBorder:     'rgba(13,148,136,.16)',
+    chipText:       'rgba(15,36,32,.65)',
+    avatarTitle:    '#0f2420',
+    avatarSub:      'rgba(15,36,32,.4)',
+    errBg:          'rgba(239,68,68,.06)',
+    errBorder:      'rgba(239,68,68,.16)',
+    errText:        '#dc2626',
+    footer:         'rgba(15,36,32,.28)',
+    toggleBg:       'rgba(13,148,136,.07)',
+    toggleBorder:   'rgba(13,148,136,.14)',
+    toggleIcon:     '#0D9488',
+    pwToggle:       'rgba(15,36,32,.3)',
+    pwToggleHover:  'rgba(15,36,32,.7)',
+    blob1: 'rgba(13,148,136,.22)',
+    blob2: 'rgba(5,150,105,.14)',
+    blob3: 'rgba(52,211,153,.1)',
+    blob4: 'rgba(20,184,166,.12)',
+    gridLine: 'rgba(13,148,136,.055)',
+    ring:  'rgba(13,148,136,.12)',
+    dot:   'rgba(13,148,136,.35)',
   },
 } as const
 
-/* ─── feature highlights ────────────────────────────────────────────────────── */
-const FEATURES = [
-  { Icon: Users,         title: 'Employee Lifecycle',   desc: 'From onboarding to exit, every stage managed in one place' },
-  { Icon: CalendarCheck, title: 'Attendance & Leaves',  desc: 'Real-time tracking with smart leave approval workflows' },
-  { Icon: ShieldCheck,   title: 'Payroll & Compliance', desc: 'Automated payroll runs with tax and statutory handling' },
-]
-
-/* ─── trust signals ─────────────────────────────────────────────────────────── */
-const TRUST = [
-  { Icon: ShieldCheck, label: 'Enterprise Secure' },
-  { Icon: Zap,         label: 'High Performance' },
-  { Icon: Globe,       label: 'Multi-Organisation' },
-]
-
 /* ─── page ──────────────────────────────────────────────────────────────────── */
 export default function HrmsLogin() {
-  const page     = usePage<any>()
+  const page      = usePage<any>()
   const authError = (page.props as any)?.authError as string | undefined
 
-  /* theme */
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('tf-theme') as 'dark' | 'light') || 'dark'
-    }
-    return 'dark'
-  })
+  const [theme, setTheme] = useState<'dark' | 'light'>(() =>
+    typeof window !== 'undefined' ? (localStorage.getItem('tf-theme') as 'dark' | 'light') || 'dark' : 'dark'
+  )
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -154,11 +120,42 @@ export default function HrmsLogin() {
   const c      = T[theme]
   const isDark = theme === 'dark'
 
+  /* mouse parallax — updates DOM directly, zero re-renders */
+  const b1 = useRef<HTMLDivElement>(null)
+  const b2 = useRef<HTMLDivElement>(null)
+  const b3 = useRef<HTMLDivElement>(null)
+  const b4 = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const mouse = { x: 0, y: 0 }
+    const cur   = { x: 0, y: 0 }
+    let raf: number
+
+    const onMove = (e: MouseEvent) => {
+      mouse.x = (e.clientX / window.innerWidth  - 0.5) * 2
+      mouse.y = (e.clientY / window.innerHeight - 0.5) * 2
+    }
+
+    const tick = () => {
+      cur.x += (mouse.x - cur.x) * 0.055
+      cur.y += (mouse.y - cur.y) * 0.055
+      if (b1.current) b1.current.style.transform = `translate(${cur.x * -28}px,${cur.y * -20}px)`
+      if (b2.current) b2.current.style.transform = `translate(${cur.x * 20}px,${cur.y * 26}px)`
+      if (b3.current) b3.current.style.transform = `translate(${cur.x * -14}px,${cur.y * 18}px)`
+      if (b4.current) b4.current.style.transform = `translate(${cur.x * 18}px,${cur.y * -16}px)`
+      raf = requestAnimationFrame(tick)
+    }
+
+    window.addEventListener('mousemove', onMove, { passive: true })
+    raf = requestAnimationFrame(tick)
+    return () => { window.removeEventListener('mousemove', onMove); cancelAnimationFrame(raf) }
+  }, [])
+
   /* step flow */
-  const [step, setStep]               = useState<'identifier' | 'password'>('identifier')
-  const [identifier, setIdentifier]   = useState('')
+  const [step, setStep]                   = useState<'identifier' | 'password'>('identifier')
+  const [identifier, setIdentifier]       = useState('')
   const [identifierErr, setIdentifierErr] = useState('')
-  const [showPw, setShowPw]           = useState(false)
+  const [showPw, setShowPw]               = useState(false)
 
   const identifierRef = useRef<HTMLInputElement>(null)
   const passwordRef   = useRef<HTMLInputElement>(null)
@@ -196,354 +193,346 @@ export default function HrmsLogin() {
   return (
     <>
       <style>{`
-        @keyframes fadeUp   { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes fadeIn   { from{opacity:0} to{opacity:1} }
-        @keyframes slideLeft  { from{opacity:0;transform:translateX(28px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes slideRight { from{opacity:0;transform:translateX(-28px)} to{opacity:1;transform:translateX(0)} }
-        @keyframes spin     { to{transform:rotate(360deg)} }
-        @keyframes floatA   { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-28px) scale(1.04)} }
-        @keyframes floatB   { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(22px) scale(.97)} }
-        @keyframes floatC   { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-18px)} }
-        @keyframes pulse    { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
+        @keyframes fadeUp  { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes slideL  { from{opacity:0;transform:translateX(24px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes slideR  { from{opacity:0;transform:translateX(-24px)} to{opacity:1;transform:translateX(0)} }
+        @keyframes spin    { to{transform:rotate(360deg)} }
 
-        .hl-step-in  { animation:slideLeft  .28s cubic-bezier(.4,0,.2,1) both; }
-        .hl-step-out { animation:slideRight .28s cubic-bezier(.4,0,.2,1) both; }
-        .hl-card-anim{ animation:fadeUp .42s cubic-bezier(.4,0,.2,1) both; }
-        .hl-feat     { animation:fadeUp .5s cubic-bezier(.4,0,.2,1) both; }
+        /* aurora blob animations */
+        @keyframes aurora1 {
+          0%   { border-radius:60% 40% 55% 45%/50% 60% 40% 50%; }
+          33%  { border-radius:40% 60% 45% 55%/60% 40% 60% 40%; }
+          66%  { border-radius:55% 45% 60% 40%/40% 55% 45% 60%; }
+          100% { border-radius:60% 40% 55% 45%/50% 60% 40% 50%; }
+        }
+        @keyframes aurora2 {
+          0%   { border-radius:45% 55% 40% 60%/60% 45% 55% 40%; }
+          50%  { border-radius:65% 35% 55% 45%/40% 65% 35% 60%; }
+          100% { border-radius:45% 55% 40% 60%/60% 45% 55% 40%; }
+        }
+        @keyframes aurora3 {
+          0%   { border-radius:55% 45% 65% 35%/45% 60% 40% 55%; }
+          50%  { border-radius:35% 65% 45% 55%/65% 35% 60% 40%; }
+          100% { border-radius:55% 45% 65% 35%/45% 60% 40% 55%; }
+        }
+        @keyframes drift1  { 0%,100%{transform:translate(0,0) rotate(0deg)} 33%{transform:translate(-30px,-20px) rotate(120deg)} 66%{transform:translate(20px,30px) rotate(240deg)} }
+        @keyframes drift2  { 0%,100%{transform:translate(0,0) rotate(0deg)} 33%{transform:translate(25px,35px) rotate(-100deg)} 66%{transform:translate(-35px,-15px) rotate(-220deg)} }
+        @keyframes drift3  { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-20px,25px)} }
+        @keyframes drift4  { 0%,100%{transform:translate(0,0)} 50%{transform:translate(22px,-18px)} }
+        @keyframes pulse   { 0%,100%{opacity:.4;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.75;transform:translate(-50%,-50%) scale(1.07)} }
+        @keyframes spin-slow{ to{transform:translate(-50%,-50%) rotate(360deg)} }
+        @keyframes float-dot{ 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+        .hl-card   { animation:fadeUp .42s cubic-bezier(.4,0,.2,1) both; }
+        .hl-step-in  { animation:slideL .26s cubic-bezier(.4,0,.2,1) both; }
+        .hl-step-out { animation:slideR .26s cubic-bezier(.4,0,.2,1) both; }
 
         .hl-input {
-          width:100%; border-radius:12px; padding:13px 44px;
-          font-size:.9rem; outline:none; box-sizing:border-box;
-          transition:border-color .2s,box-shadow .2s,background .3s,color .3s;
+          width:100%; border-radius:11px; padding:12px 42px;
+          font-size:.875rem; outline:none; box-sizing:border-box;
+          transition:border-color .18s, box-shadow .18s, background .3s, color .3s;
         }
-        .hl-input:focus { border-color:#0D9488!important; box-shadow:0 0 0 3px rgba(13,148,136,.18)!important; }
-        .hl-input.err   { border-color:#f87171!important; box-shadow:0 0 0 3px rgba(248,113,113,.15)!important; }
+        .hl-input:focus {
+          border-color:#0D9488 !important;
+          box-shadow:0 0 0 3px rgba(13,148,136,.16) !important;
+        }
+        .hl-input.err {
+          border-color:#f87171 !important;
+          box-shadow:0 0 0 3px rgba(248,113,113,.13) !important;
+        }
 
         .hl-btn {
-          width:100%; padding:13px 20px; border-radius:12px; border:none; cursor:pointer;
-          background:linear-gradient(135deg,#0D9488,#059669);
-          color:#fff; font-size:.9rem; font-weight:700; letter-spacing:.02em;
+          width:100%; padding:12px 18px; border-radius:11px; border:none; cursor:pointer;
+          background:linear-gradient(135deg,#0D9488 0%,#059669 100%);
+          color:#fff; font-size:.875rem; font-weight:700; letter-spacing:.025em;
           display:flex; align-items:center; justify-content:center; gap:8px;
-          transition:opacity .2s,transform .15s,box-shadow .2s;
-          box-shadow:0 4px 22px rgba(13,148,136,.42);
+          transition:filter .18s, transform .14s, box-shadow .18s;
+          box-shadow:0 4px 20px rgba(13,148,136,.35);
+          position:relative; overflow:hidden;
         }
-        .hl-btn:hover:not(:disabled)  { opacity:.91; transform:translateY(-1px); box-shadow:0 7px 28px rgba(13,148,136,.58); }
+        .hl-btn::before {
+          content:''; position:absolute; inset:0;
+          background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);
+          opacity:0; transition:opacity .2s;
+        }
+        .hl-btn:hover:not(:disabled)::before { opacity:1; }
+        .hl-btn:hover:not(:disabled)  { filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 7px 28px rgba(13,148,136,.5); }
         .hl-btn:active:not(:disabled) { transform:translateY(0); }
-        .hl-btn:disabled { opacity:.6; cursor:not-allowed; }
+        .hl-btn:disabled              { opacity:.55; cursor:not-allowed; }
 
         .hl-back {
           background:none; border:none; cursor:pointer;
           display:flex; align-items:center; gap:4px;
-          font-size:.78rem; padding:0; transition:color .15s;
+          font-size:.76rem; padding:0; transition:color .14s;
         }
         .hl-toggle {
+          width:34px; height:34px; border-radius:9px; border:1px solid;
           display:flex; align-items:center; justify-content:center;
-          width:36px; height:36px; border-radius:10px; border:1px solid;
-          cursor:pointer; transition:background .2s,border-color .2s,transform .15s;
+          cursor:pointer; transition:background .2s, transform .15s, box-shadow .15s;
           flex-shrink:0;
         }
-        .hl-toggle:hover { transform:scale(1.1); }
+        .hl-toggle:hover { transform:scale(1.08); box-shadow:0 2px 10px rgba(13,148,136,.2); }
 
-        /* ── layout ── */
-        .hl-layout { min-height:100vh; display:flex; position:relative; overflow:hidden; transition:background .35s; }
-        .hl-left   { flex:0 0 46%; display:flex; flex-direction:column; justify-content:space-between; padding:44px 52px; position:relative; z-index:1; overflow:hidden; transition:background .35s,box-shadow .35s; }
-        .hl-right  { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 48px; position:relative; z-index:1; }
-        .hl-card   { width:100%; max-width:440px; border-radius:24px; padding:44px 40px; backdrop-filter:blur(24px); transition:background .3s,border-color .3s,box-shadow .3s; position:relative; z-index:2; }
-
-        /* mobile header (hidden on desktop) */
-        .hl-mob-header { display:none; align-items:center; justify-content:space-between; width:100%; max-width:440px; margin-bottom:28px; }
-
-        @media (max-width: 768px) {
-          .hl-left       { display:none !important; }
-          .hl-right      { padding:24px 20px 40px; justify-content:flex-start; padding-top:32px; }
-          .hl-card       { padding:28px 22px; border-radius:20px; }
-          .hl-mob-header { display:flex; }
+        /* floating accent dots */
+        .hl-acc-dot {
+          position:fixed; width:6px; height:6px; border-radius:50%;
+          background:#34d399; pointer-events:none; z-index:0;
         }
-        @media (max-width: 400px) {
-          .hl-right { padding:20px 12px 32px; }
-          .hl-card  { padding:24px 18px; }
+
+        /* responsive card */
+        @media (max-width:480px) {
+          .hl-card-wrap { padding:16px 12px !important; }
+          .hl-card-inner { padding:28px 20px !important; border-radius:18px !important; }
         }
       `}</style>
 
-      {/* ── page ── */}
-      <div className="hl-layout" style={{ background:c.pageGrad }}>
+      {/* ── full-page canvas ── */}
+      <div style={{
+        minHeight: '100vh', background: c.pageBg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'relative', overflow: 'hidden',
+        transition: 'background .35s',
+      }}>
 
-        {/* ── global ambient orbs (right side & full page) ── */}
-        <div style={{ position:'fixed', top:'-8%', right:'8%', width:520, height:520, borderRadius:'50%', background:`radial-gradient(circle,${c.orb1} 0%,transparent 68%)`, filter:'blur(60px)', pointerEvents:'none', zIndex:0, animation:'floatA 14s ease-in-out infinite' }} />
-        <div style={{ position:'fixed', bottom:'5%', right:'22%', width:380, height:380, borderRadius:'50%', background:`radial-gradient(circle,${c.orb2} 0%,transparent 68%)`, filter:'blur(52px)', pointerEvents:'none', zIndex:0, animation:'floatB 18s ease-in-out infinite' }} />
-        <div style={{ position:'fixed', top:'40%', right:'-4%', width:300, height:300, borderRadius:'50%', background:`radial-gradient(circle,${c.orb3} 0%,transparent 65%)`, filter:'blur(44px)', pointerEvents:'none', zIndex:0, animation:'floatC 22s ease-in-out infinite' }} />
+        {/* ── aurora blobs (mouse-tracked via refs) ── */}
+        <div ref={b1} style={{ position:'fixed', top:'-15%', right:'-8%', width:680, height:680, background:c.blob1, filter:'blur(90px)', pointerEvents:'none', zIndex:0, animation:'drift1 22s ease-in-out infinite, aurora1 12s ease-in-out infinite', willChange:'transform' }} />
+        <div ref={b2} style={{ position:'fixed', bottom:'-12%', left:'-8%', width:560, height:560, background:c.blob2, filter:'blur(80px)', pointerEvents:'none', zIndex:0, animation:'drift2 28s ease-in-out infinite, aurora2 15s ease-in-out infinite', willChange:'transform' }} />
+        <div ref={b3} style={{ position:'fixed', top:'30%', left:'5%', width:380, height:380, background:c.blob3, filter:'blur(70px)', pointerEvents:'none', zIndex:0, animation:'drift3 18s ease-in-out infinite, aurora3 18s ease-in-out infinite', willChange:'transform' }} />
+        <div ref={b4} style={{ position:'fixed', top:'10%', right:'20%', width:320, height:320, background:c.blob4, filter:'blur(65px)', pointerEvents:'none', zIndex:0, animation:'drift4 24s ease-in-out infinite', willChange:'transform' }} />
 
-        {/* ── decorative dot grid (right side) ── */}
-        <svg style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0, opacity:.65 }} xmlns="http://www.w3.org/2000/svg">
+        {/* ── line grid ── */}
+        <svg style={{ position:'fixed', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:0 }} xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
-              <circle cx="1.5" cy="1.5" r="1.5" fill={c.dotColor} />
+            <pattern id="lg" width="48" height="48" patternUnits="userSpaceOnUse">
+              <path d="M 48 0 L 0 0 0 48" fill="none" stroke={c.gridLine} strokeWidth=".8"/>
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#dots)" />
+          <rect width="100%" height="100%" fill="url(#lg)" />
         </svg>
 
-        {/* ── decorative rings behind card ── */}
-        <div style={{ position:'fixed', top:'50%', left:'62%', transform:'translate(-50%,-50%)', width:520, height:520, borderRadius:'50%', border:`1px solid ${c.ringColor}`, pointerEvents:'none', zIndex:0, animation:'pulse 8s ease-in-out infinite' }} />
-        <div style={{ position:'fixed', top:'50%', left:'62%', transform:'translate(-50%,-50%)', width:380, height:380, borderRadius:'50%', border:`1px solid ${c.ringColor}`, opacity:.6, pointerEvents:'none', zIndex:0, animation:'pulse 8s ease-in-out infinite .8s' }} />
-        <div style={{ position:'fixed', top:'50%', left:'62%', transform:'translate(-50%,-50%)', width:240, height:240, borderRadius:'50%', border:`1px solid ${c.ringColor}`, opacity:.4, pointerEvents:'none', zIndex:0, animation:'pulse 8s ease-in-out infinite 1.6s' }} />
+        {/* ── decorative concentric rings ── */}
+        <div style={{ position:'fixed', top:'50%', left:'50%', width:680, height:680, borderRadius:'50%', border:`1px solid ${c.ring}`, pointerEvents:'none', zIndex:0, animation:'pulse 10s ease-in-out infinite', transform:'translate(-50%,-50%)' }} />
+        <div style={{ position:'fixed', top:'50%', left:'50%', width:480, height:480, borderRadius:'50%', border:`1px solid ${c.ring}`, opacity:.65, pointerEvents:'none', zIndex:0, animation:'pulse 10s ease-in-out infinite .8s', transform:'translate(-50%,-50%)' }} />
+        <div style={{ position:'fixed', top:'50%', left:'50%', width:280, height:280, borderRadius:'50%', border:`1px solid ${c.ring}`, opacity:.35, pointerEvents:'none', zIndex:0, animation:'pulse 10s ease-in-out infinite 1.6s', transform:'translate(-50%,-50%)' }} />
 
-        {/* ═══════════════════════════════════════════════════════════════════════
-            LEFT BRANDING PANEL (hidden on mobile)
-        ═══════════════════════════════════════════════════════════════════════ */}
-        <div className="hl-left" style={{ background:c.leftPanelBg, boxShadow:c.leftShadow }}>
+        {/* ── spinning dashed ring ── */}
+        <svg style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:820, height:820, pointerEvents:'none', zIndex:0, animation:'spin-slow 60s linear infinite', opacity:.35 }} viewBox="0 0 820 820">
+          <circle cx="410" cy="410" r="400" fill="none" stroke={c.ring} strokeWidth="1" strokeDasharray="6 18" />
+        </svg>
 
-          {/* grid overlay */}
-          <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none' }} xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke={c.gridColor} strokeWidth="1"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+        {/* ── floating accent dots ── */}
+        {[
+          { t:'12%',  l:'8%',  delay:'0s',   op:.7 },
+          { t:'78%',  l:'15%', delay:'1.2s', op:.5 },
+          { t:'25%',  r:'10%', delay:'0.6s', op:.6 },
+          { t:'65%',  r:'8%',  delay:'1.8s', op:.45 },
+          { t:'45%',  l:'4%',  delay:'2.4s', op:.4 },
+        ].map((d, i) => (
+          <div key={i} className="hl-acc-dot" style={{ top:d.t, left:(d as any).l, right:(d as any).r, opacity:d.op, animationDelay:d.delay, animation:`float-dot ${3 + i * 0.5}s ease-in-out infinite ${d.delay}`, boxShadow:'0 0 8px #34d399' }} />
+        ))}
 
-          {/* glows */}
-          <div style={{ position:'absolute', top:'-15%', left:'-10%', width:420, height:420, borderRadius:'50%', background:'radial-gradient(circle,rgba(13,148,136,.22) 0%,transparent 65%)', filter:'blur(55px)', pointerEvents:'none' }} />
-          <div style={{ position:'absolute', bottom:'-12%', right:'-12%', width:360, height:360, borderRadius:'50%', background:'radial-gradient(circle,rgba(5,150,105,.18) 0%,transparent 65%)', filter:'blur(55px)', pointerEvents:'none' }} />
+        {/* ── card wrapper ── */}
+        <div className="hl-card-wrap" style={{ width:'100%', maxWidth:440, padding:'24px 16px', position:'relative', zIndex:1 }}>
 
-          {/* ── top: logo + toggle ── */}
-          <div style={{ position:'relative', zIndex:1, animation:'fadeIn .5s ease both' }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:48 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ width:44, height:44, borderRadius:13, background:'linear-gradient(135deg,#0D9488,#059669)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 20px rgba(13,148,136,.5)' }}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                  </svg>
+          {/* gradient border wrapper */}
+          <div className="hl-card" style={{
+            borderRadius: 22,
+            padding: 1.5,
+            background: isDark
+              ? 'linear-gradient(135deg,rgba(13,148,136,.5) 0%,rgba(5,150,105,.3) 50%,rgba(52,211,153,.4) 100%)'
+              : 'linear-gradient(135deg,rgba(13,148,136,.35) 0%,rgba(5,150,105,.2) 50%,rgba(52,211,153,.3) 100%)',
+            boxShadow: c.cardGlow,
+          }}>
+            <div className="hl-card-inner" style={{
+              background: c.cardBg,
+              borderRadius: 21,
+              padding: '34px 30px',
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+              transition: 'background .3s',
+            }}>
+
+              {/* ── card header: logo + theme ── */}
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ width:40, height:40, borderRadius:12, background:'linear-gradient(135deg,#0D9488,#059669)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 16px rgba(13,148,136,.45)' }}>
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <div style={{ fontFamily:'var(--fd)', fontWeight:800, fontSize:'.96rem', color:c.logoText, letterSpacing:'-.01em', transition:'color .3s' }}>TenantForge</div>
+                    <div style={{ fontSize:'.56rem', fontWeight:700, letterSpacing:'.11em', textTransform:'uppercase', color:c.logoSub, transition:'color .3s' }}>HRMS Platform</div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontFamily:'var(--fd)', fontWeight:800, fontSize:'1.05rem', color:'#fff', letterSpacing:'-.01em' }}>TenantForge</div>
-                  <div style={{ fontSize:'.58rem', fontWeight:700, letterSpacing:'.12em', textTransform:'uppercase', color:'rgba(255,255,255,.32)' }}>HRMS Platform</div>
-                </div>
+                <button
+                  className="hl-toggle"
+                  style={{ background:c.toggleBg, borderColor:c.toggleBorder, color:c.toggleIcon }}
+                  onClick={() => setTheme(isDark ? 'light' : 'dark')}
+                  title={isDark ? 'Light mode' : 'Dark mode'}
+                >
+                  {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                </button>
               </div>
-              <button className="hl-toggle" style={{ background:c.toggleBg, borderColor:c.toggleBorder, color:c.toggleIcon }} onClick={() => setTheme(isDark ? 'light' : 'dark')} title={isDark ? 'Light mode' : 'Dark mode'}>
-                {isDark ? <Sun size={15} /> : <Moon size={15} />}
-              </button>
-            </div>
 
-            {/* headline */}
-            <div style={{ animation:'fadeUp .5s .08s cubic-bezier(.4,0,.2,1) both' }}>
-              <div style={{ display:'inline-flex', alignItems:'center', gap:7, padding:'5px 12px', borderRadius:20, background:c.tagBg, border:`1px solid ${c.tagBorder}`, marginBottom:18 }}>
-                <span style={{ width:6, height:6, borderRadius:'50%', background:'#34d399', boxShadow:'0 0 8px #34d399', display:'inline-block' }} />
-                <span style={{ fontSize:'.67rem', fontWeight:700, color:c.tagText, letterSpacing:'.06em', textTransform:'uppercase' }}>Live Dashboard</span>
+              {/* divider */}
+              <div style={{ height:1, background:c.divider, marginBottom:22 }} />
+
+              {/* progress */}
+              <div style={{ display:'flex', gap:5, marginBottom:26 }}>
+                {(['identifier','password'] as const).map(s => (
+                  <div key={s} style={{
+                    height:3, borderRadius:3, transition:'all .32s ease',
+                    flex: step === s ? 2 : 1,
+                    background: step === s ? 'linear-gradient(90deg,#0D9488,#34d399)' : c.progressInact,
+                  }} />
+                ))}
               </div>
-              <h1 style={{ fontFamily:'var(--fd)', fontSize:'2.45rem', fontWeight:900, color:'#fff', lineHeight:1.1, marginBottom:14, letterSpacing:'-.025em' }}>
-                Manage Your<br/>
-                <span style={{ background:'linear-gradient(90deg,#34d399 20%,#0D9488 80%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>Workforce</span><br/>
-                Smarter
-              </h1>
-              <p style={{ color:'rgba(255,255,255,.45)', fontSize:'.86rem', lineHeight:1.7, maxWidth:290 }}>
-                One platform for employees, attendance, payroll, and your entire org hierarchy.
-              </p>
-            </div>
-          </div>
 
-          {/* ── middle: feature cards ── */}
-          <div style={{ position:'relative', zIndex:1, animation:'fadeUp .5s .2s cubic-bezier(.4,0,.2,1) both' }}>
-            {FEATURES.map((f, i) => (
-              <div key={f.title} className="hl-feat" style={{
-                animationDelay:`${.22 + i * .08}s`,
-                display:'flex', alignItems:'flex-start', gap:14,
-                padding:'14px 16px', borderRadius:14,
-                marginBottom: i < FEATURES.length - 1 ? 10 : 0,
-                background:'rgba(255,255,255,.042)', border:'1px solid rgba(255,255,255,.075)',
-                backdropFilter:'blur(10px)',
-                boxShadow:'0 2px 14px rgba(0,0,0,.18)',
-              }}>
-                <div style={{ width:38, height:38, borderRadius:11, background:'rgba(13,148,136,.18)', border:'1px solid rgba(13,148,136,.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#34d399' }}>
-                  <f.Icon size={17} />
-                </div>
-                <div style={{ paddingTop:1 }}>
-                  <div style={{ fontSize:'.78rem', fontWeight:700, color:'rgba(255,255,255,.88)', marginBottom:3, letterSpacing:'-.01em' }}>{f.title}</div>
-                  <div style={{ fontSize:'.67rem', color:'rgba(255,255,255,.38)', lineHeight:1.55 }}>{f.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              {/* ── STEP 1 ── */}
+              {step === 'identifier' && (
+                <div className="hl-step-out">
+                  <div style={{ marginBottom:24 }}>
+                    <p style={{ fontSize:'.67rem', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:c.stepLabel, marginBottom:8, transition:'color .3s' }}>
+                      Step 1 of 2
+                    </p>
+                    <h2 style={{ fontFamily:'var(--fd)', fontSize:'1.52rem', fontWeight:800, color:c.stepTitle, marginBottom:6, letterSpacing:'-.02em', transition:'color .3s' }}>
+                      Welcome back
+                    </h2>
+                    <p style={{ color:c.stepSub, fontSize:'.82rem', lineHeight:1.65, transition:'color .3s' }}>
+                      Enter your work email or phone to continue.
+                    </p>
+                  </div>
 
-          {/* ── bottom: trust pills ── */}
-          <div style={{ position:'relative', zIndex:1, animation:'fadeIn .6s .5s both' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-              {TRUST.map((t) => (
-                <div key={t.label} style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6, padding:'9px 10px', borderRadius:10, background:'rgba(255,255,255,.042)', border:'1px solid rgba(255,255,255,.07)' }}>
-                  <t.Icon size={12} color="#34d399" />
-                  <span style={{ fontSize:'.6rem', fontWeight:600, color:'rgba(255,255,255,.42)', whiteSpace:'nowrap' }}>{t.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════════════════
-            RIGHT FORM PANEL
-        ═══════════════════════════════════════════════════════════════════════ */}
-        <div className="hl-right">
-
-          {/* mobile-only header */}
-          <div className="hl-mob-header">
-            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-              <div style={{ width:38, height:38, borderRadius:11, background:'linear-gradient(135deg,#0D9488,#059669)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, boxShadow:'0 4px 14px rgba(13,148,136,.45)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-                </svg>
-              </div>
-              <div>
-                <div style={{ fontFamily:'var(--fd)', fontWeight:800, fontSize:'.95rem', color:c.stepTitle, letterSpacing:'-.01em', transition:'color .3s' }}>TenantForge</div>
-                <div style={{ fontSize:'.55rem', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:c.stepSub, transition:'color .3s' }}>HRMS Platform</div>
-              </div>
-            </div>
-            <button className="hl-toggle" style={{ background:c.toggleBg, borderColor:c.toggleBorder, color:c.toggleIcon }} onClick={() => setTheme(isDark ? 'light' : 'dark')}>
-              {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
-          </div>
-
-          {/* ── login card ── */}
-          <div className="hl-card hl-card-anim" style={{ background:c.cardBg, border:`1px solid ${c.cardBorder}`, boxShadow:c.cardShadow }}>
-
-            {/* progress bar */}
-            <div style={{ display:'flex', gap:6, marginBottom:32 }}>
-              {(['identifier','password'] as const).map(s => (
-                <div key={s} style={{
-                  height:4, borderRadius:4, transition:'all .35s ease',
-                  flex:step === s ? 2 : 1,
-                  background:step === s ? 'linear-gradient(90deg,#0D9488,#34d399)' : c.progressInact,
-                }} />
-              ))}
-            </div>
-
-            {/* ── STEP 1: identifier ── */}
-            {step === 'identifier' && (
-              <div className="hl-step-out">
-                <div style={{ marginBottom:30 }}>
-                  <p style={{ fontSize:'.71rem', fontWeight:700, letterSpacing:'.1em', textTransform:'uppercase', color:c.stepLabel, marginBottom:10, transition:'color .3s' }}>Step 1 of 2</p>
-                  <h2 style={{ fontFamily:'var(--fd)', fontSize:'1.62rem', fontWeight:800, color:c.stepTitle, marginBottom:8, letterSpacing:'-.02em', transition:'color .3s' }}>Welcome back</h2>
-                  <p style={{ color:c.stepSub, fontSize:'.84rem', lineHeight:1.6, transition:'color .3s' }}>Enter your work email or phone number to continue.</p>
-                </div>
-
-                <form onSubmit={handleIdentifierNext}>
-                  <div style={{ marginBottom:20 }}>
-                    <label style={{ display:'block', fontSize:'.77rem', fontWeight:600, color:c.labelText, marginBottom:8, letterSpacing:'.02em', transition:'color .3s' }}>Work Email or Phone</label>
-                    <div style={{ position:'relative' }}>
-                      <div style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:c.inputIcon, pointerEvents:'none', display:'flex', transition:'color .3s' }}>
-                        {idType === 'phone'
-                          ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.15 12a19.8 19.8 0 01-3.07-8.67A2 2 0 012.06 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-                          : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                        }
+                  <form onSubmit={handleIdentifierNext}>
+                    <div style={{ marginBottom:18 }}>
+                      <label style={{ display:'block', fontSize:'.74rem', fontWeight:600, color:c.label, marginBottom:7, letterSpacing:'.02em', transition:'color .3s' }}>
+                        Work Email or Phone
+                      </label>
+                      <div style={{ position:'relative' }}>
+                        <div style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:c.inputIcon, pointerEvents:'none', display:'flex', transition:'color .3s' }}>
+                          {idType === 'phone'
+                            ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.15 12a19.8 19.8 0 01-3.07-8.67A2 2 0 012.06 1h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                            : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                          }
+                        </div>
+                        <input
+                          ref={identifierRef}
+                          className={`hl-input${identifierErr ? ' err' : ''}`}
+                          type="text"
+                          placeholder="you@company.com or +91 98765 43210"
+                          value={identifier}
+                          onChange={e => { setIdentifier(e.target.value); if (identifierErr) setIdentifierErr('') }}
+                          autoComplete="email"
+                          style={{ background:c.inputBg, border:`1.5px solid ${identifierErr ? '#f87171' : c.inputBorder}`, color:c.inputText }}
+                        />
+                        {idType && !identifierErr && (
+                          <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', color:'#34d399', display:'flex' }}>
+                            <CheckCircle2 size={14} />
+                          </div>
+                        )}
                       </div>
-                      <input
-                        ref={identifierRef}
-                        className={`hl-input${identifierErr ? ' err' : ''}`}
-                        type="text"
-                        placeholder="you@company.com or +91 98765 43210"
-                        value={identifier}
-                        onChange={e => { setIdentifier(e.target.value); if (identifierErr) setIdentifierErr('') }}
-                        autoComplete="email"
-                        style={{ background:c.inputBg, border:`1.5px solid ${identifierErr ? '#f87171' : c.inputBorder}`, color:c.inputText }}
-                      />
-                      {idType && !identifierErr && (
-                        <div style={{ position:'absolute', right:14, top:'50%', transform:'translateY(-50%)', color:'#34d399', display:'flex' }}>
-                          <CheckCircle2 size={15} />
+                      {identifierErr && (
+                        <div style={{ display:'flex', alignItems:'center', gap:5, marginTop:7, color:'#f87171', fontSize:'.73rem' }}>
+                          <AlertCircle size={12} />{identifierErr}
                         </div>
                       )}
+                      <style>{`.hl-input::placeholder{color:${c.inputPH}}`}</style>
                     </div>
-                    {identifierErr && (
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:8, color:'#f87171', fontSize:'.75rem' }}>
-                        <AlertCircle size={13} />{identifierErr}
-                      </div>
-                    )}
-                    <style>{`.hl-input::placeholder{color:${c.inputPlaceholder}}`}</style>
-                  </div>
-
-                  <button type="submit" className="hl-btn">Continue <ArrowRight size={16} /></button>
-                </form>
-              </div>
-            )}
-
-            {/* ── STEP 2: password ── */}
-            {step === 'password' && (
-              <div className="hl-step-in">
-                {/* back + chip */}
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:26 }}>
-                  <button type="button" className="hl-back" style={{ color:c.backBtn }} onMouseEnter={e=>(e.currentTarget.style.color=c.backBtnHover)} onMouseLeave={e=>(e.currentTarget.style.color=c.backBtn)} onClick={goBack}>
-                    <ChevronLeft size={15} /> Back
-                  </button>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 12px', borderRadius:20, background:c.chipBg, border:`1px solid ${c.chipBorder}`, transition:'background .3s,border-color .3s' }}>
-                    <div style={{ width:7, height:7, borderRadius:'50%', background:'#34d399', flexShrink:0 }} />
-                    <span style={{ fontSize:'.73rem', color:c.chipText, maxWidth:150, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', transition:'color .3s' }}>{data.identifier}</span>
-                    <button type="button" onClick={goBack} style={{ background:'none', border:'none', cursor:'pointer', color:'#0D9488', fontSize:'.69rem', fontWeight:700, padding:0, flexShrink:0 }}>Change</button>
-                  </div>
+                    <button type="submit" className="hl-btn">Continue <ArrowRight size={15} /></button>
+                  </form>
                 </div>
+              )}
 
-                {/* avatar */}
-                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:26, textAlign:'center' }}>
-                  <div style={{ width:58, height:58, borderRadius:'50%', background:'linear-gradient(135deg,#0D9488,#059669)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.25rem', fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(13,148,136,.45)' }}>
-                    {data.identifier.trim().split(/[@\s]+/)[0].slice(0,2).toUpperCase() || '?'}
-                  </div>
-                  <div style={{ marginTop:14 }}>
-                    <div style={{ fontFamily:'var(--fd)', fontSize:'1.5rem', fontWeight:800, color:c.avatarTitle, letterSpacing:'-.02em', marginBottom:4, transition:'color .3s' }}>Enter Password</div>
-                    <div style={{ fontSize:'.79rem', color:c.avatarSub, transition:'color .3s' }}>Sign in to your HRMS account</div>
-                  </div>
-                </div>
+              {/* ── STEP 2 ── */}
+              {step === 'password' && (
+                <div className="hl-step-in">
 
-                {/* error */}
-                {authError && (
-                  <div style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'12px 14px', borderRadius:10, marginBottom:20, background:c.errorBg, border:`1px solid ${c.errorBorder}`, color:c.errorText, fontSize:'.79rem', lineHeight:1.5, transition:'background .3s,border-color .3s,color .3s' }}>
-                    <AlertCircle size={14} style={{ flexShrink:0, marginTop:1 }} />{authError}
-                  </div>
-                )}
-
-                <form onSubmit={handleSubmit}>
-                  <div style={{ marginBottom:20 }}>
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
-                      <label style={{ fontSize:'.77rem', fontWeight:600, color:c.labelText, letterSpacing:'.02em', transition:'color .3s' }}>Password</label>
-                      <span style={{ fontSize:'.7rem', color:'#0D9488', cursor:'pointer', fontWeight:600 }}>Forgot password?</span>
-                    </div>
-                    <div style={{ position:'relative' }}>
-                      <div style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:c.inputIcon, pointerEvents:'none', display:'flex', transition:'color .3s' }}>
-                        <Lock size={15} />
-                      </div>
-                      <input
-                        ref={passwordRef}
-                        className={`hl-input${errors.password || authError ? ' err' : ''}`}
-                        type={showPw ? 'text' : 'password'}
-                        placeholder="Enter your password"
-                        value={data.password}
-                        onChange={e => setData('password', e.target.value)}
-                        autoComplete="current-password"
-                        required
-                        style={{ background:c.inputBg, border:`1.5px solid ${errors.password || authError ? '#f87171' : c.inputBorder}`, color:c.inputText, paddingRight:44 }}
-                      />
-                      <button type="button" onClick={() => setShowPw(!showPw)}
-                        style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:c.pwToggle, padding:2, display:'flex', transition:'color .15s' }}
-                        onMouseEnter={e=>(e.currentTarget.style.color=c.pwToggleHover)}
-                        onMouseLeave={e=>(e.currentTarget.style.color=c.pwToggle)}
-                      >
-                        {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
+                    <button type="button" className="hl-back" style={{ color:c.backBtn }}
+                      onMouseEnter={e => (e.currentTarget.style.color = c.backHover)}
+                      onMouseLeave={e => (e.currentTarget.style.color = c.backBtn)}
+                      onClick={goBack}
+                    >
+                      <ChevronLeft size={14} /> Back
+                    </button>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, padding:'5px 11px', borderRadius:20, background:c.chipBg, border:`1px solid ${c.chipBorder}`, transition:'background .3s,border-color .3s' }}>
+                      <div style={{ width:6, height:6, borderRadius:'50%', background:'#34d399', flexShrink:0 }} />
+                      <span style={{ fontSize:'.71rem', color:c.chipText, maxWidth:140, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', transition:'color .3s' }}>
+                        {data.identifier}
+                      </span>
+                      <button type="button" onClick={goBack} style={{ background:'none', border:'none', cursor:'pointer', color:'#0D9488', fontSize:'.67rem', fontWeight:700, padding:0, flexShrink:0 }}>
+                        Change
                       </button>
                     </div>
-                    <style>{`.hl-input::placeholder{color:${c.inputPlaceholder}}`}</style>
                   </div>
 
-                  <button type="submit" className="hl-btn" disabled={processing}>
-                    {processing
-                      ? <><span style={{ width:16, height:16, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 1s linear infinite', display:'inline-block' }} /> Signing in…</>
-                      : <>Sign in to HRMS <ArrowRight size={16} /></>
-                    }
-                  </button>
-                </form>
-              </div>
-            )}
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:20, textAlign:'center' }}>
+                    <div style={{ width:54, height:54, borderRadius:'50%', background:'linear-gradient(135deg,#0D9488,#059669)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'1.15rem', fontWeight:700, color:'#fff', boxShadow:'0 4px 20px rgba(13,148,136,.42)', letterSpacing:'-.01em' }}>
+                      {data.identifier.trim().split(/[@\s]+/)[0].slice(0,2).toUpperCase() || '?'}
+                    </div>
+                    <div style={{ marginTop:12 }}>
+                      <div style={{ fontFamily:'var(--fd)', fontSize:'1.35rem', fontWeight:800, color:c.avatarTitle, letterSpacing:'-.02em', marginBottom:3, transition:'color .3s' }}>
+                        Enter Password
+                      </div>
+                      <div style={{ fontSize:'.77rem', color:c.avatarSub, transition:'color .3s' }}>Sign in to your HRMS account</div>
+                    </div>
+                  </div>
 
-            {/* footer */}
-            <p style={{ marginTop:28, textAlign:'center', fontSize:'.7rem', color:c.footer, lineHeight:1.6, transition:'color .3s' }}>
-              Having trouble?{' '}
-              <span style={{ color:'#0D9488', fontWeight:600, cursor:'pointer' }}>Contact HR Administrator</span>
-            </p>
+                  {authError && (
+                    <div style={{ display:'flex', alignItems:'flex-start', gap:9, padding:'11px 13px', borderRadius:10, marginBottom:18, background:c.errBg, border:`1px solid ${c.errBorder}`, color:c.errText, fontSize:'.77rem', lineHeight:1.5, transition:'background .3s,border-color .3s,color .3s' }}>
+                      <AlertCircle size={13} style={{ flexShrink:0, marginTop:1 }} />{authError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom:18 }}>
+                      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:7 }}>
+                        <label style={{ fontSize:'.74rem', fontWeight:600, color:c.label, letterSpacing:'.02em', transition:'color .3s' }}>Password</label>
+                        <span style={{ fontSize:'.7rem', color:'#0D9488', cursor:'pointer', fontWeight:600 }}>Forgot password?</span>
+                      </div>
+                      <div style={{ position:'relative' }}>
+                        <div style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', color:c.inputIcon, pointerEvents:'none', display:'flex', transition:'color .3s' }}>
+                          <Lock size={14} />
+                        </div>
+                        <input
+                          ref={passwordRef}
+                          className={`hl-input${errors.password || authError ? ' err' : ''}`}
+                          type={showPw ? 'text' : 'password'}
+                          placeholder="Enter your password"
+                          value={data.password}
+                          onChange={e => setData('password', e.target.value)}
+                          autoComplete="current-password"
+                          required
+                          style={{ background:c.inputBg, border:`1.5px solid ${errors.password || authError ? '#f87171' : c.inputBorder}`, color:c.inputText, paddingRight:42 }}
+                        />
+                        <button type="button" onClick={() => setShowPw(!showPw)}
+                          style={{ position:'absolute', right:11, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:c.pwToggle, padding:2, display:'flex', transition:'color .14s' }}
+                          onMouseEnter={e => (e.currentTarget.style.color = c.pwToggleHover)}
+                          onMouseLeave={e => (e.currentTarget.style.color = c.pwToggle)}
+                        >
+                          {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      </div>
+                      <style>{`.hl-input::placeholder{color:${c.inputPH}}`}</style>
+                    </div>
+
+                    <button type="submit" className="hl-btn" disabled={processing}>
+                      {processing
+                        ? <><span style={{ width:15, height:15, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 1s linear infinite', display:'inline-block' }} /> Signing in…</>
+                        : <>Sign in to HRMS <ArrowRight size={15} /></>
+                      }
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              <p style={{ marginTop:22, textAlign:'center', fontSize:'.68rem', color:c.footer, lineHeight:1.6, transition:'color .3s' }}>
+                Having trouble?{' '}
+                <span style={{ color:'#0D9488', fontWeight:600, cursor:'pointer' }}>Contact HR Administrator</span>
+              </p>
+
+            </div>
           </div>
         </div>
       </div>

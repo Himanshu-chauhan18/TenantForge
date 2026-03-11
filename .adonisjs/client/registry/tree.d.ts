@@ -7,6 +7,7 @@ export interface ApiDefinition {
       submit: typeof routes['hrms.login.submit']
     }
     logout: typeof routes['hrms.logout']
+    selfService: typeof routes['hrms.self-service']
     dashboard: typeof routes['hrms.dashboard']
     org: {
       company: typeof routes['hrms.org.company'] & {

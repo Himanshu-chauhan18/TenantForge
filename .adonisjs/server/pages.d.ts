@@ -59,5 +59,6 @@ declare module '@adonisjs/inertia/types' {
     'orgbuilder/organizations/edit/UsersTab': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/organizations/edit/UsersTab.tsx'))['default']>
     'orgbuilder/organizations/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/organizations/index.tsx'))['default']>
     'orgbuilder/settings/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/settings/index.tsx'))['default']>
+    'hrms/self-service/index': ExtractProps<(typeof import('../../inertia/pages/hrms/self-service/index.tsx'))['default']>
   }
 }

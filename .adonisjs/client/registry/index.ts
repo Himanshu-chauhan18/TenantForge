@@ -384,6 +384,12 @@ const routes = {
     tokens: [{"old":"/hrms/logout","type":0,"val":"hrms","end":""},{"old":"/hrms/logout","type":0,"val":"logout","end":""}],
     types: placeholder as Registry['hrms.logout']['types'],
   },
+  'hrms.self-service': {
+    methods: ["GET","HEAD"],
+    pattern: '/hrms/self-service',
+    tokens: [{"old":"/hrms/self-service","type":0,"val":"hrms","end":""},{"old":"/hrms/self-service","type":0,"val":"self-service","end":""}],
+    types: placeholder as Registry['hrms.self-service']['types'],
+  },
   'hrms.dashboard': {
     methods: ["GET","HEAD"],
     pattern: '/hrms/dashboard',
