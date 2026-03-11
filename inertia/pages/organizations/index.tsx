@@ -27,6 +27,7 @@ interface Org {
   status: 'active' | 'inactive' | 'expired'
   userLimit: number
   userCount: number
+  logo: string | null
   planStart: string | null
   planEnd: string | null
   createdAt: string
@@ -320,14 +321,22 @@ export default function OrganizationsIndex({ orgs, leadOwners }: Props) {
         const [fg, bg] = avColor(org.name)
         return (
           <Link href={`/organizations/${org.id}`} style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-            <div style={{
-              width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-              background: bg, color: fg,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '.68rem', fontWeight: 800,
-            }}>
-              {initials(org.name)}
-            </div>
+            {org.logo ? (
+              <img
+                src={`/${org.logo}`}
+                alt={org.name}
+                style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, objectFit: 'cover', border: '1px solid var(--border)' }}
+              />
+            ) : (
+              <div style={{
+                width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                background: bg, color: fg,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '.68rem', fontWeight: 800,
+              }}>
+                {initials(org.name)}
+              </div>
+            )}
             <div>
               <div style={{ fontWeight: 600, fontSize: '.83rem', color: 'var(--text1)', lineHeight: 1.3 }}>{org.name}</div>
               <div style={{ fontSize: '.7rem', color: 'var(--text3)' }}>{org.orgId}</div>

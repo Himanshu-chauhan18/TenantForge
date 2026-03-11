@@ -417,6 +417,15 @@ export function OverviewTab({ org, leadOwners }: Props) {
             </div>
           }
         >
+          {org.logo && (
+            <div style={{ marginBottom: 14 }}>
+              <img
+                src={`/${org.logo}`}
+                alt={`${org.name} logo`}
+                style={{ height: 56, maxWidth: 140, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', padding: 4 }}
+              />
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '11px 14px', marginBottom: 14 }}>
             <Field label="Org ID" value={org.orgId} mono full />
             <Field label="Name" value={org.name} />

@@ -40,7 +40,7 @@ export const organizationModulesValidator = vine.compile(
       .array(
         vine.object({
           moduleId: vine.number().min(1),
-          addonIds: vine.array(vine.number().min(1)),
+          addonIds: vine.array(vine.number().min(1)).optional(),
         })
       )
       .optional(),

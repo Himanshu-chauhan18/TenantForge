@@ -55,7 +55,7 @@ export interface OrgCreateData {
   planEnd?: string
   status?: 'active' | 'inactive' | 'expired'
   // Step 2 - modules/addons
-  modules?: { moduleId: number; addonIds: number[] }[]
+  modules?: { moduleId: number; addonIds?: number[] }[]
 }
 
 export default class OrganizationRepository {
@@ -252,7 +252,7 @@ export default class OrganizationRepository {
             orgId: org.id,
             moduleId: mod.moduleId,
             enabled: true,
-            addonIds: mod.addonIds.map((id) => ({ id, enabled: true })),
+            addonIds: (mod.addonIds ?? []).map((id) => ({ id, enabled: true })),
           },
           { client: trx }
         )
