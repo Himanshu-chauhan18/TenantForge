@@ -2,6 +2,97 @@
 import type { routes } from './index.ts'
 
 export interface ApiDefinition {
+  hrms: {
+    login: typeof routes['hrms.login'] & {
+      submit: typeof routes['hrms.login.submit']
+    }
+    logout: typeof routes['hrms.logout']
+    dashboard: typeof routes['hrms.dashboard']
+    org: {
+      company: typeof routes['hrms.org.company'] & {
+        update: typeof routes['hrms.org.company.update']
+      }
+      roles: typeof routes['hrms.org.roles']
+      hierarchy: typeof routes['hrms.org.hierarchy'] & {
+        store: typeof routes['hrms.org.hierarchy.store']
+        update: typeof routes['hrms.org.hierarchy.update']
+        destroy: typeof routes['hrms.org.hierarchy.destroy']
+      }
+    }
+    divisions: typeof routes['hrms.divisions'] & {
+      store: typeof routes['hrms.divisions.store']
+      update: typeof routes['hrms.divisions.update']
+      destroy: typeof routes['hrms.divisions.destroy']
+    }
+    locations: typeof routes['hrms.locations'] & {
+      store: typeof routes['hrms.locations.store']
+      update: typeof routes['hrms.locations.update']
+      destroy: typeof routes['hrms.locations.destroy']
+    }
+    departments: typeof routes['hrms.departments'] & {
+      store: typeof routes['hrms.departments.store']
+      update: typeof routes['hrms.departments.update']
+      destroy: typeof routes['hrms.departments.destroy']
+    }
+    subDepartments: typeof routes['hrms.sub-departments'] & {
+      store: typeof routes['hrms.sub-departments.store']
+      update: typeof routes['hrms.sub-departments.update']
+      destroy: typeof routes['hrms.sub-departments.destroy']
+    }
+    designations: typeof routes['hrms.designations'] & {
+      store: typeof routes['hrms.designations.store']
+      update: typeof routes['hrms.designations.update']
+      destroy: typeof routes['hrms.designations.destroy']
+    }
+    grades: typeof routes['hrms.grades'] & {
+      store: typeof routes['hrms.grades.store']
+      update: typeof routes['hrms.grades.update']
+      destroy: typeof routes['hrms.grades.destroy']
+    }
+    sections: typeof routes['hrms.sections'] & {
+      store: typeof routes['hrms.sections.store']
+      update: typeof routes['hrms.sections.update']
+      destroy: typeof routes['hrms.sections.destroy']
+    }
+    subSections: typeof routes['hrms.sub-sections'] & {
+      store: typeof routes['hrms.sub-sections.store']
+      update: typeof routes['hrms.sub-sections.update']
+      destroy: typeof routes['hrms.sub-sections.destroy']
+    }
+    holidays: typeof routes['hrms.holidays'] & {
+      store: typeof routes['hrms.holidays.store']
+      update: typeof routes['hrms.holidays.update']
+      destroy: typeof routes['hrms.holidays.destroy']
+    }
+    noticePeriod: typeof routes['hrms.notice-period'] & {
+      store: typeof routes['hrms.notice-period.store']
+      update: typeof routes['hrms.notice-period.update']
+      destroy: typeof routes['hrms.notice-period.destroy']
+    }
+    approvals: typeof routes['hrms.approvals'] & {
+      store: typeof routes['hrms.approvals.store']
+      update: typeof routes['hrms.approvals.update']
+      destroy: typeof routes['hrms.approvals.destroy']
+    }
+    documents: typeof routes['hrms.documents'] & {
+      store: typeof routes['hrms.documents.store']
+      update: typeof routes['hrms.documents.update']
+      destroy: typeof routes['hrms.documents.destroy']
+    }
+    checklists: typeof routes['hrms.checklists'] & {
+      store: typeof routes['hrms.checklists.store']
+      update: typeof routes['hrms.checklists.update']
+      destroy: typeof routes['hrms.checklists.destroy']
+    }
+    templates: typeof routes['hrms.templates'] & {
+      store: typeof routes['hrms.templates.store']
+      update: typeof routes['hrms.templates.update']
+      destroy: typeof routes['hrms.templates.destroy']
+    }
+    alerts: typeof routes['hrms.alerts']
+    notifications: typeof routes['hrms.notifications']
+    fiscalYear: typeof routes['hrms.fiscal-year']
+  }
   auth: {
     login: typeof routes['auth.login'] & {
       store: typeof routes['auth.login.store']

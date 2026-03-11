@@ -206,7 +206,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return crumbs
   })()
 
-  const logout = () => router.post('/logout')
+  const logout = () => router.post('/orgbuilder/logout')
 
   function closeSearch() {
     setSearchOpen(false)

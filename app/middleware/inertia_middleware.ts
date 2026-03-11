@@ -2,9 +2,10 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import UserTransformer from '#transformers/user_transformer'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
+import OrganizationProfile from '#models/organization_profile'
 
 export default class InertiaMiddleware extends BaseInertiaMiddleware {
-  share(ctx: HttpContext) {
+  async share(ctx: HttpContext) {
     /**
      * The share method is called everytime an Inertia page is rendered. In
      * certain cases, a page may get rendered before the session middleware
@@ -36,6 +37,39 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
     let flashToasts: string[] = []
     try { if (rawFlashToasts) flashToasts = JSON.parse(rawFlashToasts) } catch {}
 
+    // HRMS employee shared props (loaded only when present on ctx)
+    const hrmsEmployee = (ctx as any).hrmsEmployee
+    const hrmsOrg = (ctx as any).hrmsOrg
+
+    let hrmsUser: Record<string, unknown> | undefined
+    if (hrmsEmployee && hrmsOrg) {
+      let profileName = 'Employee'
+      try {
+        if (hrmsEmployee.profileId) {
+          const profile = await OrganizationProfile.find(hrmsEmployee.profileId)
+          if (profile) profileName = profile.name
+        }
+      } catch {}
+
+      hrmsUser = {
+        id: hrmsEmployee.id,
+        fullName: hrmsEmployee.fullName,
+        email: hrmsEmployee.companyEmail,
+        employeeCode: hrmsEmployee.employeeCode,
+        profileId: hrmsEmployee.profileId,
+        profileName,
+        initials: hrmsEmployee.fullName
+          ? hrmsEmployee.fullName.trim().split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()
+          : hrmsEmployee.companyEmail.slice(0, 2).toUpperCase(),
+        org: {
+          id: hrmsOrg.id,
+          orgId: hrmsOrg.orgId,
+          name: hrmsOrg.name,
+          logo: hrmsOrg.logo,
+        },
+      }
+    }
+
     return {
       errors: ctx.inertia.always(this.getValidationErrors(ctx)),
       flash: ctx.inertia.always({
@@ -44,7 +78,13 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
         errors: flashErrors,
         toasts: flashToasts.length > 0 ? flashToasts : undefined,
       }),
-      user: ctx.inertia.always(auth?.user ? UserTransformer.transform(auth.user) : undefined),
+      user: ctx.inertia.always(
+        // Don't leak OrgBuilder user into HRMS pages
+        ctx.request.url().startsWith('/hrms') || ctx.request.url() === '/login'
+          ? undefined
+          : auth?.user ? UserTransformer.transform(auth.user) : undefined
+      ),
+      hrmsUser: ctx.inertia.always(hrmsUser),
     }
   }
 

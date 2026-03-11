@@ -19,7 +19,7 @@ export default function Login({ loginMethod }: LoginProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    post('/login')
+    post('/orgbuilder/login')
   }
 
   const showPwForm = loginMethod === 'password' || loginMethod === 'both'

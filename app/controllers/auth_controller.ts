@@ -55,23 +55,23 @@ export default class AuthController {
 
     if (google.accessDenied()) {
       session.flash('errors', { auth: 'Google sign-in was cancelled.' })
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     if (google.stateMisMatch()) {
       session.flash('errors', { auth: 'Invalid state. Please try again.' })
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     if (google.hasError()) {
       session.flash('errors', { auth: 'Google sign-in failed. Please try again.' })
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     const googleUser = await google.user()
     if (!googleUser.email) {
       session.flash('errors', { auth: 'Google account has no email.' })
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     // Only allow Google login for users already registered in the system
@@ -79,7 +79,7 @@ export default class AuthController {
     const registeredUser = await User.findBy('email', googleUser.email.trim().toLowerCase())
     if (!registeredUser) {
       session.flash('errors', { auth: 'Your Google account email is not registered on this platform. Contact your administrator to add your account.' })
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     const user = await authService.handleGoogleUser({
@@ -90,7 +90,7 @@ export default class AuthController {
 
     if (!user.isActive) {
       session.flash('errors', { auth: 'Your account is disabled.' })
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     // User has TOTP set up — require verification
@@ -121,7 +121,7 @@ export default class AuthController {
       userId = auth.user!.id
     } else {
       const pendingId = session.get('totp_setup_pending_user_id')
-      if (!pendingId) return response.redirect().toPath('/login')
+      if (!pendingId) return response.redirect().toPath('/orgbuilder/login')
       userId = Number(pendingId)
     }
 
@@ -139,7 +139,7 @@ export default class AuthController {
       userId = auth.user!.id
     } else {
       const pendingId = session.get('totp_setup_pending_user_id')
-      if (!pendingId) return response.redirect().toPath('/login')
+      if (!pendingId) return response.redirect().toPath('/orgbuilder/login')
       userId = Number(pendingId)
     }
 
@@ -164,7 +164,7 @@ export default class AuthController {
   async showTotpVerify({ session, inertia, response }: HttpContext) {
     const pendingUserId = session.get('totp_pending_user_id')
     if (!pendingUserId) {
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
     return inertia.render('auth/totp-verify', {})
   }
@@ -174,7 +174,7 @@ export default class AuthController {
     const pendingUserId = session.get('totp_pending_user_id')
 
     if (!pendingUserId) {
-      return response.redirect().toPath('/login')
+      return response.redirect().toPath('/orgbuilder/login')
     }
 
     const valid = await authService.verifyTotp(pendingUserId, token)
@@ -195,6 +195,6 @@ export default class AuthController {
 
   async logout({ auth, response }: HttpContext) {
     await auth.use('web').logout()
-    return response.redirect().toPath('/login')
+    return response.redirect().toPath('/orgbuilder/login')
   }
 }

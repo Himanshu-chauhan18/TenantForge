@@ -19,6 +19,29 @@ declare module '@adonisjs/inertia/types' {
     'errors/not_found': ExtractProps<(typeof import('../../inertia/pages/errors/not_found.tsx'))['default']>
     'errors/server_error': ExtractProps<(typeof import('../../inertia/pages/errors/server_error.tsx'))['default']>
     'home': ExtractProps<(typeof import('../../inertia/pages/home.tsx'))['default']>
+    'hrms/auth/login': ExtractProps<(typeof import('../../inertia/pages/hrms/auth/login.tsx'))['default']>
+    'hrms/dashboard/index': ExtractProps<(typeof import('../../inertia/pages/hrms/dashboard/index.tsx'))['default']>
+    'hrms/employee/index': ExtractProps<(typeof import('../../inertia/pages/hrms/employee/index.tsx'))['default']>
+    'hrms/organization/company': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/company.tsx'))['default']>
+    'hrms/organization/hierarchy': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/hierarchy.tsx'))['default']>
+    'hrms/organization/roles': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/roles.tsx'))['default']>
+    'hrms/organization/settings/alerts': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/alerts.tsx'))['default']>
+    'hrms/organization/settings/approvals': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/approvals.tsx'))['default']>
+    'hrms/organization/settings/checklists': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/checklists.tsx'))['default']>
+    'hrms/organization/settings/departments': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/departments.tsx'))['default']>
+    'hrms/organization/settings/designations': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/designations.tsx'))['default']>
+    'hrms/organization/settings/divisions': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/divisions.tsx'))['default']>
+    'hrms/organization/settings/documents': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/documents.tsx'))['default']>
+    'hrms/organization/settings/fiscal-year': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/fiscal-year.tsx'))['default']>
+    'hrms/organization/settings/grades': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/grades.tsx'))['default']>
+    'hrms/organization/settings/holidays': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/holidays.tsx'))['default']>
+    'hrms/organization/settings/locations': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/locations.tsx'))['default']>
+    'hrms/organization/settings/notice-period': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/notice-period.tsx'))['default']>
+    'hrms/organization/settings/notifications': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/notifications.tsx'))['default']>
+    'hrms/organization/settings/sections': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/sections.tsx'))['default']>
+    'hrms/organization/settings/sub-departments': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/sub-departments.tsx'))['default']>
+    'hrms/organization/settings/sub-sections': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/sub-sections.tsx'))['default']>
+    'hrms/organization/settings/templates': ExtractProps<(typeof import('../../inertia/pages/hrms/organization/settings/templates.tsx'))['default']>
     'orgbuilder/dashboard/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/dashboard/index.tsx'))['default']>
     'orgbuilder/leads/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/leads/index.tsx'))['default']>
     'orgbuilder/masters/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/masters/index.tsx'))['default']>

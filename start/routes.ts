@@ -4,31 +4,40 @@ import orgbuilderRoutes from '#start/routes/orgbuilder'
 import hrmsRoutes from '#start/routes/hrms'
 
 const AuthController = () => import('#controllers/auth_controller')
+const HrmsAuthController = () => import('#hrms/controllers/auth_controller')
 const LocationController = () => import('#controllers/location_controller')
 const LeadOwnerController = () => import('#orgbuilder/controllers/lead_owner_controller')
 const OrganizationController = () => import('#orgbuilder/controllers/organization_controller')
 
-// Root redirect
-router.on('/').redirectToPath('/orgbuilder/dashboard')
+// Root → HRMS login
+router.on('/').redirectToPath('/login')
 
-// Auth routes (guest only)
+// HRMS login at /login (root level, hrmsGuest protected)
 router
   .group(() => {
-    router.get('login', [AuthController, 'showLogin']).as('auth.login')
-    router.post('login', [AuthController, 'login']).as('auth.login.store')
+    router.get('/login', [HrmsAuthController, 'showLogin']).as('hrms.login')
+    router.post('/login', [HrmsAuthController, 'login']).as('hrms.login.submit')
+  })
+  .use(middleware.hrmsGuest())
+
+// OrgBuilder auth routes at /orgbuilder/login
+router
+  .group(() => {
+    router.get('orgbuilder/login', [AuthController, 'showLogin']).as('auth.login')
+    router.post('orgbuilder/login', [AuthController, 'login']).as('auth.login.store')
     router.get('auth/google', [AuthController, 'googleRedirect']).as('auth.google')
     router.get('auth/google/callback', [AuthController, 'googleCallback']).as('auth.google.callback')
   })
   .use(middleware.guest())
 
-// TOTP routes
+// TOTP routes (OrgBuilder — intermediate auth steps, no guest guard)
 router.get('auth/totp/verify', [AuthController, 'showTotpVerify']).as('auth.totp.verify')
 router.post('auth/totp/verify', [AuthController, 'totpVerify']).as('auth.totp.verify.store')
 router.get('auth/totp/setup', [AuthController, 'totpSetup']).as('auth.totp.setup')
 router.post('auth/totp/setup', [AuthController, 'totpEnable']).as('auth.totp.setup.store')
 
-// Logout
-router.post('logout', [AuthController, 'logout']).as('auth.logout').use(middleware.auth())
+// OrgBuilder logout
+router.post('orgbuilder/logout', [AuthController, 'logout']).as('auth.logout').use(middleware.auth())
 
 // Location API (public)
 router.get('/api/countries', [LocationController, 'countries']).as('api.countries')

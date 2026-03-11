@@ -88,7 +88,7 @@ export default function TotpVerify() {
         </button>
 
         <div style={{ marginTop: 16, fontSize: '.72rem', color: 'var(--text3)' }}>
-          <a href="/login" style={{ color: 'var(--p)', fontWeight: 700 }}>← Back to login</a>
+          <a href="/orgbuilder/login" style={{ color: 'var(--p)', fontWeight: 700 }}>← Back to login</a>
         </div>
       </div>
     </div>

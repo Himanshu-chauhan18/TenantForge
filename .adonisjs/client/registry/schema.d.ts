@@ -7,9 +7,31 @@ import type { InferInput } from '@vinejs/vine/types'
 export type ParamValue = string | number | bigint | boolean
 
 export interface Registry {
-  'auth.login': {
+  'hrms.login': {
     methods: ["GET","HEAD"]
     pattern: '/login'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/auth_controller').default['showLogin']>>>
+    }
+  }
+  'hrms.login.submit': {
+    methods: ["POST"]
+    pattern: '/login'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/auth_validator').hrmsLoginValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/auth_validator').hrmsLoginValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/auth_controller').default['login']>>>
+    }
+  }
+  'auth.login': {
+    methods: ["GET","HEAD"]
+    pattern: '/orgbuilder/login'
     types: {
       body: {}
       paramsTuple: []
@@ -20,7 +42,7 @@ export interface Registry {
   }
   'auth.login.store': {
     methods: ["POST"]
-    pattern: '/login'
+    pattern: '/orgbuilder/login'
     types: {
       body: ExtractBody<InferInput<(typeof import('#validators/auth_validator').loginValidator)>>
       paramsTuple: []
@@ -97,7 +119,7 @@ export interface Registry {
   }
   'auth.logout': {
     methods: ["POST"]
-    pattern: '/logout'
+    pattern: '/orgbuilder/logout'
     types: {
       body: {}
       paramsTuple: []
@@ -665,6 +687,754 @@ export interface Registry {
       params: { id: ParamValue }
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#orgbuilder/controllers/settings_controller').default['resetUserPassword']>>>
+    }
+  }
+  'hrms.logout': {
+    methods: ["POST"]
+    pattern: '/hrms/logout'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/auth_controller').default['logout']>>>
+    }
+  }
+  'hrms.dashboard': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/dashboard'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/dashboard_controller').default['index']>>>
+    }
+  }
+  'hrms.org.company': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/company'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/company_controller').default['show']>>>
+    }
+  }
+  'hrms.org.company.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/company'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').companyUpdateValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').companyUpdateValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/company_controller').default['update']>>>
+    }
+  }
+  'hrms.org.roles': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/roles'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/roles_controller').default['index']>>>
+    }
+  }
+  'hrms.org.hierarchy': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/hierarchy'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/hierarchy_controller').default['index']>>>
+    }
+  }
+  'hrms.org.hierarchy.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/hierarchy'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').hierarchyNodeValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').hierarchyNodeValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/hierarchy_controller').default['store']>>>
+    }
+  }
+  'hrms.org.hierarchy.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/hierarchy/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').hierarchyNodeValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').hierarchyNodeValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/hierarchy_controller').default['update']>>>
+    }
+  }
+  'hrms.org.hierarchy.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/hierarchy/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/hierarchy_controller').default['destroy']>>>
+    }
+  }
+  'hrms.divisions': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/divisions'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['divisionsIndex']>>>
+    }
+  }
+  'hrms.divisions.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/divisions'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').divisionStep1Validator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').divisionStep1Validator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['divisionsStore']>>>
+    }
+  }
+  'hrms.divisions.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/divisions/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').divisionStep1Validator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').divisionStep1Validator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['divisionsUpdate']>>>
+    }
+  }
+  'hrms.divisions.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/divisions/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['divisionsDestroy']>>>
+    }
+  }
+  'hrms.locations': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/locations'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['locationsIndex']>>>
+    }
+  }
+  'hrms.locations.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/locations'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').locationValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').locationValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['locationsStore']>>>
+    }
+  }
+  'hrms.locations.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/locations/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').locationValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').locationValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['locationsUpdate']>>>
+    }
+  }
+  'hrms.locations.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/locations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['locationsDestroy']>>>
+    }
+  }
+  'hrms.departments': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/departments'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['departmentsIndex']>>>
+    }
+  }
+  'hrms.departments.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/departments'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['departmentsStore']>>>
+    }
+  }
+  'hrms.departments.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/departments/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['departmentsUpdate']>>>
+    }
+  }
+  'hrms.departments.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/departments/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['departmentsDestroy']>>>
+    }
+  }
+  'hrms.sub-departments': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/sub-departments'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subDepartmentsIndex']>>>
+    }
+  }
+  'hrms.sub-departments.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/sub-departments'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subDepartmentsStore']>>>
+    }
+  }
+  'hrms.sub-departments.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/sub-departments/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subDepartmentsUpdate']>>>
+    }
+  }
+  'hrms.sub-departments.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/sub-departments/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subDepartmentsDestroy']>>>
+    }
+  }
+  'hrms.designations': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/designations'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['designationsIndex']>>>
+    }
+  }
+  'hrms.designations.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/designations'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['designationsStore']>>>
+    }
+  }
+  'hrms.designations.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/designations/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['designationsUpdate']>>>
+    }
+  }
+  'hrms.designations.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/designations/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['designationsDestroy']>>>
+    }
+  }
+  'hrms.grades': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/grades'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['gradesIndex']>>>
+    }
+  }
+  'hrms.grades.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/grades'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['gradesStore']>>>
+    }
+  }
+  'hrms.grades.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/grades/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').nameOnlyValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['gradesUpdate']>>>
+    }
+  }
+  'hrms.grades.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/grades/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['gradesDestroy']>>>
+    }
+  }
+  'hrms.sections': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/sections'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['sectionsIndex']>>>
+    }
+  }
+  'hrms.sections.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/sections'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['sectionsStore']>>>
+    }
+  }
+  'hrms.sections.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/sections/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['sectionsUpdate']>>>
+    }
+  }
+  'hrms.sections.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/sections/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['sectionsDestroy']>>>
+    }
+  }
+  'hrms.sub-sections': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/sub-sections'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subSectionsIndex']>>>
+    }
+  }
+  'hrms.sub-sections.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/sub-sections'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subSectionsStore']>>>
+    }
+  }
+  'hrms.sub-sections.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/sub-sections/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subSectionsUpdate']>>>
+    }
+  }
+  'hrms.sub-sections.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/sub-sections/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['subSectionsDestroy']>>>
+    }
+  }
+  'hrms.holidays': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/holidays'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['holidaysIndex']>>>
+    }
+  }
+  'hrms.holidays.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/holidays'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').holidayValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').holidayValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['holidaysStore']>>>
+    }
+  }
+  'hrms.holidays.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/holidays/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').holidayValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').holidayValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['holidaysUpdate']>>>
+    }
+  }
+  'hrms.holidays.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/holidays/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['holidaysDestroy']>>>
+    }
+  }
+  'hrms.notice-period': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/notice-period'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['noticePeriodIndex']>>>
+    }
+  }
+  'hrms.notice-period.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/notice-period'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').noticePeriodValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').noticePeriodValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['noticePeriodStore']>>>
+    }
+  }
+  'hrms.notice-period.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/notice-period/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').noticePeriodValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').noticePeriodValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['noticePeriodUpdate']>>>
+    }
+  }
+  'hrms.notice-period.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/notice-period/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['noticePeriodDestroy']>>>
+    }
+  }
+  'hrms.approvals': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/approvals'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['approvalsIndex']>>>
+    }
+  }
+  'hrms.approvals.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/approvals'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').approvalValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').approvalValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['approvalsStore']>>>
+    }
+  }
+  'hrms.approvals.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/approvals/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').approvalValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').approvalValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['approvalsUpdate']>>>
+    }
+  }
+  'hrms.approvals.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/approvals/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['approvalsDestroy']>>>
+    }
+  }
+  'hrms.documents': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/documents'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['documentsIndex']>>>
+    }
+  }
+  'hrms.documents.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/documents'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').companyDocumentValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').companyDocumentValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['documentsStore']>>>
+    }
+  }
+  'hrms.documents.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/documents/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').companyDocumentValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').companyDocumentValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['documentsUpdate']>>>
+    }
+  }
+  'hrms.documents.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/documents/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['documentsDestroy']>>>
+    }
+  }
+  'hrms.checklists': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/checklists'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['checklistsIndex']>>>
+    }
+  }
+  'hrms.checklists.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/checklists'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').checklistValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').checklistValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['checklistsStore']>>>
+    }
+  }
+  'hrms.checklists.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/checklists/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').checklistValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').checklistValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['checklistsUpdate']>>>
+    }
+  }
+  'hrms.checklists.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/checklists/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['checklistsDestroy']>>>
+    }
+  }
+  'hrms.templates': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/templates'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['templatesIndex']>>>
+    }
+  }
+  'hrms.templates.store': {
+    methods: ["POST"]
+    pattern: '/hrms/organization/settings/templates'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').templateValidator)>>
+      paramsTuple: []
+      params: {}
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').templateValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['templatesStore']>>>
+    }
+  }
+  'hrms.templates.update': {
+    methods: ["PUT"]
+    pattern: '/hrms/organization/settings/templates/:id'
+    types: {
+      body: ExtractBody<InferInput<(typeof import('#hrms/validators/settings_validator').templateValidator)>>
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: ExtractQuery<InferInput<(typeof import('#hrms/validators/settings_validator').templateValidator)>>
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['templatesUpdate']>>>
+    }
+  }
+  'hrms.templates.destroy': {
+    methods: ["DELETE"]
+    pattern: '/hrms/organization/settings/templates/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['templatesDestroy']>>>
+    }
+  }
+  'hrms.alerts': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/alerts'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['alertsIndex']>>>
+    }
+  }
+  'hrms.notifications': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/notifications'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['notificationsIndex']>>>
+    }
+  }
+  'hrms.fiscal-year': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/organization/settings/fiscal-year'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/settings_controller').default['fiscalYearIndex']>>>
     }
   }
 }
