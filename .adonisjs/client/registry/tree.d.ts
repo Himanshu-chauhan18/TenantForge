@@ -80,10 +80,12 @@ export interface ApiDefinition {
     modules: {
       store: typeof routes['masters.modules.store']
       update: typeof routes['masters.modules.update']
+      destroy: typeof routes['masters.modules.destroy']
     }
     addons: {
       store: typeof routes['masters.addons.store']
       update: typeof routes['masters.addons.update']
+      destroy: typeof routes['masters.addons.destroy']
     }
   }
   settings: {

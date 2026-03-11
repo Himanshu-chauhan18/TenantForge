@@ -535,6 +535,17 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['updateModule']>>>
     }
   }
+  'masters.modules.destroy': {
+    methods: ["DELETE"]
+    pattern: '/masters/modules/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['destroyModule']>>>
+    }
+  }
   'masters.addons.store': {
     methods: ["POST"]
     pattern: '/masters/addons'
@@ -555,6 +566,17 @@ export interface Registry {
       params: { id: ParamValue }
       query: {}
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['updateAddon']>>>
+    }
+  }
+  'masters.addons.destroy': {
+    methods: ["DELETE"]
+    pattern: '/masters/addons/:id'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/masters_controller').default['destroyAddon']>>>
     }
   }
   'settings.index': {

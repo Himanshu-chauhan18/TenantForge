@@ -294,6 +294,12 @@ const routes = {
     tokens: [{"old":"/masters/modules/:id","type":0,"val":"masters","end":""},{"old":"/masters/modules/:id","type":0,"val":"modules","end":""},{"old":"/masters/modules/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['masters.modules.update']['types'],
   },
+  'masters.modules.destroy': {
+    methods: ["DELETE"],
+    pattern: '/masters/modules/:id',
+    tokens: [{"old":"/masters/modules/:id","type":0,"val":"masters","end":""},{"old":"/masters/modules/:id","type":0,"val":"modules","end":""},{"old":"/masters/modules/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['masters.modules.destroy']['types'],
+  },
   'masters.addons.store': {
     methods: ["POST"],
     pattern: '/masters/addons',
@@ -305,6 +311,12 @@ const routes = {
     pattern: '/masters/addons/:id',
     tokens: [{"old":"/masters/addons/:id","type":0,"val":"masters","end":""},{"old":"/masters/addons/:id","type":0,"val":"addons","end":""},{"old":"/masters/addons/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['masters.addons.update']['types'],
+  },
+  'masters.addons.destroy': {
+    methods: ["DELETE"],
+    pattern: '/masters/addons/:id',
+    tokens: [{"old":"/masters/addons/:id","type":0,"val":"masters","end":""},{"old":"/masters/addons/:id","type":0,"val":"addons","end":""},{"old":"/masters/addons/:id","type":1,"val":"id","end":""}],
+    types: placeholder as Registry['masters.addons.destroy']['types'],
   },
   'settings.index': {
     methods: ["GET","HEAD"],

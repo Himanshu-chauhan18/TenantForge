@@ -52,8 +52,10 @@ export type ScannedRoutes = {
     'masters.index': { paramsTuple?: []; params?: {} }
     'masters.modules.store': { paramsTuple?: []; params?: {} }
     'masters.modules.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'masters.modules.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'masters.addons.store': { paramsTuple?: []; params?: {} }
     'masters.addons.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'masters.addons.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'settings.index': { paramsTuple?: []; params?: {} }
     'settings.profile.update': { paramsTuple?: []; params?: {} }
     'settings.password.update': { paramsTuple?: []; params?: {} }
@@ -158,6 +160,8 @@ export type ScannedRoutes = {
     'organizations.profiles.destroy': { paramsTuple: [ParamValue,ParamValue]; params: {'id': ParamValue,'profileId': ParamValue} }
     'organizations.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'leads.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'masters.modules.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'masters.addons.destroy': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'settings.totp.disable': { paramsTuple?: []; params?: {} }
   }
   OPTIONS: {

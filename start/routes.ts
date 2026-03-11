@@ -98,8 +98,10 @@ router
         router.get('/', [MastersController, 'index']).as('masters.index')
         router.post('/modules', [MastersController, 'storeModule']).as('masters.modules.store')
         router.put('/modules/:id', [MastersController, 'updateModule']).as('masters.modules.update')
+        router.delete('/modules/:id', [MastersController, 'destroyModule']).as('masters.modules.destroy')
         router.post('/addons', [MastersController, 'storeAddon']).as('masters.addons.store')
         router.put('/addons/:id', [MastersController, 'updateAddon']).as('masters.addons.update')
+        router.delete('/addons/:id', [MastersController, 'destroyAddon']).as('masters.addons.destroy')
       })
       .prefix('masters')
 

@@ -122,4 +122,32 @@ export default class MastersController {
     session.flash('success', `Addon "${addon.name}" updated.`)
     return response.redirect().back()
   }
+
+  // ── DELETE /masters/modules/:id ─────────────────────────────────────────────
+
+  async destroyModule({ params, response, session }: HttpContext) {
+    const mod = await Module.find(Number(params.id))
+    if (!mod) {
+      session.flash('error', 'Module not found.')
+      return response.redirect().back()
+    }
+    await ModuleAddon.query().where('module_id', mod.id).delete()
+    await mod.delete()
+    session.flash('success', `Module "${mod.label}" and its add-ons deleted.`)
+    return response.redirect().back()
+  }
+
+  // ── DELETE /masters/addons/:id ──────────────────────────────────────────────
+
+  async destroyAddon({ params, response, session }: HttpContext) {
+    const addon = await ModuleAddon.find(Number(params.id))
+    if (!addon) {
+      session.flash('error', 'Add-on not found.')
+      return response.redirect().back()
+    }
+    const name = addon.name
+    await addon.delete()
+    session.flash('success', `Add-on "${name}" deleted.`)
+    return response.redirect().back()
+  }
 }
