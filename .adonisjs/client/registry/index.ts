@@ -390,6 +390,18 @@ const routes = {
     tokens: [{"old":"/hrms/self-service","type":0,"val":"hrms","end":""},{"old":"/hrms/self-service","type":0,"val":"self-service","end":""}],
     types: placeholder as Registry['hrms.self-service']['types'],
   },
+  'hrms.leave': {
+    methods: ["GET","HEAD"],
+    pattern: '/hrms/leave',
+    tokens: [{"old":"/hrms/leave","type":0,"val":"hrms","end":""},{"old":"/hrms/leave","type":0,"val":"leave","end":""}],
+    types: placeholder as Registry['hrms.leave']['types'],
+  },
+  'hrms.payroll': {
+    methods: ["GET","HEAD"],
+    pattern: '/hrms/payroll',
+    tokens: [{"old":"/hrms/payroll","type":0,"val":"hrms","end":""},{"old":"/hrms/payroll","type":0,"val":"payroll","end":""}],
+    types: placeholder as Registry['hrms.payroll']['types'],
+  },
   'hrms.dashboard': {
     methods: ["GET","HEAD"],
     pattern: '/hrms/dashboard',

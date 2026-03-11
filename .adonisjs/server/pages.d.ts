@@ -60,5 +60,7 @@ declare module '@adonisjs/inertia/types' {
     'orgbuilder/organizations/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/organizations/index.tsx'))['default']>
     'orgbuilder/settings/index': ExtractProps<(typeof import('../../inertia/pages/orgbuilder/settings/index.tsx'))['default']>
     'hrms/self-service/index': ExtractProps<(typeof import('../../inertia/pages/hrms/self-service/index.tsx'))['default']>
+    'hrms/leave/index': ExtractProps<(typeof import('../../inertia/pages/hrms/leave/index.tsx'))['default']>
+    'hrms/payroll/index': ExtractProps<(typeof import('../../inertia/pages/hrms/payroll/index.tsx'))['default']>
   }
 }

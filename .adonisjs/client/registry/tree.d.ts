@@ -8,6 +8,8 @@ export interface ApiDefinition {
     }
     logout: typeof routes['hrms.logout']
     selfService: typeof routes['hrms.self-service']
+    leave: typeof routes['hrms.leave']
+    payroll: typeof routes['hrms.payroll']
     dashboard: typeof routes['hrms.dashboard']
     org: {
       company: typeof routes['hrms.org.company'] & {

@@ -711,6 +711,28 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/self_service_controller').default['index']>>>
     }
   }
+  'hrms.leave': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/leave'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/leave_controller').default['index']>>>
+    }
+  }
+  'hrms.payroll': {
+    methods: ["GET","HEAD"]
+    pattern: '/hrms/payroll'
+    types: {
+      body: {}
+      paramsTuple: []
+      params: {}
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#hrms/controllers/payroll_controller').default['index']>>>
+    }
+  }
   'hrms.dashboard': {
     methods: ["GET","HEAD"]
     pattern: '/hrms/dashboard'

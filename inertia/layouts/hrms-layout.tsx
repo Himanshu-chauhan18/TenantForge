@@ -4,7 +4,7 @@ import { toast, Toaster } from 'sonner'
 import {
   Users, Building2, Clock, ChevronDown, ChevronRight, ChevronLeft,
   Moon, Sun, Bell, LogOut, Zap, Settings, GitBranch, Shield,
-  X, LayoutGrid,
+  X, LayoutGrid, Calendar, DollarSign,
 } from 'lucide-react'
 
 interface HrmsUser {
@@ -37,13 +37,15 @@ interface SidebarItem {
 }
 
 /* ── module definitions ───────────────────────────────────────────────────── */
-type ModuleKey = 'self' | 'organization' | 'employee' | 'attendance'
+type ModuleKey = 'self' | 'organization' | 'employee' | 'attendance' | 'leave' | 'payroll'
 
 const MODULE_META: Record<ModuleKey, { label: string; icon: React.ReactNode; color: string; defaultPath: string }> = {
-  self:         { label: 'Self Service', icon: <LayoutGrid size={14} />, color: '#4F46E5', defaultPath: '/hrms/self-service' },
-  organization: { label: 'Organization', icon: <Building2 size={14} />, color: '#0D9488', defaultPath: '/hrms/organization/company' },
-  employee:     { label: 'Employee',     icon: <Users    size={14} />, color: '#7C3AED', defaultPath: '/hrms/employee' },
-  attendance:   { label: 'Attendance',   icon: <Clock    size={14} />, color: '#D97706', defaultPath: '/hrms/attendance' },
+  self:         { label: 'Self Service', icon: <LayoutGrid  size={14} />, color: '#4F46E5', defaultPath: '/hrms/self-service' },
+  organization: { label: 'Organization', icon: <Building2   size={14} />, color: '#0D9488', defaultPath: '/hrms/organization/company' },
+  employee:     { label: 'Employee',     icon: <Users       size={14} />, color: '#7C3AED', defaultPath: '/hrms/employee' },
+  attendance:   { label: 'Attendance',   icon: <Clock       size={14} />, color: '#D97706', defaultPath: '/hrms/attendance' },
+  leave:        { label: 'Leave',        icon: <Calendar    size={14} />, color: '#16A34A', defaultPath: '/hrms/leave' },
+  payroll:      { label: 'Payroll',      icon: <DollarSign  size={14} />, color: '#2563EB', defaultPath: '/hrms/payroll' },
 }
 
 const ORG_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
@@ -119,6 +121,14 @@ const SELF_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
   },
 ]
 
+const LEAVE_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
+  { group: 'LEAVE', items: [{ label: 'Leave Management', icon: <Calendar size={15} />, href: '/hrms/leave' }] },
+]
+
+const PAYROLL_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
+  { group: 'PAYROLL', items: [{ label: 'Payroll', icon: <DollarSign size={15} />, href: '/hrms/payroll' }] },
+]
+
 const EMPLOYEE_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
   { group: 'MAIN MENU', items: [{ label: 'Employee Directory', icon: <Users size={15} />, href: '/hrms/employee' }] },
 ]
@@ -131,6 +141,8 @@ function getSidebarForModule(mod: ModuleKey) {
   if (mod === 'self')         return SELF_SIDEBAR
   if (mod === 'organization') return ORG_SIDEBAR
   if (mod === 'employee')     return EMPLOYEE_SIDEBAR
+  if (mod === 'leave')        return LEAVE_SIDEBAR
+  if (mod === 'payroll')      return PAYROLL_SIDEBAR
   return ATTENDANCE_SIDEBAR
 }
 
@@ -138,6 +150,8 @@ function getModuleFromPath(url: string): ModuleKey {
   if (url.startsWith('/hrms/self-service')) return 'self'
   if (url.startsWith('/hrms/employee'))     return 'employee'
   if (url.startsWith('/hrms/attendance'))   return 'attendance'
+  if (url.startsWith('/hrms/leave'))        return 'leave'
+  if (url.startsWith('/hrms/payroll'))      return 'payroll'
   if (url.startsWith('/hrms/organization') || url.startsWith('/hrms/dashboard')) return 'organization'
   return 'self'
 }
@@ -160,6 +174,8 @@ function buildBreadcrumbs(url: string) {
     }
   } else if (parts[1] === 'employee')   crumbs.push({ label: 'Employee', href: '/hrms/employee' })
   else if   (parts[1] === 'attendance') crumbs.push({ label: 'Attendance', href: '/hrms/attendance' })
+  else if   (parts[1] === 'leave')      crumbs.push({ label: 'Leave', href: '/hrms/leave' })
+  else if   (parts[1] === 'payroll')    crumbs.push({ label: 'Payroll', href: '/hrms/payroll' })
   return crumbs
 }
 

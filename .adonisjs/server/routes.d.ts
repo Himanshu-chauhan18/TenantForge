@@ -68,6 +68,8 @@ export type ScannedRoutes = {
     'settings.users.resetPassword': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'hrms.logout': { paramsTuple?: []; params?: {} }
     'hrms.self-service': { paramsTuple?: []; params?: {} }
+    'hrms.leave': { paramsTuple?: []; params?: {} }
+    'hrms.payroll': { paramsTuple?: []; params?: {} }
     'hrms.dashboard': { paramsTuple?: []; params?: {} }
     'hrms.org.company': { paramsTuple?: []; params?: {} }
     'hrms.org.company.update': { paramsTuple?: []; params?: {} }
@@ -164,6 +166,8 @@ export type ScannedRoutes = {
     'masters.index': { paramsTuple?: []; params?: {} }
     'settings.index': { paramsTuple?: []; params?: {} }
     'hrms.self-service': { paramsTuple?: []; params?: {} }
+    'hrms.leave': { paramsTuple?: []; params?: {} }
+    'hrms.payroll': { paramsTuple?: []; params?: {} }
     'hrms.dashboard': { paramsTuple?: []; params?: {} }
     'hrms.org.company': { paramsTuple?: []; params?: {} }
     'hrms.org.roles': { paramsTuple?: []; params?: {} }
@@ -214,6 +218,8 @@ export type ScannedRoutes = {
     'masters.index': { paramsTuple?: []; params?: {} }
     'settings.index': { paramsTuple?: []; params?: {} }
     'hrms.self-service': { paramsTuple?: []; params?: {} }
+    'hrms.leave': { paramsTuple?: []; params?: {} }
+    'hrms.payroll': { paramsTuple?: []; params?: {} }
     'hrms.dashboard': { paramsTuple?: []; params?: {} }
     'hrms.org.company': { paramsTuple?: []; params?: {} }
     'hrms.org.roles': { paramsTuple?: []; params?: {} }
