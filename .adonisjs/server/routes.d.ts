@@ -32,6 +32,7 @@ export type ScannedRoutes = {
     'organizations.show': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.edit': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
+    'organizations.logo.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.superAdmin.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.modules.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
@@ -125,6 +126,7 @@ export type ScannedRoutes = {
     'auth.logout': { paramsTuple?: []; params?: {} }
     'organizations.store': { paramsTuple?: []; params?: {} }
     'organizations.bulk': { paramsTuple?: []; params?: {} }
+    'organizations.logo.update': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.users.bulk': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }
     'organizations.profiles.store': { paramsTuple: [ParamValue]; params: {'id': ParamValue} }

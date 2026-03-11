@@ -65,6 +65,7 @@ router
         router.get('/:id', [OrganizationController, 'show']).as('organizations.show')
         router.get('/:id/edit', [OrganizationController, 'edit']).as('organizations.edit')
         router.put('/:id', [OrganizationController, 'update']).as('organizations.update')
+        router.post('/:id/logo', [OrganizationController, 'updateLogo']).as('organizations.logo.update')
         router.put('/:id/super-admin', [OrganizationController, 'updateSuperAdmin']).as('organizations.superAdmin.update')
         router.put('/:id/modules', [OrganizationController, 'updateModules']).as('organizations.modules.update')
         router.post('/:id/users', [OrganizationController, 'storeUser']).as('organizations.users.store')

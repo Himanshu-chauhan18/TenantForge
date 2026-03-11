@@ -174,6 +174,12 @@ const routes = {
     tokens: [{"old":"/organizations/:id","type":0,"val":"organizations","end":""},{"old":"/organizations/:id","type":1,"val":"id","end":""}],
     types: placeholder as Registry['organizations.update']['types'],
   },
+  'organizations.logo.update': {
+    methods: ["POST"],
+    pattern: '/organizations/:id/logo',
+    tokens: [{"old":"/organizations/:id/logo","type":0,"val":"organizations","end":""},{"old":"/organizations/:id/logo","type":1,"val":"id","end":""},{"old":"/organizations/:id/logo","type":0,"val":"logo","end":""}],
+    types: placeholder as Registry['organizations.logo.update']['types'],
+  },
   'organizations.superAdmin.update': {
     methods: ["PUT"],
     pattern: '/organizations/:id/super-admin',

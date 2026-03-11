@@ -43,6 +43,9 @@ export interface ApiDefinition {
     show: typeof routes['organizations.show']
     edit: typeof routes['organizations.edit']
     update: typeof routes['organizations.update']
+    logo: {
+      update: typeof routes['organizations.logo.update']
+    }
     superAdmin: {
       update: typeof routes['organizations.superAdmin.update']
     }

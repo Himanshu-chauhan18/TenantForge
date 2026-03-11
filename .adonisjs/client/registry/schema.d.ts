@@ -315,6 +315,17 @@ export interface Registry {
       response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['update']>>>
     }
   }
+  'organizations.logo.update': {
+    methods: ["POST"]
+    pattern: '/organizations/:id/logo'
+    types: {
+      body: {}
+      paramsTuple: [ParamValue]
+      params: { id: ParamValue }
+      query: {}
+      response: ExtractResponse<Awaited<ReturnType<import('#controllers/organization_controller').default['updateLogo']>>>
+    }
+  }
   'organizations.superAdmin.update': {
     methods: ["PUT"]
     pattern: '/organizations/:id/super-admin'
