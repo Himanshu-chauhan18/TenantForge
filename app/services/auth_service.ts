@@ -1,6 +1,6 @@
 import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
-import UserRepository from '#repositories/user_repository'
+import UserRepository from '#orgbuilder/repositories/user_repository'
 import User from '#models/user'
 
 export default class AuthService {

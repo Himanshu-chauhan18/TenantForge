@@ -24,3 +24,7 @@ yarn-error.log
 
 # Platform specific
 .DS_Store
+
+# AdonisJS auto-generated cache
+.adonisjs/
+.claude/*

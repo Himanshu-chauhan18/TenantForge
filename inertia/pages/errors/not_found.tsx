@@ -49,7 +49,7 @@ export default function NotFound() {
           >
             <ArrowLeft size={14} /> Go Back
           </button>
-          <Link href="/dashboard" className="btn btn-p">
+          <Link href="/orgbuilder/dashboard" className="btn btn-p">
             <Home size={14} /> Dashboard
           </Link>
         </div>

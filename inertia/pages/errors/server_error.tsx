@@ -46,7 +46,7 @@ export default function ServerError() {
           <button className="btn btn-ghost" onClick={() => window.location.reload()}>
             <RefreshCw size={14} /> Try Again
           </button>
-          <Link href="/dashboard" className="btn btn-p">
+          <Link href="/orgbuilder/dashboard" className="btn btn-p">
             <Home size={14} /> Dashboard
           </Link>
         </div>

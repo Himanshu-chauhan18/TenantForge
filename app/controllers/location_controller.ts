@@ -4,6 +4,8 @@ import Module from '#models/module'
 
 export default class LocationController {
   async modules({ response }: HttpContext) {
+    response.header('Cache-Control', 'public, max-age=300, stale-while-revalidate=60')
+
     const mods = await Module.query()
       .where('is_active', true)
       .preload('addons', (q) => q.where('is_active', true).orderBy('sort_order', 'asc'))
@@ -25,7 +27,9 @@ export default class LocationController {
 
 
   async countries({ request, response }: HttpContext) {
-    const search = (request.input('search', '') as string).trim()
+    response.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=300')
+
+    const search = (request.input('search', '') as string).trim().slice(0, 100)
 
     const query = db
       .from('countries')
@@ -78,6 +82,8 @@ export default class LocationController {
   }
 
   async currencies({ response }: HttpContext) {
+    response.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=300')
+
     const rows = await db
       .from('countries')
       .whereNotNull('currency')
@@ -99,6 +105,8 @@ export default class LocationController {
   }
 
   async timezones({ response }: HttpContext) {
+    response.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=300')
+
     const rows = await db
       .from('countries')
       .where('flag', 1)
@@ -129,7 +137,9 @@ export default class LocationController {
   }
 
   async cities({ request, response }: HttpContext) {
-    const search = (request.input('search', '') as string).trim()
+    response.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=300')
+
+    const search = (request.input('search', '') as string).trim().slice(0, 100)
     const countryId = request.input('country_id')
 
     if (!countryId) return response.json([])
