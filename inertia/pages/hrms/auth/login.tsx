@@ -20,7 +20,7 @@ const T = {
     pageBg:         '#050e0c',
     cardBg:         'rgba(10,25,22,.85)',
     cardBorder:     'rgba(13,148,136,.28)',
-    cardGlow:       '0 0 0 1px rgba(13,148,136,.18), 0 32px 80px rgba(0,0,0,.75), 0 8px 32px rgba(13,148,136,.08)',
+    cardGlow:       '0 0 0 1px rgba(13,148,136,.18), 0 8px 32px rgba(13,148,136,.1)',
     logoText:       '#ffffff',
     logoSub:        'rgba(255,255,255,.3)',
     divider:        'rgba(255,255,255,.07)',
@@ -63,7 +63,7 @@ const T = {
     pageBg:         '#e8faf4',
     cardBg:         'rgba(255,255,255,.9)',
     cardBorder:     'rgba(13,148,136,.2)',
-    cardGlow:       '0 0 0 1px rgba(13,148,136,.12), 0 24px 64px rgba(13,148,136,.12), 0 4px 16px rgba(0,0,0,.04)',
+    cardGlow:       '0 0 0 1px rgba(13,148,136,.14), 0 6px 24px rgba(13,148,136,.08), 0 2px 8px rgba(0,0,0,.04)',
     logoText:       '#0f2420',
     logoSub:        'rgba(15,36,32,.35)',
     divider:        'rgba(13,148,136,.1)',
@@ -155,6 +155,7 @@ export default function HrmsLogin() {
   const [step, setStep]                   = useState<'identifier' | 'password'>('identifier')
   const [identifier, setIdentifier]       = useState('')
   const [identifierErr, setIdentifierErr] = useState('')
+  const [checking, setChecking]           = useState(false)
   const [showPw, setShowPw]               = useState(false)
 
   const identifierRef = useRef<HTMLInputElement>(null)
@@ -167,14 +168,28 @@ export default function HrmsLogin() {
 
   const { data, setData, post, processing, errors } = useForm({ identifier: '', password: '' })
 
-  function handleIdentifierNext(e: React.SyntheticEvent) {
+  async function handleIdentifierNext(e: React.SyntheticEvent) {
     e.preventDefault()
     const v = identifier.trim()
     if (!v) { setIdentifierErr('Enter your work email or phone number.'); return }
     if (!getIdentifierType(v)) { setIdentifierErr('Enter a valid email address or phone number.'); return }
+
+    setChecking(true)
     setIdentifierErr('')
-    setData('identifier', v)
-    setStep('password')
+    try {
+      const res = await fetch(`/login/check-identifier?identifier=${encodeURIComponent(v)}`)
+      const json = await res.json()
+      if (!json.exists) {
+        setIdentifierErr('No account found with this email or phone number.')
+        return
+      }
+      setData('identifier', v)
+      setStep('password')
+    } catch {
+      setIdentifierErr('Unable to connect. Please try again.')
+    } finally {
+      setChecking(false)
+    }
   }
 
   function handleSubmit(e: React.SyntheticEvent) {
@@ -439,7 +454,12 @@ export default function HrmsLogin() {
                       )}
                       <style>{`.hl-input::placeholder{color:${c.inputPH}}`}</style>
                     </div>
-                    <button type="submit" className="hl-btn">Continue <ArrowRight size={15} /></button>
+                    <button type="submit" className="hl-btn" disabled={checking}>
+                      {checking
+                        ? <><span style={{ width:15, height:15, border:'2px solid rgba(255,255,255,.3)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin 1s linear infinite', display:'inline-block' }} /> Checking…</>
+                        : <>Continue <ArrowRight size={15} /></>
+                      }
+                    </button>
                   </form>
                 </div>
               )}

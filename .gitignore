@@ -27,3 +27,4 @@ yarn-error.log
 
 # AdonisJS auto-generated cache
 .adonisjs/
+.claude/*

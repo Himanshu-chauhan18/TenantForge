@@ -66,6 +66,9 @@ export default class Organization extends BaseModel {
   declare address: string | null
 
   @column()
+  declare pincode: string | null
+
+  @column()
   declare leadOwnerId: number | null
 
   @column()

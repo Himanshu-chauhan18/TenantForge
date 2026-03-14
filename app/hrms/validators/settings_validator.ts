@@ -114,6 +114,7 @@ export const companyUpdateValidator = vine.compile(
     country: vine.string().trim().maxLength(100).optional(),
     city: vine.string().trim().maxLength(100).optional(),
     address: vine.string().trim().optional(),
+    pincode: vine.string().trim().maxLength(20).optional(),
     // Locale
     currency: vine.string().trim().maxLength(10).optional(),
     timezone: vine.string().trim().maxLength(80).optional(),

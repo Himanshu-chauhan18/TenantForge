@@ -17,6 +17,7 @@ router
   .group(() => {
     router.get('/login', [HrmsAuthController, 'showLogin']).as('hrms.login')
     router.post('/login', [HrmsAuthController, 'login']).as('hrms.login.submit')
+    router.get('/login/check-identifier', [HrmsAuthController, 'checkIdentifier']).as('hrms.login.checkIdentifier')
   })
   .use(middleware.hrmsGuest())
 

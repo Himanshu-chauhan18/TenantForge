@@ -4,7 +4,21 @@ import OrganizationUser from '#models/organization_user'
 import Organization from '#models/organization'
 import { hrmsLoginValidator } from '#hrms/validators/auth_validator'
 
+// Re-export types for consumers that previously imported from here
+export type { HrmsPermEntry, HrmsAddonPermissions, HrmsAddonNameIndex, HrmsPermissions } from '#hrms/utils/build_permissions'
+
 export default class HrmsAuthController {
+  async checkIdentifier({ request, response }: HttpContext) {
+    const raw = (request.input('identifier', '') as string).trim()
+    const id = raw.toLowerCase()
+    const employee = await OrganizationUser.query()
+      .where((q) => {
+        q.where('company_email', id).orWhere('phone', raw)
+      })
+      .first()
+    return response.json({ exists: !!employee })
+  }
+
   async showLogin({ inertia, session, response }: HttpContext) {
     const existing = session.get('hrms_session')
     if (existing?.employeeId) return response.redirect('/hrms/self-service')
@@ -27,7 +41,7 @@ export default class HrmsAuthController {
     }
 
     if (!employee.isActive) {
-      return inertia.render('hrms/auth/login', { authError: 'Your account has been deactivated. Please contact HR.' })
+      return inertia.render('hrms/auth/login', { authError: 'Temporarily unable to sign in. Please contact your HR administrator.' })
     }
 
     const passwordMatch = await hash.verify(employee.passwordHash, data.password)
@@ -35,18 +49,22 @@ export default class HrmsAuthController {
       return inertia.render('hrms/auth/login', { authError: 'Invalid email address or password.' })
     }
 
-    // Verify the employee's org is active
+    // Verify the employee's org exists, is active, and the plan has not expired
     const org = await Organization.query()
       .where('id', employee.orgId)
       .whereNull('deleted_at')
       .first()
 
-    if (!org || org.status !== 'active') {
-      return inertia.render('hrms/auth/login', { authError: 'Your organization account is inactive or expired. Contact your administrator.' })
+    if (!org || org.status !== 'active' || org.isExpired) {
+      return inertia.render('hrms/auth/login', { authError: 'Temporarily unable to sign in. Please contact your HR administrator.' })
     }
 
-    // Store HRMS session
-    session.put('hrms_session', { employeeId: employee.id, orgId: org.id })
+    // Session only stores identity — permissions are rebuilt fresh on every request in hrmsAuth middleware
+    session.put('hrms_session', {
+      employeeId: employee.id,
+      orgId:      org.id,
+    })
+
     return response.redirect('/hrms/self-service')
   }
 

@@ -7,6 +7,8 @@ import {
   X, LayoutGrid, Calendar, DollarSign,
 } from 'lucide-react'
 
+interface HrmsPermEntry { view: boolean; add: boolean; edit: boolean; delete: boolean }
+
 interface HrmsUser {
   id: number
   fullName: string
@@ -14,6 +16,10 @@ interface HrmsUser {
   employeeCode: string | null
   profileId: number | null
   profileName: string
+  hasProfile: boolean
+  permissions: Record<string, HrmsPermEntry>      // module-level: { [moduleKey]: perm }
+  addonPermissions: Record<string, HrmsPermEntry> // addon-level:  { [addonId]: perm }  keyed by addon ID string
+  addonNameIndex: Record<string, string>          // addonName → addonId string, for sidebar perm lookups
   initials: string
   org: { id: number; orgId: string; name: string; logo: string | null }
 }
@@ -25,14 +31,15 @@ interface SharedProps {
 
 interface SettingsGroup {
   group: string
-  items: { label: string; href: string }[]
+  items: { label: string; href: string; perm?: string }[]
 }
 
 interface SidebarItem {
   label: string
   icon: React.ReactNode
   href?: string
-  children?: { label: string; href: string }[]
+  perm?: string  // addon name required to view this item
+  children?: { label: string; href: string; perm?: string }[]
   groups?: SettingsGroup[]
 }
 
@@ -52,14 +59,14 @@ const ORG_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
   {
     group: 'MAIN MENU',
     items: [
-      { label: 'Company',             icon: <Building2 size={15} />, href: '/hrms/organization/company' },
-      { label: 'Roles & Permissions', icon: <Shield    size={15} />, href: '/hrms/organization/roles' },
+      { label: 'Company',             icon: <Building2 size={15} />, href: '/hrms/organization/company', perm: 'Settings - Company' },
+      { label: 'Roles & Permissions', icon: <Shield    size={15} />, href: '/hrms/organization/roles',   perm: 'Roles & Permissions' },
     ],
   },
   {
     group: 'CONFIGURATION',
     items: [
-      { label: 'Manage Hierarchy', icon: <GitBranch size={15} />, href: '/hrms/organization/hierarchy' },
+      { label: 'Manage Hierarchy', icon: <GitBranch size={15} />, href: '/hrms/organization/hierarchy', perm: 'Settings - Hierarchy' },
       {
         label: 'Settings',
         icon: <Settings size={15} />,
@@ -67,43 +74,43 @@ const ORG_SIDEBAR: { group?: string; items: SidebarItem[] }[] = [
           {
             group: 'Structure',
             items: [
-              { label: 'Divisions',       href: '/hrms/organization/settings/divisions' },
-              { label: 'Departments',     href: '/hrms/organization/settings/departments' },
-              { label: 'Sub Departments', href: '/hrms/organization/settings/sub-departments' },
-              { label: 'Sections',        href: '/hrms/organization/settings/sections' },
-              { label: 'Sub Sections',    href: '/hrms/organization/settings/sub-sections' },
+              { label: 'Divisions',       href: '/hrms/organization/settings/divisions',        perm: 'Settings - Divisions' },
+              { label: 'Departments',     href: '/hrms/organization/settings/departments',      perm: 'Settings - Departments' },
+              { label: 'Sub Departments', href: '/hrms/organization/settings/sub-departments',  perm: 'Settings - Sub Department' },
+              { label: 'Sections',        href: '/hrms/organization/settings/sections',         perm: 'Settings - Section' },
+              { label: 'Sub Sections',    href: '/hrms/organization/settings/sub-sections',     perm: 'Settings - Sub Section' },
             ],
           },
           {
             group: 'Workforce',
             items: [
-              { label: 'Designations', href: '/hrms/organization/settings/designations' },
-              { label: 'Grades',       href: '/hrms/organization/settings/grades' },
-              { label: 'Locations',    href: '/hrms/organization/settings/locations' },
+              { label: 'Designations', href: '/hrms/organization/settings/designations', perm: 'Settings - Designations' },
+              { label: 'Grades',       href: '/hrms/organization/settings/grades',       perm: 'Settings - Grades' },
+              { label: 'Locations',    href: '/hrms/organization/settings/locations',    perm: 'Settings - Locations' },
             ],
           },
           {
             group: 'Policy',
             items: [
-              { label: 'Holidays',     href: '/hrms/organization/settings/holidays' },
-              { label: 'Notice Period', href: '/hrms/organization/settings/notice-period' },
-              { label: 'Approvals',    href: '/hrms/organization/settings/approvals' },
+              { label: 'Holidays',      href: '/hrms/organization/settings/holidays',      perm: 'Settings - Holidays' },
+              { label: 'Notice Period', href: '/hrms/organization/settings/notice-period', perm: 'Settings - Notice Period' },
+              { label: 'Approvals',     href: '/hrms/organization/settings/approvals',     perm: 'Settings - Approvals' },
             ],
           },
           {
             group: 'Documents',
             items: [
-              { label: 'Company Documents', href: '/hrms/organization/settings/documents' },
-              { label: 'Checklists',        href: '/hrms/organization/settings/checklists' },
-              { label: 'Templates',         href: '/hrms/organization/settings/templates' },
+              { label: 'Company Documents', href: '/hrms/organization/settings/documents',  perm: 'Settings - Company Documents' },
+              { label: 'Checklists',        href: '/hrms/organization/settings/checklists', perm: 'Settings - Checklists' },
+              { label: 'Templates',         href: '/hrms/organization/settings/templates',  perm: 'Settings - Templates' },
             ],
           },
           {
             group: 'System',
             items: [
-              { label: 'Fiscal Year',   href: '/hrms/organization/settings/fiscal-year' },
-              { label: 'Alerts',        href: '/hrms/organization/settings/alerts' },
-              { label: 'Notifications', href: '/hrms/organization/settings/notifications' },
+              { label: 'Fiscal Year',   href: '/hrms/organization/settings/fiscal-year',    perm: 'Settings - Fiscal Year' },
+              { label: 'Alerts',        href: '/hrms/organization/settings/alerts',         perm: 'Settings - Alerts' },
+              { label: 'Notifications', href: '/hrms/organization/settings/notifications',  perm: 'Settings - Notifications' },
             ],
           },
         ],
@@ -160,7 +167,7 @@ function buildBreadcrumbs(url: string) {
   const crumbs: { label: string; href: string }[] = [{ label: 'Self Service', href: '/hrms/self-service' }]
   const parts = url.split('/').filter(Boolean)
   if (parts[1] === 'self-service') {
-    crumbs.push({ label: 'Self Service', href: '/hrms/self-service' })
+    // root — no extra crumb needed
   } else if (parts[1] === 'dashboard') {
     crumbs.push({ label: 'Dashboard', href: '/hrms/dashboard' })
   } else if (parts[1] === 'organization') {
@@ -207,9 +214,21 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
     flash?.toasts?.forEach((m) => toast.error(m))
   }, [flash])
 
-  const sidebarGroups = getSidebarForModule(activeModule)
-  const breadcrumbs   = buildBreadcrumbs(url)
-  const currentPage   = breadcrumbs[breadcrumbs.length - 1]?.label ?? ''
+  const sidebarGroups    = getSidebarForModule(activeModule)
+  const breadcrumbs      = buildBreadcrumbs(url)
+  const currentPage      = breadcrumbs[breadcrumbs.length - 1]?.label ?? ''
+  const addonPerms     = hrmsUser?.addonPermissions ?? {}  // keyed by addon ID string
+  const addonNameIndex = hrmsUser?.addonNameIndex   ?? {}  // addonName → addonId string
+
+  // Returns true when the employee is allowed to view this sidebar item.
+  // perm = undefined means the item requires no permission.
+  // Lookup: addonName → addonId (via addonNameIndex) → check addonPermissions[id].view
+  const canSee = (perm: string | undefined) => {
+    if (perm === undefined) return true
+    const addonId = addonNameIndex[perm]
+    if (!addonId) return false
+    return addonPerms[addonId]?.view === true
+  }
 
   const isActive      = (href: string) => url === href || url.startsWith(href + '/')
   const isChildActive = (ch: { href: string }[]) => ch.some((c) => isActive(c.href))
@@ -419,9 +438,13 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
                   </div>
                 )}
                 {group.items.map((item) => {
-                  // grouped dropdown (e.g. Settings)
+                  // grouped dropdown (e.g. Settings) — filter sub-groups and items by addon perm
                   if (item.groups) {
-                    const childActive = isGroupsActive(item.groups)
+                    const visibleGroups = item.groups
+                      .map((sg) => ({ ...sg, items: sg.items.filter((c) => canSee(c.perm)) }))
+                      .filter((sg) => sg.items.length > 0)
+                    if (visibleGroups.length === 0) return null
+                    const childActive = isGroupsActive(visibleGroups)
                     const expanded    = openGroup === item.label || childActive
                     return (
                       <div key={item.label}>
@@ -436,7 +459,7 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
                           <ChevronDown size={11} className={`chevron${expanded ? ' open' : ''}`} style={{ marginLeft: 'auto' }} />
                         </div>
                         <div className={`sb-sub${expanded && !sbCollapsed ? ' open' : ''}`} style={{ maxHeight: expanded && !sbCollapsed ? 1200 : 0 }}>
-                          {item.groups.map((sg) => (
+                          {visibleGroups.map((sg) => (
                             <div key={sg.group}>
                               <div className="sb-sub-group">{sg.group}</div>
                               {sg.items.map((child) => (
@@ -455,9 +478,11 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
                       </div>
                     )
                   }
-                  // flat dropdown
+                  // flat dropdown — filter children by addon perm
                   if (item.children) {
-                    const childActive = isChildActive(item.children)
+                    const visibleChildren = item.children.filter((c) => canSee(c.perm))
+                    if (visibleChildren.length === 0) return null
+                    const childActive = isChildActive(visibleChildren)
                     const expanded    = openGroup === item.label || childActive
                     return (
                       <div key={item.label}>
@@ -472,7 +497,7 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
                           <ChevronDown size={11} className={`chevron${expanded ? ' open' : ''}`} style={{ marginLeft: 'auto' }} />
                         </div>
                         <div className={`sb-sub${expanded && !sbCollapsed ? ' open' : ''}`} style={{ maxHeight: expanded && !sbCollapsed ? 700 : 0 }}>
-                          {item.children.map((child) => (
+                          {visibleChildren.map((child) => (
                             <Link
                               key={child.href}
                               href={child.href}
@@ -486,12 +511,14 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
                       </div>
                     )
                   }
+                  // simple link — check item-level perm
+                  if (!canSee(item.perm)) return null
                   return (
                     <Link
                       key={item.href}
                       href={item.href!}
                       className={`sb-item${isActive(item.href!) ? ' active' : ''}`}
-                                            title={sbCollapsed ? item.label : undefined}
+                      title={sbCollapsed ? item.label : undefined}
                     >
                       <span className="sb-icon">{item.icon}</span>
                       <span className="sb-text">{item.label}</span>
@@ -534,23 +561,29 @@ export default function HrmsLayout({ children }: { children: React.ReactNode }) 
           {/* navbar */}
           <header className="navbar" style={{ gap: 10 }}>
 
-            {/* centered module tabs */}
+            {/* centered module tabs — filtered by the employee's role permissions */}
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <nav className="mod-tabs">
-                {(Object.entries(MODULE_META) as [ModuleKey, (typeof MODULE_META)[ModuleKey]][]).map(([mod, meta]) => (
-                  <button
-                    key={mod}
-                    className={`mod-tab${activeModule === mod ? ' mt-active' : ''}`}
-                    onClick={() => switchModule(mod)}
-                  >
-                    <span className="mt-ic" style={{ color: activeModule === mod ? meta.color : undefined }}>
-                      {meta.icon}
-                    </span>
-                    <span className="mod-lbl" style={{ color: activeModule === mod ? meta.color : undefined }}>
-                      {meta.label}
-                    </span>
-                  </button>
-                ))}
+                {(Object.entries(MODULE_META) as [ModuleKey, (typeof MODULE_META)[ModuleKey]][])
+                  .filter(([mod]) => {
+                    // 'self' is always visible (home portal)
+                    if (mod === 'self') return true
+                    return hrmsUser?.permissions[mod]?.view === true
+                  })
+                  .map(([mod, meta]) => (
+                    <button
+                      key={mod}
+                      className={`mod-tab${activeModule === mod ? ' mt-active' : ''}`}
+                      onClick={() => switchModule(mod)}
+                    >
+                      <span className="mt-ic" style={{ color: activeModule === mod ? meta.color : undefined }}>
+                        {meta.icon}
+                      </span>
+                      <span className="mod-lbl" style={{ color: activeModule === mod ? meta.color : undefined }}>
+                        {meta.label}
+                      </span>
+                    </button>
+                  ))}
               </nav>
             </div>
 

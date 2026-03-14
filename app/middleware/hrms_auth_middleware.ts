@@ -2,11 +2,13 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import OrganizationUser from '#models/organization_user'
 import Organization from '#models/organization'
+import { buildHrmsPermissions } from '#hrms/utils/build_permissions'
+import type { HrmsBuiltPermissions } from '#hrms/utils/build_permissions'
 
 /**
  * HRMS auth middleware — protects all /hrms routes.
- * Session key: hrms_session → { employeeId, orgId }
- * Redirects unauthenticated users to /hrms/login.
+ * Rebuilds permissions on every request so admin changes take effect immediately
+ * without requiring the employee to re-login.
  */
 export default class HrmsAuthMiddleware {
   redirectTo = '/login'
@@ -39,9 +41,12 @@ export default class HrmsAuthMiddleware {
       return ctx.response.redirect(this.redirectTo)
     }
 
-    // Attach to ctx for use in controllers / middleware downstream
-    ctx.hrmsEmployee = employee
-    ctx.hrmsOrg = org
+    // Build permissions fresh on every request — ensures admin changes are reflected immediately
+    const perms = await buildHrmsPermissions(employee, org)
+
+    ctx.hrmsEmployee    = employee
+    ctx.hrmsOrg         = org
+    ctx.hrmsPermissions = perms
 
     return next()
   }
@@ -50,7 +55,8 @@ export default class HrmsAuthMiddleware {
 // Extend HttpContext with HRMS properties
 declare module '@adonisjs/core/http' {
   interface HttpContext {
-    hrmsEmployee: OrganizationUser
-    hrmsOrg: Organization
+    hrmsEmployee:    OrganizationUser
+    hrmsOrg:         Organization
+    hrmsPermissions: HrmsBuiltPermissions
   }
 }

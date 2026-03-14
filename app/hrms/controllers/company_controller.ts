@@ -11,26 +11,12 @@ export default class HrmsCompanyController {
   async update({ request, response, hrmsOrg, session }: HttpContext) {
     const data = await request.validateUsing(companyUpdateValidator)
 
-    hrmsOrg.merge({
-      name: data.name,
-      about: data.about,
-      industry: data.industry,
-      companySize: data.companySize,
-      website: data.website,
-      gstNo: data.gstNo,
-      phone: data.phone,
-      email: data.email,
-      country: data.country,
-      city: data.city,
-      address: data.address,
-      currency: data.currency,
-      timezone: data.timezone,
-      dateFormat: data.dateFormat,
-      timeFormat: data.timeFormat,
-      fiscalName: data.fiscalName,
-      fiscalStart: data.fiscalStart,
-      fiscalEnd: data.fiscalEnd,
-    })
+    // Only merge fields that were actually submitted — undefined values would
+    // overwrite existing DB data with NULL when Lucid serialises them.
+    const payload = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== undefined)
+    )
+    hrmsOrg.merge(payload)
     await hrmsOrg.save()
 
     session.flash('success', 'Company details updated successfully.')

@@ -1,9 +1,10 @@
-import { useState, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef } from 'react'
 import { useForm } from '@inertiajs/react'
-import {
-  Phone, Globe, MapPin, DollarSign, Clock,
-  Calendar, Hash, Info, Save, Mail,
-} from 'lucide-react'
+import { Globe, Hash, Save, Info } from 'lucide-react'
+import { CountrySelect, type CountryOption } from '~/components/country-select'
+import { CitySelect, type CityOption } from '~/components/city-select'
+import { SelectSearch, type SelectOption } from '~/components/select-search'
+import { RadioGroup } from '~/components/radio-group'
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -19,26 +20,118 @@ const TABS = [
   { key: 'locale',  label: 'Locale Settings' },
 ]
 
+// ── Static option lists ──────────────────────────────────────────────────────────
+
+const INDUSTRY_OPTIONS: SelectOption[] = [
+  'Technology', 'Healthcare', 'Finance & Banking', 'Manufacturing',
+  'Retail & E-commerce', 'Education', 'Real Estate', 'Hospitality',
+  'Logistics & Supply Chain', 'Media & Entertainment', 'Consulting',
+  'Agriculture', 'Construction', 'Energy & Utilities', 'Other',
+].map((v) => ({ value: v, label: v }))
+
+const SIZE_OPTIONS: SelectOption[] = [
+  { value: '1–10',     label: '1–10 employees' },
+  { value: '11–50',    label: '11–50 employees' },
+  { value: '51–200',   label: '51–200 employees' },
+  { value: '201–500',  label: '201–500 employees' },
+  { value: '501–1000', label: '501–1000 employees' },
+  { value: '1001–5000',label: '1001–5000 employees' },
+  { value: '5000+',    label: '5000+ employees' },
+]
+
+const CURRENCY_OPTIONS: SelectOption[] = [
+  { value: 'INR', label: 'Indian Rupee',      sub: '₹' },
+  { value: 'USD', label: 'US Dollar',         sub: '$' },
+  { value: 'EUR', label: 'Euro',              sub: '€' },
+  { value: 'GBP', label: 'British Pound',     sub: '£' },
+  { value: 'AED', label: 'UAE Dirham',        sub: 'د.إ' },
+  { value: 'SGD', label: 'Singapore Dollar',  sub: 'S$' },
+  { value: 'JPY', label: 'Japanese Yen',      sub: '¥' },
+  { value: 'CAD', label: 'Canadian Dollar',   sub: 'C$' },
+  { value: 'AUD', label: 'Australian Dollar', sub: 'A$' },
+  { value: 'CHF', label: 'Swiss Franc',       sub: 'Fr' },
+]
+
+const TIMEZONE_OPTIONS: SelectOption[] = [
+  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata',        sub: 'IST (UTC+5:30)' },
+  { value: 'UTC',                 label: 'UTC',                 sub: 'Coordinated Universal Time' },
+  { value: 'America/New_York',    label: 'America/New_York',    sub: 'EST/EDT' },
+  { value: 'America/Chicago',     label: 'America/Chicago',     sub: 'CST/CDT' },
+  { value: 'America/Los_Angeles', label: 'America/Los_Angeles', sub: 'PST/PDT' },
+  { value: 'Europe/London',       label: 'Europe/London',       sub: 'GMT/BST' },
+  { value: 'Europe/Paris',        label: 'Europe/Paris',        sub: 'CET/CEST' },
+  { value: 'Europe/Berlin',       label: 'Europe/Berlin',       sub: 'CET/CEST' },
+  { value: 'Asia/Dubai',          label: 'Asia/Dubai',          sub: 'GST (UTC+4)' },
+  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo',          sub: 'JST (UTC+9)' },
+  { value: 'Asia/Singapore',      label: 'Asia/Singapore',      sub: 'SGT (UTC+8)' },
+  { value: 'Asia/Shanghai',       label: 'Asia/Shanghai',       sub: 'CST (UTC+8)' },
+  { value: 'Australia/Sydney',    label: 'Australia/Sydney',    sub: 'AEST/AEDT' },
+]
+
+const DATE_FORMAT_OPTIONS: SelectOption[] = [
+  { value: 'dd/mm/yyyy', label: 'DD/MM/YYYY', sub: '31/12/2025' },
+  { value: 'mm/dd/yyyy', label: 'MM/DD/YYYY', sub: '12/31/2025' },
+  { value: 'yyyy/mm/dd', label: 'YYYY/MM/DD', sub: '2025/12/31' },
+  { value: 'dd-mm-yyyy', label: 'DD-MM-YYYY', sub: '31-12-2025' },
+  { value: 'mm-dd-yyyy', label: 'MM-DD-YYYY', sub: '12-31-2025' },
+  { value: 'yyyy-mm-dd', label: 'YYYY-MM-DD', sub: '2025-12-31' },
+]
+
+const TIME_FORMAT_OPTIONS = [
+  { value: '12', label: '12-hour', desc: 'e.g. 2:30 PM' },
+  { value: '24', label: '24-hour', desc: 'e.g. 14:30' },
+]
+
+// ── Helpers ──────────────────────────────────────────────────────────────────────
+
+// Normalise a raw DB value to the canonical option value via case-insensitive
+// lookup.  Returns the option's own .value (correctly cased) when found, or the
+// original raw string when no option matches.
+function matchOption(options: SelectOption[], raw: string): string {
+  if (!raw) return ''
+  const exact = options.find((o) => o.value === raw)
+  if (exact) return exact.value
+  const ci = options.find((o) => o.value.toLowerCase() === raw.toLowerCase())
+  return ci ? ci.value : raw
+}
+
+// Map every reasonable stored variant of the time-format flag to '12' or '24'
+// (matching the DB ENUM values exactly).
+function normalizeTimeFormat(raw: string): string {
+  if (!raw) return '12'
+  const v = raw.toLowerCase().replace(/[^0-9a-z]/g, '')  // strip dashes/spaces
+  if (v.includes('24') || v === 'h24') return '24'
+  return '12'  // '12h', '12hour', 'h12', '12', anything else → 12h default
+}
+
+// Ensures the currently-stored value always appears in the options list so
+// SelectSearch can display it even if it doesn't match any predefined entry.
+function withCurrent(options: SelectOption[], value: string): SelectOption[] {
+  if (!value || options.some((o) => o.value === value)) return options
+  return [{ value, label: value }, ...options]
+}
+
 // ── Field component ──────────────────────────────────────────────────────────────
 
 function Field({
-  label, required, hint, error, children,
+  label, required, hint, error, children, className,
 }: {
   label: string
   required?: boolean
   hint?: string
   error?: string
   children: React.ReactNode
+  className?: string
 }) {
   return (
-    <div className="fg">
+    <div className={`fg${className ? ` ${className}` : ''}`}>
       <label>
         {label}
         {required && <span className="req"> *</span>}
       </label>
       {children}
-      {error  && <span className="fg-err">{error}</span>}
-      {hint   && !error && <span className="fg-hint">{hint}</span>}
+      {error && <span className="fg-err">{error}</span>}
+      {hint && !error && <span className="fg-hint">{hint}</span>}
     </div>
   )
 }
@@ -47,12 +140,12 @@ function Field({
 
 function CompanyInfoTab({ company }: { company: Record<string, any> }) {
   const { data, setData, put, processing, errors } = useForm({
-    name:        company.name        ?? '',
-    about:       company.about       ?? '',
-    industry:    company.industry    ?? '',
-    companySize: company.companySize ?? '',
-    website:     company.website     ?? '',
-    gstNo:       company.gstNo       ?? '',
+    name:        String(company.name        || ''),
+    about:       String(company.about       || ''),
+    industry:    String(company.industry    || ''),
+    companySize: String(company.companySize || ''),
+    website:     String(company.website     || ''),
+    gstNo:       String(company.gstNo       || ''),
   })
 
   function handleSubmit(e: React.FormEvent) {
@@ -62,7 +155,7 @@ function CompanyInfoTab({ company }: { company: Record<string, any> }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="g2" style={{ marginBottom: 14 }}>
+      <div className="g3" style={{ marginBottom: 14 }}>
         <Field label="Company Name" required error={errors.name}>
           <input
             className="fi"
@@ -73,35 +166,22 @@ function CompanyInfoTab({ company }: { company: Record<string, any> }) {
           />
         </Field>
 
-        <Field label="Industry" hint="e.g. Technology, Healthcare, Finance" error={errors.industry}>
-          <select
-            className="fi fi-sel"
+        <Field label="Industry" hint="e.g. Technology, Healthcare" error={errors.industry}>
+          <SelectSearch
             value={data.industry}
-            onChange={(e) => setData('industry', e.target.value)}
-          >
-            <option value="">Select industry</option>
-            {[
-              'Technology', 'Healthcare', 'Finance & Banking', 'Manufacturing',
-              'Retail & E-commerce', 'Education', 'Real Estate', 'Hospitality',
-              'Logistics & Supply Chain', 'Media & Entertainment', 'Consulting',
-              'Agriculture', 'Construction', 'Energy & Utilities', 'Other',
-            ].map((ind) => (
-              <option key={ind} value={ind}>{ind}</option>
-            ))}
-          </select>
+            onChange={(v) => setData('industry', v)}
+            options={withCurrent(INDUSTRY_OPTIONS, data.industry)}
+            placeholder="Select industry…"
+          />
         </Field>
 
         <Field label="Company Size" hint="Approximate headcount range" error={errors.companySize}>
-          <select
-            className="fi fi-sel"
+          <SelectSearch
             value={data.companySize}
-            onChange={(e) => setData('companySize', e.target.value)}
-          >
-            <option value="">Select size</option>
-            {['1–10', '11–50', '51–200', '201–500', '501–1000', '1001–5000', '5000+'].map((s) => (
-              <option key={s} value={s}>{s} employees</option>
-            ))}
-          </select>
+            onChange={(v) => setData('companySize', v)}
+            options={withCurrent(SIZE_OPTIONS, data.companySize)}
+            placeholder="Select size…"
+          />
         </Field>
 
         <Field label="Website" hint="Full URL including https://" error={errors.website}>
@@ -159,12 +239,59 @@ function CompanyInfoTab({ company }: { company: Record<string, any> }) {
 
 function ContactDetailsTab({ company }: { company: Record<string, any> }) {
   const { data, setData, put, processing, errors } = useForm({
-    phone:   company.phone   ?? '',
-    email:   company.email   ?? '',
-    country: company.country ?? '',
-    city:    company.city    ?? '',
-    address: company.address ?? '',
+    phone:   String(company.phone   || ''),
+    email:   String(company.email   || ''),
+    country: String(company.country || ''),
+    city:    String(company.city    || ''),
+    address: String(company.address || ''),
+    pincode: String(company.pincode || ''),
   })
+
+  const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(null)
+  const [selectedCity,    setSelectedCity]    = useState<CityOption | null>(null)
+
+  // Pre-populate CountrySelect from the saved string value on mount
+  useEffect(() => {
+    const savedCountry = company.country as string
+    if (!savedCountry) return
+    fetch(`/api/countries?search=${encodeURIComponent(savedCountry)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: CountryOption[]) => {
+        const match = list.find(
+          (c) => c.name.toLowerCase() === savedCountry.toLowerCase()
+        )
+        if (match) setSelectedCountry(match)
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pre-populate CitySelect once the country object is available
+  useEffect(() => {
+    const savedCity = company.city as string
+    if (!selectedCountry || !savedCity) return
+    fetch(`/api/cities?country_id=${selectedCountry.id}&search=${encodeURIComponent(savedCity)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: CityOption[]) => {
+        const match = list.find(
+          (c) => c.name.toLowerCase() === savedCity.toLowerCase()
+        )
+        if (match) setSelectedCity(match)
+      })
+      .catch(() => {})
+  }, [selectedCountry]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const isIndia = data.country.toLowerCase().trim() === 'india'
+
+  function handleCountryChange(o: CountryOption | null) {
+    setSelectedCountry(o)
+    setSelectedCity(null)
+    setData((d) => ({ ...d, country: o?.name ?? '', city: '', pincode: '' }))
+  }
+
+  function handleCityChange(o: CityOption | null) {
+    setSelectedCity(o)
+    setData('city', o?.name ?? '')
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -173,68 +300,65 @@ function ContactDetailsTab({ company }: { company: Record<string, any> }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="g2" style={{ marginBottom: 14 }}>
+      <div className="g3" style={{ marginBottom: 14 }}>
         <Field label="Phone Number" error={errors.phone}>
-          <div style={{ position: 'relative' }}>
-            <Phone size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text4)', pointerEvents: 'none' }} />
-            <input
-              className="fi"
-              style={{ paddingLeft: 32 }}
-              type="tel"
-              value={data.phone}
-              onChange={(e) => setData('phone', e.target.value)}
-              placeholder="+91 98765 43210"
-            />
-          </div>
+          <input
+            className="fi"
+            type="tel"
+            value={data.phone}
+            onChange={(e) => setData('phone', e.target.value)}
+            placeholder="+91 98765 43210"
+          />
         </Field>
 
         <Field label="Company Email" hint="Official contact email address" error={errors.email}>
-          <div style={{ position: 'relative' }}>
-            <Mail size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text4)', pointerEvents: 'none' }} />
-            <input
-              className="fi"
-              style={{ paddingLeft: 32 }}
-              type="email"
-              value={data.email}
-              onChange={(e) => setData('email', e.target.value)}
-              placeholder="contact@company.com"
-            />
-          </div>
+          <input
+            className="fi"
+            type="email"
+            value={data.email}
+            onChange={(e) => setData('email', e.target.value)}
+            placeholder="contact@company.com"
+          />
         </Field>
 
         <Field label="Country" error={errors.country}>
-          <div style={{ position: 'relative' }}>
-            <MapPin size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text4)', pointerEvents: 'none' }} />
-            <input
-              className="fi"
-              style={{ paddingLeft: 32 }}
-              type="text"
-              value={data.country}
-              onChange={(e) => setData('country', e.target.value)}
-              placeholder="India"
-            />
-          </div>
+          <CountrySelect
+            value={selectedCountry}
+            onChange={handleCountryChange}
+          />
         </Field>
 
         <Field label="City" error={errors.city}>
-          <input
-            className="fi"
-            type="text"
-            value={data.city}
-            onChange={(e) => setData('city', e.target.value)}
-            placeholder="Mumbai"
+          <CitySelect
+            value={selectedCity}
+            onChange={handleCityChange}
+            countryId={selectedCountry?.id ?? null}
           />
         </Field>
+
+        {isIndia && (
+          <Field label="PIN Code" hint="6-digit Indian postal code" error={errors.pincode}>
+            <input
+              className="fi"
+              type="text"
+              inputMode="numeric"
+              value={data.pincode}
+              onChange={(e) => setData('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
+              placeholder="400069"
+              maxLength={6}
+            />
+          </Field>
+        )}
       </div>
 
-      <Field label="Full Address" hint="Street address, area, state, PIN" error={errors.address}>
+      <Field label="Full Address" hint="Street address, area, state" error={errors.address}>
         <textarea
           className="fi"
           rows={3}
           style={{ resize: 'vertical', lineHeight: 1.6 }}
           value={data.address}
           onChange={(e) => setData('address', e.target.value)}
-          placeholder="123, Business Park, Andheri East, Mumbai - 400069"
+          placeholder="123, Business Park, Andheri East, Mumbai"
         />
       </Field>
 
@@ -252,13 +376,10 @@ function ContactDetailsTab({ company }: { company: Record<string, any> }) {
 
 function LocaleSettingsTab({ company }: { company: Record<string, any> }) {
   const { data, setData, put, processing, errors } = useForm({
-    currency:    company.currency    ?? '',
-    timezone:    company.timezone    ?? '',
-    dateFormat:  company.dateFormat  ?? '',
-    timeFormat:  company.timeFormat  ?? '',
-    fiscalName:  company.fiscalName  ?? '',
-    fiscalStart: company.fiscalStart ?? '',
-    fiscalEnd:   company.fiscalEnd   ?? '',
+    currency:   matchOption(CURRENCY_OPTIONS,     String(company.currency   || '')),
+    timezone:   matchOption(TIMEZONE_OPTIONS,     String(company.timezone   || '')),
+    dateFormat: matchOption(DATE_FORMAT_OPTIONS,  String(company.dateFormat || '')),
+    timeFormat: normalizeTimeFormat(String(company.timeFormat || '')),
   })
 
   function handleSubmit(e: React.FormEvent) {
@@ -266,113 +387,47 @@ function LocaleSettingsTab({ company }: { company: Record<string, any> }) {
     put('/hrms/organization/company')
   }
 
-  const TIMEZONES = [
-    'Asia/Kolkata', 'UTC', 'America/New_York', 'America/Los_Angeles',
-    'Europe/London', 'Europe/Paris', 'Asia/Tokyo', 'Asia/Dubai',
-    'Asia/Singapore', 'Australia/Sydney',
-  ]
-
   return (
     <form onSubmit={handleSubmit}>
-      <div className="g2" style={{ marginBottom: 14 }}>
-        <Field label="Currency" hint="Default currency for payroll & expenses" error={errors.currency}>
-          <div style={{ position: 'relative' }}>
-            <DollarSign size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text4)', pointerEvents: 'none' }} />
-            <select
-              className="fi fi-sel"
-              style={{ paddingLeft: 32 }}
-              value={data.currency}
-              onChange={(e) => setData('currency', e.target.value)}
-            >
-              <option value="">Select currency</option>
-              {[
-                { code: 'INR', label: 'Indian Rupee (₹)' },
-                { code: 'USD', label: 'US Dollar ($)' },
-                { code: 'EUR', label: 'Euro (€)' },
-                { code: 'GBP', label: 'British Pound (£)' },
-                { code: 'AED', label: 'UAE Dirham (د.إ)' },
-                { code: 'SGD', label: 'Singapore Dollar (S$)' },
-              ].map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
-            </select>
-          </div>
+      <div className="g3" style={{ marginBottom: 14 }}>
+        <Field label="Currency" hint="Default for payroll & expenses" error={errors.currency}>
+          <SelectSearch
+            value={data.currency}
+            onChange={(v) => setData('currency', v)}
+            options={withCurrent(CURRENCY_OPTIONS, data.currency)}
+            placeholder="Select currency…"
+          />
         </Field>
 
         <Field label="Timezone" error={errors.timezone}>
-          <div style={{ position: 'relative' }}>
-            <Clock size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text4)', pointerEvents: 'none' }} />
-            <select
-              className="fi fi-sel"
-              style={{ paddingLeft: 32 }}
-              value={data.timezone}
-              onChange={(e) => setData('timezone', e.target.value)}
-            >
-              <option value="">Select timezone</option>
-              {TIMEZONES.map((tz) => <option key={tz} value={tz}>{tz}</option>)}
-            </select>
-          </div>
+          <SelectSearch
+            value={data.timezone}
+            onChange={(v) => setData('timezone', v)}
+            options={withCurrent(TIMEZONE_OPTIONS, data.timezone)}
+            placeholder="Select timezone…"
+          />
         </Field>
 
         <Field label="Date Format" error={errors.dateFormat}>
-          <select
-            className="fi fi-sel"
+          <SelectSearch
             value={data.dateFormat}
-            onChange={(e) => setData('dateFormat', e.target.value)}
-          >
-            <option value="">Select date format</option>
-            <option value="DD/MM/YYYY">DD/MM/YYYY (31/12/2025)</option>
-            <option value="MM/DD/YYYY">MM/DD/YYYY (12/31/2025)</option>
-            <option value="YYYY-MM-DD">YYYY-MM-DD (2025-12-31)</option>
-            <option value="DD-MM-YYYY">DD-MM-YYYY (31-12-2025)</option>
-            <option value="DD MMM YYYY">DD MMM YYYY (31 Dec 2025)</option>
-          </select>
+            onChange={(v) => setData('dateFormat', v)}
+            options={withCurrent(DATE_FORMAT_OPTIONS, data.dateFormat)}
+            placeholder="Select date format…"
+          />
         </Field>
+      </div>
 
-        <Field label="Time Format" error={errors.timeFormat}>
-          <select
-            className="fi fi-sel"
+      <Field label="Time Format" hint="How time is displayed across the system" error={errors.timeFormat}>
+        <div style={{ paddingTop: 6 }}>
+          <RadioGroup
+            name="timeFormat"
             value={data.timeFormat}
-            onChange={(e) => setData('timeFormat', e.target.value)}
-          >
-            <option value="">Select time format</option>
-            <option value="12h">12-hour (2:30 PM)</option>
-            <option value="24h">24-hour (14:30)</option>
-          </select>
-        </Field>
-
-        <Field label="Fiscal Year Name" hint="e.g. FY 2025-26" error={errors.fiscalName}>
-          <div style={{ position: 'relative' }}>
-            <Calendar size={14} style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', color: 'var(--text4)', pointerEvents: 'none' }} />
-            <input
-              className="fi"
-              style={{ paddingLeft: 32 }}
-              type="text"
-              value={data.fiscalName}
-              onChange={(e) => setData('fiscalName', e.target.value)}
-              placeholder="FY 2025-26"
-            />
-          </div>
-        </Field>
-      </div>
-
-      <div className="g2" style={{ marginBottom: 14 }}>
-        <Field label="Fiscal Year Start" error={errors.fiscalStart}>
-          <input
-            className="fi"
-            type="date"
-            value={data.fiscalStart}
-            onChange={(e) => setData('fiscalStart', e.target.value)}
+            onChange={(v) => setData('timeFormat', v)}
+            options={TIME_FORMAT_OPTIONS}
           />
-        </Field>
-
-        <Field label="Fiscal Year End" error={errors.fiscalEnd}>
-          <input
-            className="fi"
-            type="date"
-            value={data.fiscalEnd}
-            onChange={(e) => setData('fiscalEnd', e.target.value)}
-          />
-        </Field>
-      </div>
+        </div>
+      </Field>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
         <button type="submit" className="btn btn-p" disabled={processing}>
@@ -425,7 +480,6 @@ export default function CompanyPage({ company }: Props) {
         }}>
           <div style={{ position: 'absolute', top: -40, right: -30, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,.06)', pointerEvents: 'none' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            {/* Logo placeholder */}
             {company.logo ? (
               <img
                 src={company.logo}
@@ -450,7 +504,9 @@ export default function CompanyPage({ company }: Props) {
                 {[
                   company.orgId,
                   company.industry,
-                  company.city && company.country ? `${company.city}, ${company.country}` : (company.city || company.country),
+                  company.city && company.country
+                    ? `${company.city}, ${company.country}`
+                    : (company.city || company.country),
                 ].filter(Boolean).map((pill, i) => (
                   <span key={i} style={{
                     padding: '4px 11px', borderRadius: 20,
@@ -516,7 +572,7 @@ export default function CompanyPage({ company }: Props) {
             <div className="card-sub">
               {activeTab === 'info'    && 'Basic company profile and identity details'}
               {activeTab === 'contact' && 'Phone, email, and address information'}
-              {activeTab === 'locale'  && 'Currency, timezone, date formats, and fiscal year'}
+              {activeTab === 'locale'  && 'Currency, timezone, and date/time format'}
             </div>
           </div>
           <div style={{
@@ -530,7 +586,7 @@ export default function CompanyPage({ company }: Props) {
           </div>
         </div>
         <div className="card-b">
-          {activeTab === 'info'    && <CompanyInfoTab company={company} />}
+          {activeTab === 'info'    && <CompanyInfoTab    company={company} />}
           {activeTab === 'contact' && <ContactDetailsTab company={company} />}
           {activeTab === 'locale'  && <LocaleSettingsTab company={company} />}
         </div>

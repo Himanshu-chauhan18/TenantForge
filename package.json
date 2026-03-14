@@ -43,7 +43,8 @@
     "#hrms/controllers/*": "./app/hrms/controllers/*.js",
     "#hrms/services/*": "./app/hrms/services/*.js",
     "#hrms/repositories/*": "./app/hrms/repositories/*.js",
-    "#hrms/validators/*": "./app/hrms/validators/*.js"
+    "#hrms/validators/*": "./app/hrms/validators/*.js",
+    "#hrms/utils/*": "./app/hrms/utils/*.js"
   },
   "devDependencies": {
     "@adonisjs/assembler": "^8.0.0",

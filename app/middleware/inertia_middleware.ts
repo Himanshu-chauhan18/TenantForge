@@ -2,7 +2,6 @@ import type { HttpContext } from '@adonisjs/core/http'
 import type { NextFn } from '@adonisjs/core/types/http'
 import UserTransformer from '#transformers/user_transformer'
 import BaseInertiaMiddleware from '@adonisjs/inertia/inertia_middleware'
-import OrganizationProfile from '#models/organization_profile'
 
 export default class InertiaMiddleware extends BaseInertiaMiddleware {
   async share(ctx: HttpContext) {
@@ -38,34 +37,38 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
     try { if (rawFlashToasts) flashToasts = JSON.parse(rawFlashToasts) } catch {}
 
     // HRMS employee shared props (loaded only when present on ctx)
-    const hrmsEmployee = (ctx as any).hrmsEmployee
-    const hrmsOrg = (ctx as any).hrmsOrg
+    const hrmsEmployee    = (ctx as any).hrmsEmployee
+    const hrmsOrg         = (ctx as any).hrmsOrg
+    const hrmsPermissions = (ctx as any).hrmsPermissions
 
     let hrmsUser: Record<string, unknown> | undefined
     if (hrmsEmployee && hrmsOrg) {
-      let profileName = 'Employee'
-      try {
-        if (hrmsEmployee.profileId) {
-          const profile = await OrganizationProfile.find(hrmsEmployee.profileId)
-          if (profile) profileName = profile.name
-        }
-      } catch {}
+      // Permissions rebuilt fresh each request in hrmsAuth middleware — always up to date
+      const profileName      = hrmsPermissions?.profileName      ?? 'Employee'
+      const permissions      = hrmsPermissions?.permissions      ?? {}
+      const addonPermissions = hrmsPermissions?.addonPermissions ?? {}
+      const addonNameIndex   = hrmsPermissions?.addonNameIndex   ?? {}
+      const hasProfile       = hrmsPermissions?.hasProfile       ?? !!hrmsEmployee.profileId
 
       hrmsUser = {
-        id: hrmsEmployee.id,
-        fullName: hrmsEmployee.fullName,
-        email: hrmsEmployee.companyEmail,
+        id:           hrmsEmployee.id,
+        fullName:     hrmsEmployee.fullName,
+        email:        hrmsEmployee.companyEmail,
         employeeCode: hrmsEmployee.employeeCode,
-        profileId: hrmsEmployee.profileId,
+        profileId:    hrmsEmployee.profileId,
         profileName,
+        hasProfile,
+        permissions,
+        addonPermissions,
+        addonNameIndex,
         initials: hrmsEmployee.fullName
           ? hrmsEmployee.fullName.trim().split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()
           : hrmsEmployee.companyEmail.slice(0, 2).toUpperCase(),
         org: {
-          id: hrmsOrg.id,
+          id:    hrmsOrg.id,
           orgId: hrmsOrg.orgId,
-          name: hrmsOrg.name,
-          logo: hrmsOrg.logo,
+          name:  hrmsOrg.name,
+          logo:  hrmsOrg.logo,
         },
       }
     }
@@ -84,7 +87,7 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
           ? undefined
           : auth?.user ? UserTransformer.transform(auth.user) : undefined
       ),
-      hrmsUser: ctx.inertia.always(hrmsUser),
+      hrmsUser: ctx.inertia.always(hrmsUser as any),
     }
   }
 
