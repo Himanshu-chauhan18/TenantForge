@@ -166,6 +166,30 @@ export default class OrganizationController {
     }
   }
 
+  async updateLogo({ params, request, response, session }: HttpContext) {
+    const org = await Organization.findOrFail(Number(params.id))
+    const removeLogo = request.input('removeLogo') === 'true' || request.input('removeLogo') === true
+
+    if (removeLogo) {
+      org.logo = null
+      await org.save()
+      session.flash('success', 'Logo removed successfully.')
+      return response.redirect().back()
+    }
+
+    const logoFile = request.file('logo', { size: '5mb', extnames: ['jpg', 'jpeg', 'png', 'webp'] })
+    if (!logoFile || !logoFile.isValid) {
+      session.flash('flashToasts', JSON.stringify(['Invalid file. Use JPG, PNG or WebP under 5 MB.']))
+      return response.redirect().back()
+    }
+
+    await logoFile.move(app.publicPath('uploads/logos'))
+    org.logo = `uploads/logos/${logoFile.fileName}`
+    await org.save()
+    session.flash('success', 'Logo updated successfully.')
+    return response.redirect().back()
+  }
+
   async destroy({ params, response, session }: HttpContext) {
     await orgService.delete(Number(params.id))
     session.flash('success', 'Organization deleted successfully.')

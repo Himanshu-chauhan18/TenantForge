@@ -88,8 +88,11 @@ export default function EditOrganization({ org, leadOwners }: Props) {
           <div style={{ position: 'absolute', top: -50, right: -30, width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,.06)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', bottom: -20, right: 110, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,.04)', pointerEvents: 'none' }} />
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 18, position: 'relative' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,.25)', border: '2px solid rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 900, color: '#fff', fontFamily: 'var(--fd)', flexShrink: 0 }}>
-              {org.name.slice(0, 2).toUpperCase()}
+            <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,.25)', border: '2px solid rgba(255,255,255,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 900, color: '#fff', fontFamily: 'var(--fd)', flexShrink: 0, overflow: 'hidden' }}>
+              {org.logo
+                ? <img src={`/${org.logo}`} alt={org.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : org.name.slice(0, 2).toUpperCase()
+              }
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: 'var(--fd)', fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginBottom: 4 }}>{org.name}</div>

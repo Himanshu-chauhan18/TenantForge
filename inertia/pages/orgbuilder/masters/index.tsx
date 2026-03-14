@@ -3,7 +3,7 @@ import { router } from '@inertiajs/react'
 import {
   Database, Plus, Pencil, Search, X, RefreshCw,
   ChevronDown, Puzzle, Sparkles, Package,
-  ShieldAlert, Zap, BookOpen, SlidersHorizontal,
+  ShieldAlert, Zap, BookOpen, SlidersHorizontal, Trash2, AlertTriangle,
 } from 'lucide-react'
 import { Modal } from '~/components/modal'
 import { SelectSearch } from '~/components/select-search'
@@ -167,6 +167,29 @@ export default function MastersIndex({ modules }: Props) {
     }, {
       onSuccess: () => { setEditModOpen(false); setEditModTarget(null) },
       onFinish:  () => setModProcessing(false),
+    })
+  }
+
+  // ── Delete state ──────────────────────────────────────────────────────────
+  const [deleteModTarget,   setDeleteModTarget]   = useState<Mod | null>(null)
+  const [deleteAddonTarget, setDeleteAddonTarget] = useState<(Addon & { moduleName: string }) | null>(null)
+  const [deleteProcessing,  setDeleteProcessing]  = useState(false)
+
+  function handleDeleteMod() {
+    if (!deleteModTarget) return
+    setDeleteProcessing(true)
+    router.delete(`/masters/modules/${deleteModTarget.id}`, {
+      onSuccess: () => setDeleteModTarget(null),
+      onFinish:  () => setDeleteProcessing(false),
+    })
+  }
+
+  function handleDeleteAddon() {
+    if (!deleteAddonTarget) return
+    setDeleteProcessing(true)
+    router.delete(`/masters/addons/${deleteAddonTarget.id}`, {
+      onSuccess: () => setDeleteAddonTarget(null),
+      onFinish:  () => setDeleteProcessing(false),
     })
   }
 
@@ -423,9 +446,14 @@ export default function MastersIndex({ modules }: Props) {
                         </button>
                       </Td>
                       <Td>
-                        <button onClick={() => openEditMod(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer' }}>
-                          <Pencil size={11} /> Edit
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <button onClick={() => openEditMod(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer' }}>
+                            <Pencil size={11} /> Edit
+                          </button>
+                          <button onClick={() => setDeleteModTarget(m)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: '#ef4444', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', cursor: 'pointer' }}>
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
                       </Td>
                     </tr>
                   ))}
@@ -481,9 +509,14 @@ export default function MastersIndex({ modules }: Props) {
                           </span>
                         </Td>
                         <Td>
-                          <button onClick={() => openEditAddon(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer' }}>
-                            <Pencil size={11} /> Edit
-                          </button>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button onClick={() => openEditAddon(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer' }}>
+                              <Pencil size={11} /> Edit
+                            </button>
+                            <button onClick={() => setDeleteAddonTarget(a)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: '#ef4444', background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.2)', cursor: 'pointer' }}>
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
                         </Td>
                       </tr>
                     )
@@ -603,6 +636,58 @@ export default function MastersIndex({ modules }: Props) {
               <label>Sort Order</label>
               <input className="fi" type="number" min={1} value={addAddonForm.sortOrder} onChange={(e) => setAddAddonForm((f) => ({ ...f, sortOrder: e.target.value }))} placeholder="999" />
             </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ════════ DELETE MODULE MODAL ════════ */}
+      <Modal
+        open={!!deleteModTarget} onClose={() => setDeleteModTarget(null)}
+        title="Delete Module" size="sm" icon={<Trash2 size={15} />} variant="danger"
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setDeleteModTarget(null)}>Cancel</button>
+            <button className="btn btn-danger" disabled={deleteProcessing} onClick={handleDeleteMod}>
+              <Trash2 size={13} /> {deleteProcessing ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+          <AlertTriangle size={16} style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <p style={{ fontSize: '.85rem', color: 'var(--text2)', marginBottom: 6 }}>
+              Are you sure you want to delete <strong>{deleteModTarget?.label}</strong>?
+            </p>
+            <p style={{ fontSize: '.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
+              This will also permanently delete all <strong>{deleteModTarget?.addons.length} add-on{deleteModTarget?.addons.length !== 1 ? 's' : ''}</strong> belonging to this module. This action cannot be undone.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ════════ DELETE ADDON MODAL ════════ */}
+      <Modal
+        open={!!deleteAddonTarget} onClose={() => setDeleteAddonTarget(null)}
+        title="Delete Add-on" size="sm" icon={<Trash2 size={15} />} variant="danger"
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setDeleteAddonTarget(null)}>Cancel</button>
+            <button className="btn btn-danger" disabled={deleteProcessing} onClick={handleDeleteAddon}>
+              <Trash2 size={13} /> {deleteProcessing ? 'Deleting…' : 'Delete'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+          <AlertTriangle size={16} style={{ color: '#ef4444', flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <p style={{ fontSize: '.85rem', color: 'var(--text2)', marginBottom: 6 }}>
+              Are you sure you want to delete <strong>{deleteAddonTarget?.name}</strong>?
+            </p>
+            <p style={{ fontSize: '.78rem', color: 'var(--text3)', lineHeight: 1.6 }}>
+              This add-on belongs to <strong>{deleteAddonTarget?.moduleName}</strong>. This action cannot be undone.
+            </p>
           </div>
         </div>
       </Modal>

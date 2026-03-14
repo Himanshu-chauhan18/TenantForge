@@ -27,6 +27,7 @@ interface Org {
   status: 'active' | 'inactive' | 'expired'
   userLimit: number
   userCount: number
+  logo: string | null
   planStart: string | null
   planEnd: string | null
   createdAt: string

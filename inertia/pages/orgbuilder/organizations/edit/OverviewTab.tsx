@@ -6,6 +6,7 @@ import {
   Users, Clock, Layers,
   Edit3, Save, X,
   LogIn, Phone, Mail,
+  Upload, Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SelectSearch } from '~/components/select-search'
@@ -141,6 +142,12 @@ export function OverviewTab({ org, leadOwners }: Props) {
   const [dGstNo,       setDGstNo]       = useState(org.gstNo || '')
   const [dAbout,       setDAbout]       = useState(org.about || '')
   const [dStatus,      setDStatus]      = useState<'active' | 'inactive' | 'expired'>(org.status)
+
+  // ── Logo upload state ──
+  const [logoFile,     setLogoFile]     = useState<File | null>(null)
+  const [logoPreview,  setLogoPreview]  = useState<string | null>(null)
+  const [procLogo,     setProcLogo]     = useState(false)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   // ── Contact form state ──
   const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(null)
@@ -340,7 +347,34 @@ export function OverviewTab({ org, leadOwners }: Props) {
     setDName(org.name); setDIndustry(org.industry || ''); setDCompanySize(org.companySize || '')
     setDWebsite(org.website || ''); setDGstNo(org.gstNo || ''); setDAbout(org.about || '')
     setDStatus(org.status)
+    setLogoFile(null); setLogoPreview(null)
     setEditingCompany(false)
+  }
+
+  function handleLogoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoFile(file)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
+  function uploadLogo() {
+    if (!logoFile) return
+    setProcLogo(true)
+    const fd = new FormData()
+    fd.append('logo', logoFile)
+    router.post(`/organizations/${org.id}/logo`, fd, {
+      forceFormData: true,
+      onSuccess: () => { setLogoFile(null); setLogoPreview(null) },
+      onFinish: () => setProcLogo(false),
+    })
+  }
+
+  function removeLogo() {
+    setProcLogo(true)
+    router.post(`/organizations/${org.id}/logo`, { removeLogo: 'true' }, {
+      onFinish: () => setProcLogo(false),
+    })
   }
   function cancelContact() {
     setSelectedCountry(initCountryRef.current); setSelectedCity(initCityRef.current)
@@ -377,6 +411,87 @@ export function OverviewTab({ org, leadOwners }: Props) {
           onEdit={() => setEditingCompany(true)} onSave={saveCompany} onCancel={cancelCompany}
           editChildren={
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* ── Logo upload section ── */}
+              <div style={{ paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ fontSize: '.59rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--text4)', marginBottom: 8 }}>
+                  Logo
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  {/* Preview or placeholder */}
+                  <div
+                    onClick={() => !procLogo && logoInputRef.current?.click()}
+                    style={{
+                      width: 56, height: 56, borderRadius: 10, flexShrink: 0,
+                      border: '1.5px dashed var(--border2)', background: 'var(--bg2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden', cursor: procLogo ? 'default' : 'pointer',
+                    }}
+                  >
+                    {logoPreview
+                      ? <img src={logoPreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : org.logo
+                        ? <img src={`/${org.logo}`} alt={org.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <Upload size={16} style={{ color: 'var(--text4)' }} />
+                    }
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        type="button"
+                        className="btn btn-xs btn-ghost"
+                        disabled={procLogo}
+                        onClick={() => logoInputRef.current?.click()}
+                      >
+                        <Upload size={10} /> {org.logo || logoPreview ? 'Change' : 'Upload'}
+                      </button>
+                      {logoPreview && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-p"
+                          disabled={procLogo}
+                          onClick={uploadLogo}
+                        >
+                          <Save size={10} /> {procLogo ? 'Uploading…' : 'Save Logo'}
+                        </button>
+                      )}
+                      {(org.logo && !logoPreview) && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-danger"
+                          disabled={procLogo}
+                          onClick={removeLogo}
+                          style={{ fontSize: '.65rem' }}
+                        >
+                          <Trash2 size={10} /> {procLogo ? 'Removing…' : 'Remove'}
+                        </button>
+                      )}
+                      {logoPreview && (
+                        <button
+                          type="button"
+                          className="btn btn-xs btn-ghost"
+                          disabled={procLogo}
+                          onClick={() => { setLogoFile(null); setLogoPreview(null); if (logoInputRef.current) logoInputRef.current.value = '' }}
+                        >
+                          <X size={10} /> Cancel
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '.63rem', color: 'var(--text4)', lineHeight: 1.4 }}>
+                      JPG, PNG or WebP · max 5 MB
+                    </div>
+                  </div>
+                </div>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  style={{ display: 'none' }}
+                  onChange={handleLogoFileChange}
+                />
+              </div>
+
               <div className="fg">
                 <label>Organization Name <span className="req">*</span></label>
                 <input className="fi" value={dName} onChange={(e) => setDName(e.target.value)} placeholder="Acme Corp" />
@@ -417,6 +532,15 @@ export function OverviewTab({ org, leadOwners }: Props) {
             </div>
           }
         >
+          {org.logo && (
+            <div style={{ marginBottom: 14 }}>
+              <img
+                src={`/${org.logo}`}
+                alt={`${org.name} logo`}
+                style={{ height: 56, maxWidth: 140, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', padding: 4 }}
+              />
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '11px 14px', marginBottom: 14 }}>
             <Field label="Org ID" value={org.orgId} mono full />
             <Field label="Name" value={org.name} />
