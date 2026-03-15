@@ -1,4 +1,4 @@
-import { useState, useRef, useLayoutEffect } from 'react'
+import { useState, useRef, useLayoutEffect, useEffect } from 'react'
 import { DateTime } from 'luxon'
 import { Link, router } from '@inertiajs/react'
 import { ArrowLeft, ExternalLink, Trash2, AlertTriangle } from 'lucide-react'
@@ -21,8 +21,22 @@ interface Props {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function EditOrganization({ org, leadOwners }: Props) {
-  const [activeTab,     setActiveTab]     = useState('overview')
+  const [activeTab,     setActiveTab]     = useState(() => {
+    const p = new URLSearchParams(window.location.search).get('tab')
+    return TABS.some((t) => t.key === p) ? p! : 'overview'
+  })
   const [deleteConfirm, setDeleteConfirm] = useState(false)
+
+  // Sync active tab to URL without a server round-trip
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    if (activeTab === 'overview') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', activeTab)
+    }
+    window.history.replaceState(null, '', url.toString())
+  }, [activeTab])
 
   // ── Tab slider (matches org datatable tab UI) ──
   const tabSegRef  = useRef<HTMLDivElement>(null)

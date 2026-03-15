@@ -49,6 +49,7 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
       const addonPermissions = hrmsPermissions?.addonPermissions ?? {}
       const addonNameIndex   = hrmsPermissions?.addonNameIndex   ?? {}
       const hasProfile       = hrmsPermissions?.hasProfile       ?? !!hrmsEmployee.profileId
+      const moduleOrder      = hrmsPermissions?.moduleOrder      ?? []
 
       hrmsUser = {
         id:           hrmsEmployee.id,
@@ -61,6 +62,7 @@ export default class InertiaMiddleware extends BaseInertiaMiddleware {
         permissions,
         addonPermissions,
         addonNameIndex,
+        moduleOrder,
         initials: hrmsEmployee.fullName
           ? hrmsEmployee.fullName.trim().split(/\s+/).slice(0, 2).map((w: string) => w[0]).join('').toUpperCase()
           : hrmsEmployee.companyEmail.slice(0, 2).toUpperCase(),

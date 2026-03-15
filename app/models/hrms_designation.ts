@@ -17,6 +17,9 @@ export default class HrmsDesignation extends BaseModel {
   declare name: string
 
   @column()
+  declare jobDescription: string | null
+
+  @column()
   declare isActive: boolean
 
   @column.dateTime({ autoCreate: true })

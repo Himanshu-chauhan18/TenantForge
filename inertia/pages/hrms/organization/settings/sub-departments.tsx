@@ -1,9 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { router } from '@inertiajs/react'
-import {
-  FolderTree, Plus, Edit2, Trash2, X, Check, Search, RefreshCw,
-} from 'lucide-react'
+import { FolderTree, Plus, Check, X, Trash2, Pencil, Search, RefreshCw, Layers, Users, ToggleLeft, ToggleRight } from 'lucide-react'
+import { DataTable } from '~/components/data-table'
+import type { DTColumn, VisibilityState } from '~/components/data-table'
 import { Modal } from '~/components/modal'
+import { SelectSearch } from '~/components/select-search'
+import { AssignEmployeeModal } from '~/components/assign-employee-modal'
+import type { AssignEmployee } from '~/components/assign-employee-modal'
+
+const COLS_KEY = 'hrms-sub-departments-cols-v1'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -13,84 +18,203 @@ interface SubDepartment {
   name: string
   departmentId: number | null
   isActive: boolean
-  department?: { name: string }
+  department?: { id: number; name: string; code: string } | null
 }
 
 interface Department { id: number; name: string; code: string }
 
+interface Employee {
+  id: number
+  fullName: string
+  employeeCode: string | null
+  subDepartmentId: number | null
+  designationId: number | null
+  departmentId: number | null
+  locationId: number | null
+  gradeId: number | null
+}
+
+interface Lookup { id: number; name: string }
+
 interface Props {
   subDepartments: SubDepartment[]
   departments:    Department[]
+  employees:      Employee[]
+  designations:   Lookup[]
+  locations:      Lookup[]
+  grades:         Lookup[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text3)', whiteSpace: 'nowrap', background: 'var(--bg2)', ...style }}>
-      {children}
-    </th>
-  )
+function computeNextCode(list: SubDepartment[]): string {
+  if (!list.length) return 'SDEP0001'
+  const max = list.reduce((m, d) => {
+    const n = parseInt(d.code.replace('SDEP', ''), 10)
+    return isNaN(n) ? m : Math.max(m, n)
+  }, 0)
+  return `SDEP${String(max + 1).padStart(4, '0')}`
 }
 
-function Td({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <td style={{ padding: '11px 14px', verticalAlign: 'middle', fontSize: '.82rem', color: 'var(--text2)', borderBottom: '1px solid var(--border)', ...style }}>
-      {children}
-    </td>
-  )
-}
+// ── Columns ───────────────────────────────────────────────────────────────────
 
-function EmptyState({ search }: { search: string }) {
-  return (
-    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-      <div style={{ opacity: .15, color: 'var(--text3)', marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
-        <FolderTree size={40} />
+const buildColumns = (
+  onEdit: (d: SubDepartment) => void,
+  onDelete: (d: SubDepartment) => void,
+  onAssign: (d: SubDepartment) => void,
+  onToggle: (d: SubDepartment) => void,
+  assignedCounts: Record<number, number>,
+): DTColumn<SubDepartment>[] => [
+  {
+    key: 'code',
+    label: 'Code',
+    width: 120,
+    render: (d) => (
+      <code style={{ fontSize: '.72rem', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 7px', color: 'var(--text3)', fontFamily: 'monospace' }}>
+        {d.code}
+      </code>
+    ),
+  },
+  {
+    key: 'name',
+    label: 'Sub-Department',
+    pinned: true,
+    minWidth: 200,
+    render: (d) => (
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: 'var(--s-lt)', border: '1px solid rgba(5,150,105,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <FolderTree size={14} style={{ color: 'var(--s)' }} />
+        </div>
+        <span style={{ fontWeight: 600, fontSize: '.83rem', color: 'var(--text1)' }}>{d.name}</span>
       </div>
-      <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>
-        {search ? 'No sub-departments match your search' : 'No sub-departments yet'}
-      </div>
-      <div style={{ fontSize: '.78rem', color: 'var(--text4)' }}>
-        {search ? 'Try a different keyword.' : 'Add sub-departments to organise teams within departments.'}
-      </div>
-    </div>
-  )
-}
+    ),
+  },
+  {
+    key: 'department',
+    label: 'Department',
+    sortable: false,
+    minWidth: 160,
+    render: (d) => d.department?.name
+      ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 20, height: 20, borderRadius: 5, background: 'var(--purple-lt)', border: '1px solid rgba(124,58,237,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <Layers size={10} style={{ color: 'var(--purple)' }} />
+          </div>
+          <span style={{ fontSize: '.8rem', color: 'var(--text2)', fontWeight: 500 }}>{d.department.name}</span>
+        </div>
+      )
+      : <span style={{ color: 'var(--text4)', fontSize: '.8rem' }}>—</span>,
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    sortable: false,
+    width: 110,
+    render: (d) => (
+      <span className={`bdg ${d.isActive ? 'bdg-green' : 'bdg-gray'}`}>
+        <span className="bdg-dot" />{d.isActive ? 'Active' : 'Inactive'}
+      </span>
+    ),
+  },
+  {
+    key: 'actions',
+    label: 'Actions',
+    sortable: false,
+    pinned: true,
+    width: 175,
+    render: (d) => {
+      const cnt = assignedCounts[d.id] ?? 0
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            onClick={() => onAssign(d)} title="Assign Employees"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: 'var(--s)', background: 'var(--s-lt)', border: '1px solid rgba(5,150,105,.2)', cursor: 'pointer' }}
+          >
+            <Users size={11} /> Assign
+          </button>
+          <button
+            onClick={() => onEdit(d)} title="Edit"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 7, fontSize: '.72rem', fontWeight: 600, color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer' }}
+          >
+            <Pencil size={11} /> Edit
+          </button>
+          <button
+            onClick={() => onToggle(d)}
+            title={d.isActive ? 'Deactivate' : 'Activate'}
+            style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 6px', borderRadius: 7, color: d.isActive ? '#f59e0b' : 'var(--s)', background: d.isActive ? 'rgba(245,158,11,.07)' : 'var(--s-lt)', border: `1px solid ${d.isActive ? 'rgba(245,158,11,.3)' : 'rgba(5,150,105,.2)'}`, cursor: 'pointer' }}
+          >
+            {d.isActive ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
+          </button>
+          <button
+            onClick={() => onDelete(d)}
+            title={cnt > 0 ? `${cnt} employee${cnt !== 1 ? 's' : ''} assigned` : 'Delete'}
+            style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 6px', borderRadius: 7, color: 'var(--text3)', background: 'transparent', border: '1px solid var(--border)', cursor: 'pointer' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.borderColor = '#fecaca'; e.currentTarget.style.background = 'rgba(239,68,68,.06)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text3)'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.background = 'transparent' }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      )
+    },
+  },
+]
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function SubDepartmentsPage({ subDepartments, departments }: Props) {
-  const [search, setSearch]         = useState('')
-  const [modalOpen, setModalOpen]   = useState(false)
-  const [editTarget, setEditTarget] = useState<SubDepartment | null>(null)
-  const [name, setName]             = useState('')
-  const [deptId, setDeptId]         = useState<string>('')
-  const [nameError, setNameError]   = useState('')
-  const [processing, setProcessing] = useState(false)
+export default function SubDepartmentsPage({ subDepartments, departments, employees, designations, locations, grades }: Props) {
+  const [search,  setSearch]  = useState('')
+  const [colVis,  setColVis]  = useState<VisibilityState>({})
+  const [loading, setLoading] = useState(false)
 
-  const [deleteOpen, setDeleteOpen]             = useState(false)
-  const [deleteTarget, setDeleteTarget]         = useState<SubDepartment | null>(null)
+  const [modalOpen,   setModalOpen]   = useState(false)
+  const [editTarget,  setEditTarget]  = useState<SubDepartment | null>(null)
+  const [name,        setName]        = useState('')
+  const [deptId,      setDeptId]      = useState('')
+  const [nameError,   setNameError]   = useState('')
+  const [processing,  setProcessing]  = useState(false)
+
+  const [deleteTarget,     setDeleteTarget]     = useState<SubDepartment | null>(null)
   const [deleteProcessing, setDeleteProcessing] = useState(false)
 
-  const [isLoading, setIsLoading] = useState(false)
-  useEffect(() => {
-    const off1 = router.on('start',  () => setIsLoading(true))
-    const off2 = router.on('finish', () => setIsLoading(false))
-    return () => { off1(); off2() }
-  }, [])
+  const [toggleTarget,     setToggleTarget]     = useState<SubDepartment | null>(null)
+  const [toggleProcessing, setToggleProcessing] = useState(false)
 
-  // ── Filter ─────────────────────────────────────────────────────────────────
-  const filtered = subDepartments.filter((sd) => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      sd.name.toLowerCase().includes(q) ||
-      sd.code.toLowerCase().includes(q) ||
-      (sd.department?.name ?? '').toLowerCase().includes(q)
-    )
-  })
+  const [assignTarget,     setAssignTarget]     = useState<SubDepartment | null>(null)
+  const [assignProcessing, setAssignProcessing] = useState(false)
 
-  // ── Open modals ────────────────────────────────────────────────────────────
+  const filtered = search
+    ? subDepartments.filter((d) => {
+        const q = search.toLowerCase()
+        return (
+          d.name.toLowerCase().includes(q) ||
+          d.code.toLowerCase().includes(q) ||
+          (d.department?.name ?? '').toLowerCase().includes(q)
+        )
+      })
+    : subDepartments
+
+  const assignedCounts = employees.reduce<Record<number, number>>((acc, e) => {
+    if (e.subDepartmentId) acc[e.subDepartmentId] = (acc[e.subDepartmentId] ?? 0) + 1
+    return acc
+  }, {})
+
+  function openAssign(d: SubDepartment) { setAssignTarget(d) }
+
+  function handleAssignSubmit(ids: number[]) {
+    if (!assignTarget) return
+    setAssignProcessing(true)
+    router.post(`/hrms/organization/settings/sub-departments/${assignTarget.id}/assign`, { employeeIds: ids }, {
+      onSuccess: () => setAssignTarget(null),
+      onFinish:  () => setAssignProcessing(false),
+    })
+  }
+
+  const assignEmps: AssignEmployee[] = employees.map((e) => ({ ...e, currentAssignmentId: e.subDepartmentId }))
+
+  const columns  = buildColumns(openEdit, (d) => setDeleteTarget(d), openAssign, (d) => setToggleTarget(d), assignedCounts)
+  const nextCode = computeNextCode(subDepartments)
+
   function openAdd() {
     setEditTarget(null)
     setName('')
@@ -99,15 +223,14 @@ export default function SubDepartmentsPage({ subDepartments, departments }: Prop
     setModalOpen(true)
   }
 
-  function openEdit(sd: SubDepartment) {
-    setEditTarget(sd)
-    setName(sd.name)
-    setDeptId(sd.departmentId !== null ? String(sd.departmentId) : '')
+  function openEdit(d: SubDepartment) {
+    setEditTarget(d)
+    setName(d.name)
+    setDeptId(d.departmentId !== null ? String(d.departmentId) : '')
     setNameError('')
     setModalOpen(true)
   }
 
-  // ── Submit ─────────────────────────────────────────────────────────────────
   function handleSubmit() {
     if (!name.trim()) { setNameError('Sub-department name is required'); return }
     setNameError('')
@@ -118,53 +241,55 @@ export default function SubDepartmentsPage({ subDepartments, departments }: Prop
     }
     if (editTarget) {
       router.put(`/hrms/organization/settings/sub-departments/${editTarget.id}`, payload, {
-        onSuccess: () => { setModalOpen(false) },
+        onSuccess: () => setModalOpen(false),
+        onError:   () => setNameError('Failed to save. Please try again.'),
         onFinish:  () => setProcessing(false),
       })
     } else {
       router.post('/hrms/organization/settings/sub-departments', payload, {
-        onSuccess: () => { setModalOpen(false) },
+        onSuccess: () => setModalOpen(false),
+        onError:   () => setNameError('Failed to save. Please try again.'),
         onFinish:  () => setProcessing(false),
       })
     }
-  }
-
-  // ── Delete ─────────────────────────────────────────────────────────────────
-  function openDelete(sd: SubDepartment) {
-    setDeleteTarget(sd)
-    setDeleteOpen(true)
   }
 
   function handleDelete() {
     if (!deleteTarget) return
     setDeleteProcessing(true)
     router.delete(`/hrms/organization/settings/sub-departments/${deleteTarget.id}`, {
-      onSuccess: () => { setDeleteOpen(false); setDeleteTarget(null) },
+      onSuccess: () => setDeleteTarget(null),
       onFinish:  () => setDeleteProcessing(false),
     })
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  function handleToggle() {
+    if (!toggleTarget) return
+    setToggleProcessing(true)
+    router.patch(`/hrms/organization/settings/sub-departments/${toggleTarget.id}/toggle`, {}, {
+      onSuccess: () => setToggleTarget(null),
+      onFinish:  () => setToggleProcessing(false),
+    })
+  }
+
+  const deleteAssignedCount  = deleteTarget  ? (assignedCounts[deleteTarget.id]  ?? 0) : 0
+  const toggleAssignedCount  = toggleTarget  ? (assignedCounts[toggleTarget.id]  ?? 0) : 0
+
   return (
     <>
-      {/* Page header */}
       <div className="ph">
         <div>
           <div className="ph-title">Sub-Departments</div>
           <div className="ph-sub">Manage sub-departments nested within departments</div>
         </div>
         <div className="ph-right">
-          <button className="btn btn-p" onClick={openAdd}>
-            <Plus size={14} /> Add Sub-Department
-          </button>
+          <button className="btn btn-p" onClick={openAdd}><Plus size={14} /> Add Sub-Department</button>
         </div>
       </div>
 
-      {/* Card */}
       <div className="card">
-        {/* Toolbar */}
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <div className="sb-inp" style={{ flex: 1, minWidth: 180, maxWidth: 320 }}>
+          <div className="sb-inp" style={{ flex: 1, minWidth: 180, maxWidth: 300 }}>
             <Search size={13} style={{ color: 'var(--text3)', flexShrink: 0 }} />
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search sub-departments…" />
             {search && (
@@ -173,83 +298,36 @@ export default function SubDepartmentsPage({ subDepartments, departments }: Prop
               </button>
             )}
           </div>
-          <button className="btn btn-ghost" title="Refresh" onClick={() => router.reload()} style={{ height: 36, padding: '0 12px', border: '1px solid var(--border)' }}>
-            <RefreshCw size={13} style={{ transition: 'transform .4s', transform: isLoading ? 'rotate(360deg)' : 'none' }} />
+          <button className="btn btn-ghost" onClick={() => { setLoading(true); router.reload({ onFinish: () => setLoading(false) }) }} style={{ height: 36, padding: '0 12px', border: '1px solid var(--border)' }}>
+            <RefreshCw size={13} style={{ transition: 'transform .4s', transform: loading ? 'rotate(360deg)' : 'none' }} />
           </button>
-          <div style={{ marginLeft: 'auto', fontSize: '.76rem', color: 'var(--text3)' }}>
+          <span style={{ marginLeft: 'auto', fontSize: '.76rem', color: 'var(--text3)' }}>
             {filtered.length} sub-department{filtered.length !== 1 ? 's' : ''}
-          </div>
+          </span>
         </div>
 
-        {/* Table */}
-        <div className="tw">
-          {filtered.length === 0 ? (
-            <EmptyState search={search} />
-          ) : (
-            <table className="dt">
-              <thead>
-                <tr>
-                  <Th style={{ width: 140 }}>Code</Th>
-                  <Th>Name</Th>
-                  <Th style={{ width: 200 }}>Parent Department</Th>
-                  <Th style={{ textAlign: 'center', width: 110 }}>Status</Th>
-                  <Th style={{ width: 100 }}>Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((sd) => (
-                  <tr key={sd.id}>
-                    <Td>
-                      <code style={{ fontSize: '.72rem', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 5, padding: '2px 7px', color: 'var(--text2)', fontFamily: 'monospace' }}>
-                        {sd.code}
-                      </code>
-                    </Td>
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--s-lt)', border: '1px solid rgba(5,150,105,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <FolderTree size={12} style={{ color: 'var(--s)' }} />
-                        </div>
-                        <span style={{ fontWeight: 600, color: 'var(--text1)', fontSize: '.83rem' }}>{sd.name}</span>
-                      </div>
-                    </Td>
-                    <Td>
-                      {sd.department?.name
-                        ? <span className="bx bx-purple" style={{ fontSize: '.75rem' }}>{sd.department.name}</span>
-                        : <span style={{ color: 'var(--text4)', fontSize: '.78rem' }}>—</span>
-                      }
-                    </Td>
-                    <Td style={{ textAlign: 'center' }}>
-                      <span className={`bx ${sd.isActive ? 'bx-teal' : 'bx-gray'}`}>
-                        {sd.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </Td>
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button
-                          onClick={() => openEdit(sd)}
-                          title="Edit"
-                          style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', color: 'var(--p)', cursor: 'pointer' }}
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => openDelete(sd)}
-                          title="Delete"
-                          style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-lt)', border: '1px solid rgba(220,38,38,.15)', color: 'var(--danger)', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <DataTable<SubDepartment>
+          data={filtered}
+          columns={columns}
+          rowKey={(r) => r.id}
+          clientPageSize={25}
+          storageKey={COLS_KEY}
+          noun="sub-department"
+          columnVisibility={colVis}
+          onColumnVisibilityChange={setColVis}
+          hideToolbar
+          emptyIcon={<FolderTree size={38} style={{ opacity: .18, color: 'var(--text3)' }} />}
+          emptyTitle={search ? 'No sub-departments match your search' : 'No sub-departments yet'}
+          emptyDesc={search ? 'Try a different keyword.' : 'Add sub-departments to organise teams within departments.'}
+          emptyAction={!search && (
+            <button className="btn btn-p btn-sm" onClick={openAdd} style={{ display: 'inline-flex' }}>
+              <Plus size={13} /> Add Sub-Department
+            </button>
           )}
-        </div>
+        />
       </div>
 
-      {/* ════════ ADD / EDIT MODAL ════════ */}
+      {/* ════ ADD / EDIT MODAL ════ */}
       <Modal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
@@ -265,66 +343,117 @@ export default function SubDepartmentsPage({ subDepartments, departments }: Prop
           </>
         }
       >
-        {editTarget && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 11px', background: 'var(--bg2)', borderRadius: 8, border: '1px solid var(--border)', marginBottom: 16 }}>
-            <FolderTree size={13} style={{ color: 'var(--text3)', flexShrink: 0 }} />
-            <span style={{ fontSize: '.74rem', color: 'var(--text3)' }}>Code:</span>
-            <code style={{ fontSize: '.74rem', color: 'var(--text2)', fontFamily: 'monospace', fontWeight: 600 }}>{editTarget.code}</code>
-            <span style={{ fontSize: '.68rem', color: 'var(--text4)', marginLeft: 4 }}>(auto-generated, read-only)</span>
-          </div>
-        )}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="fg">
+            <label>Sub-Department Code</label>
+            <input className="fi" value={editTarget ? editTarget.code : nextCode} readOnly style={{ background: 'var(--bg2)', color: 'var(--text3)', cursor: 'default', fontFamily: 'monospace', fontWeight: 600 }} />
+          </div>
+          <div className="fg">
             <label>Sub-Department Name <span className="req">*</span></label>
-            <input
-              className="fi"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }}
-              placeholder="e.g. Frontend Engineering"
-              autoFocus
-            />
+            <input className="fi" value={name} onChange={(e) => { setName(e.target.value); setNameError('') }} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }} placeholder="e.g. Frontend Engineering" autoFocus />
             {nameError && <div className="fg-err">{nameError}</div>}
           </div>
           <div className="fg">
             <label>Parent Department</label>
-            <select className="fi" value={deptId} onChange={(e) => setDeptId(e.target.value)}>
-              <option value="">— None —</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-              ))}
-            </select>
+            <SelectSearch
+              value={deptId}
+              onChange={setDeptId}
+              options={[
+                { value: '', label: '— None —' },
+                ...departments.map((d) => ({ value: String(d.id), label: `${d.name} (${d.code})` })),
+              ]}
+              placeholder="Select department…"
+            />
             <div className="fg-hint">Optionally link this sub-department to a parent department.</div>
           </div>
         </div>
       </Modal>
 
-      {/* ════════ DELETE MODAL ════════ */}
+      {/* ════ DELETE MODAL ════ */}
       <Modal
-        open={deleteOpen}
-        onClose={() => { setDeleteOpen(false); setDeleteTarget(null) }}
+        open={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
         title="Delete Sub-Department"
         size="sm"
         variant="danger"
         icon={<Trash2 size={15} />}
         footer={
           <>
-            <button className="btn btn-ghost" onClick={() => { setDeleteOpen(false); setDeleteTarget(null) }}>Cancel</button>
-            <button className="btn btn-danger" disabled={deleteProcessing} onClick={handleDelete}>
-              {deleteProcessing ? 'Deleting…' : 'Yes, Delete'}
-            </button>
+            <button className="btn btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
+            {deleteAssignedCount === 0 && (
+              <button className="btn btn-danger" disabled={deleteProcessing} onClick={handleDelete}>
+                {deleteProcessing ? 'Deleting…' : 'Yes, Delete'}
+              </button>
+            )}
           </>
         }
       >
-        <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
-          Are you sure you want to delete sub-department{' '}
-          <strong style={{ color: 'var(--text1)' }}>{deleteTarget?.name}</strong>
-          {deleteTarget?.code && (
-            <> (<code style={{ fontSize: '.78rem', background: 'var(--bg2)', padding: '1px 6px', borderRadius: 4 }}>{deleteTarget.code}</code>)</>
-          )}
-          ? This action cannot be undone.
-        </p>
+        {deleteAssignedCount > 0 ? (
+          <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+            <strong style={{ color: '#ef4444' }}>Cannot delete</strong> — <strong>{deleteAssignedCount}</strong> employee{deleteAssignedCount !== 1 ? 's are' : ' is'} currently assigned to <strong style={{ color: 'var(--text1)' }}>{deleteTarget?.name}</strong>. Unassign them first before deleting.
+          </p>
+        ) : (
+          <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+            Are you sure you want to delete <strong style={{ color: 'var(--text1)' }}>{deleteTarget?.name}</strong>
+            {deleteTarget?.code && <> (<code style={{ fontSize: '.78rem', background: 'var(--bg2)', padding: '1px 6px', borderRadius: 4 }}>{deleteTarget.code}</code>)</>}?{' '}
+            This action cannot be undone.
+          </p>
+        )}
       </Modal>
+
+      {/* ════ TOGGLE MODAL ════ */}
+      <Modal
+        open={!!toggleTarget}
+        onClose={() => setToggleTarget(null)}
+        title={toggleTarget?.isActive ? 'Deactivate Sub-Department' : 'Activate Sub-Department'}
+        size="sm"
+        variant={toggleTarget?.isActive && toggleAssignedCount === 0 ? 'danger' : undefined}
+        icon={toggleTarget?.isActive ? <ToggleLeft size={15} /> : <ToggleRight size={15} />}
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setToggleTarget(null)}>Cancel</button>
+            {(toggleTarget && (!toggleTarget.isActive || toggleAssignedCount === 0)) && (
+              <button
+                className={toggleTarget.isActive ? 'btn btn-danger' : 'btn btn-p'}
+                disabled={toggleProcessing}
+                onClick={handleToggle}
+              >
+                {toggleProcessing ? 'Saving…' : toggleTarget.isActive ? <><ToggleLeft size={13} /> Deactivate</> : <><ToggleRight size={13} /> Activate</>}
+              </button>
+            )}
+          </>
+        }
+      >
+        {toggleAssignedCount > 0 && toggleTarget?.isActive ? (
+          <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+            <strong style={{ color: '#ef4444' }}>Cannot deactivate</strong> — <strong>{toggleAssignedCount}</strong> employee{toggleAssignedCount !== 1 ? 's are' : ' is'} currently assigned to <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.name}</strong>. Unassign them first.
+          </p>
+        ) : (
+          <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+            {toggleTarget?.isActive
+              ? <>Are you sure you want to deactivate <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.name}</strong>? Employees cannot be assigned to inactive sub-departments.</>
+              : <>Activate <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.name}</strong>? It will be available for employee assignments.</>
+            }
+          </p>
+        )}
+      </Modal>
+
+      {/* ════ ASSIGN EMPLOYEES MODAL ════ */}
+      <AssignEmployeeModal
+        open={!!assignTarget}
+        onClose={() => setAssignTarget(null)}
+        title={assignTarget ? `Assign Employees — ${assignTarget.name}` : 'Assign Employees'}
+        targetId={assignTarget?.id ?? null}
+        employees={assignEmps}
+        initialSelected={assignTarget ? employees.filter((e) => e.subDepartmentId === assignTarget.id).map((e) => e.id) : []}
+        onSave={handleAssignSubmit}
+        saving={assignProcessing}
+        designations={designations}
+        departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+        locations={locations}
+        grades={grades}
+        entityList={subDepartments.map((d) => ({ id: d.id, name: d.name }))}
+      />
     </>
   )
 }

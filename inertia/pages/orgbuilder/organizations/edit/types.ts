@@ -10,6 +10,7 @@ export interface OrgModule {
     key: string
     label: string
     description: string | null
+    sortOrder: number
     addons: Array<{ id: number; name: string; type: string }>
   }
 }

@@ -51,6 +51,13 @@ export default class HrmsSettingsRepository {
     await div.delete()
   }
 
+  async toggleDivision(id: number, orgId: number) {
+    const div = await HrmsDivision.query().where('id', id).where('org_id', orgId).firstOrFail()
+    div.isActive = !div.isActive
+    await div.save()
+    return div
+  }
+
   async findDivision(id: number, orgId: number) {
     return HrmsDivision.query().where('id', id).where('org_id', orgId).firstOrFail()
   }
@@ -77,6 +84,13 @@ export default class HrmsSettingsRepository {
     await loc.delete()
   }
 
+  async toggleLocation(id: number, orgId: number) {
+    const loc = await HrmsLocation.query().where('id', id).where('org_id', orgId).firstOrFail()
+    loc.isActive = !loc.isActive
+    await loc.save()
+    return loc
+  }
+
   // ── Departments ─────────────────────────────────────────────────────────────
   async listDepartments(orgId: number) {
     return HrmsDepartment.query().where('org_id', orgId).orderBy('code')
@@ -97,6 +111,13 @@ export default class HrmsSettingsRepository {
   async deleteDepartment(id: number, orgId: number) {
     const dep = await HrmsDepartment.query().where('id', id).where('org_id', orgId).firstOrFail()
     await dep.delete()
+  }
+
+  async toggleDepartment(id: number, orgId: number) {
+    const dep = await HrmsDepartment.query().where('id', id).where('org_id', orgId).firstOrFail()
+    dep.isActive = !dep.isActive
+    await dep.save()
+    return dep
   }
 
   // ── Sub Departments ─────────────────────────────────────────────────────────
@@ -122,19 +143,27 @@ export default class HrmsSettingsRepository {
     await dep.delete()
   }
 
+  async toggleSubDepartment(id: number, orgId: number) {
+    const dep = await HrmsSubDepartment.query().where('id', id).where('org_id', orgId).firstOrFail()
+    dep.isActive = !dep.isActive
+    await dep.save()
+    return dep
+  }
+
   // ── Designations ────────────────────────────────────────────────────────────
   async listDesignations(orgId: number) {
     return HrmsDesignation.query().where('org_id', orgId).orderBy('code')
   }
 
-  async createDesignation(orgId: number, name: string) {
+  async createDesignation(orgId: number, name: string, jobDescription?: string | null) {
     const code = await nextCode('hrms_designations', 'DES', orgId)
-    return HrmsDesignation.create({ orgId, code, name, isActive: true })
+    return HrmsDesignation.create({ orgId, code, name, jobDescription: jobDescription ?? null, isActive: true })
   }
 
-  async updateDesignation(id: number, orgId: number, name: string) {
+  async updateDesignation(id: number, orgId: number, name: string, jobDescription?: string | null) {
     const des = await HrmsDesignation.query().where('id', id).where('org_id', orgId).firstOrFail()
     des.name = name
+    des.jobDescription = jobDescription ?? null
     await des.save()
     return des
   }
@@ -142,6 +171,13 @@ export default class HrmsSettingsRepository {
   async deleteDesignation(id: number, orgId: number) {
     const des = await HrmsDesignation.query().where('id', id).where('org_id', orgId).firstOrFail()
     await des.delete()
+  }
+
+  async toggleDesignation(id: number, orgId: number) {
+    const des = await HrmsDesignation.query().where('id', id).where('org_id', orgId).firstOrFail()
+    des.isActive = !des.isActive
+    await des.save()
+    return des
   }
 
   // ── Grades ──────────────────────────────────────────────────────────────────
@@ -164,6 +200,13 @@ export default class HrmsSettingsRepository {
   async deleteGrade(id: number, orgId: number) {
     const grade = await HrmsGrade.query().where('id', id).where('org_id', orgId).firstOrFail()
     await grade.delete()
+  }
+
+  async toggleGrade(id: number, orgId: number) {
+    const grade = await HrmsGrade.query().where('id', id).where('org_id', orgId).firstOrFail()
+    grade.isActive = !grade.isActive
+    await grade.save()
+    return grade
   }
 
   // ── Sections ────────────────────────────────────────────────────────────────
@@ -189,6 +232,13 @@ export default class HrmsSettingsRepository {
     await sec.delete()
   }
 
+  async toggleSection(id: number, orgId: number) {
+    const sec = await HrmsSection.query().where('id', id).where('org_id', orgId).firstOrFail()
+    sec.isActive = !sec.isActive
+    await sec.save()
+    return sec
+  }
+
   // ── Sub Sections ────────────────────────────────────────────────────────────
   async listSubSections(orgId: number) {
     return HrmsSubSection.query().where('org_id', orgId).preload('section').orderBy('code')
@@ -212,6 +262,13 @@ export default class HrmsSettingsRepository {
     await sub.delete()
   }
 
+  async toggleSubSection(id: number, orgId: number) {
+    const sub = await HrmsSubSection.query().where('id', id).where('org_id', orgId).firstOrFail()
+    sub.isActive = !sub.isActive
+    await sub.save()
+    return sub
+  }
+
   // ── Holidays ────────────────────────────────────────────────────────────────
   async listHolidays(orgId: number) {
     return HrmsHoliday.query().where('org_id', orgId).orderBy('date')
@@ -231,6 +288,13 @@ export default class HrmsSettingsRepository {
   async deleteHoliday(id: number, orgId: number) {
     const h = await HrmsHoliday.query().where('id', id).where('org_id', orgId).firstOrFail()
     await h.delete()
+  }
+
+  async toggleHoliday(id: number, orgId: number) {
+    const h = await HrmsHoliday.query().where('id', id).where('org_id', orgId).firstOrFail()
+    h.isActive = !h.isActive
+    await h.save()
+    return h
   }
 
   // ── Notice Periods ──────────────────────────────────────────────────────────
@@ -254,6 +318,13 @@ export default class HrmsSettingsRepository {
     await np.delete()
   }
 
+  async toggleNoticePeriod(id: number, orgId: number) {
+    const np = await HrmsNoticePeriod.query().where('id', id).where('org_id', orgId).firstOrFail()
+    np.isActive = !np.isActive
+    await np.save()
+    return np
+  }
+
   // ── Approvals ───────────────────────────────────────────────────────────────
   async listApprovals(orgId: number) {
     return HrmsApproval.query().where('org_id', orgId).orderBy('id')
@@ -273,6 +344,13 @@ export default class HrmsSettingsRepository {
   async deleteApproval(id: number, orgId: number) {
     const ap = await HrmsApproval.query().where('id', id).where('org_id', orgId).firstOrFail()
     await ap.delete()
+  }
+
+  async toggleApproval(id: number, orgId: number) {
+    const ap = await HrmsApproval.query().where('id', id).where('org_id', orgId).firstOrFail()
+    ap.isActive = !ap.isActive
+    await ap.save()
+    return ap
   }
 
   // ── Company Documents ───────────────────────────────────────────────────────

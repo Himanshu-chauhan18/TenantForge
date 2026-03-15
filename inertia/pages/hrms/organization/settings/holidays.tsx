@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { router } from '@inertiajs/react'
 import {
   CalendarDays, Plus, Edit2, Trash2, X, Check, Search, RefreshCw,
-  ChevronDown,
+  ChevronDown, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import { Modal } from '~/components/modal'
+import { DatePicker } from '~/components/date-picker'
+import { Checkbox } from '~/components/checkbox'
+import { SelectSearch } from '~/components/select-search'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -81,7 +85,7 @@ function EmptyState({ search }: { search: string }) {
   )
 }
 
-// ── Multi-select component ────────────────────────────────────────────────────
+// ── Multi-select component (portal-based to avoid modal overflow clipping) ────
 
 function MultiSelect({
   options,
@@ -95,61 +99,59 @@ function MultiSelect({
   placeholder: string
 }) {
   const [open, setOpen] = useState(false)
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null)
+  const btnRef = useRef<HTMLButtonElement>(null)
   const selectedItems = options.filter((o) => selected.includes(o.id))
 
   function toggle(id: number) {
-    if (selected.includes(id)) {
-      onChange(selected.filter((s) => s !== id))
-    } else {
-      onChange([...selected, id])
+    onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id])
+  }
+
+  function openDrop() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect()
+      setDropPos({ top: r.bottom + 4, left: r.left, width: r.width })
     }
+    setOpen(true)
   }
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div>
       <button
+        ref={btnRef}
         type="button"
         className="fi"
         style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', minHeight: 36, height: 'auto', padding: '6px 10px' }}
-        onClick={() => setOpen((p) => !p)}
+        onClick={() => open ? setOpen(false) : openDrop()}
       >
         <span style={{ fontSize: '.82rem', color: selectedItems.length ? 'var(--text1)' : 'var(--text4)', display: 'flex', flexWrap: 'wrap', gap: 4, flex: 1, textAlign: 'left' }}>
           {selectedItems.length === 0
             ? placeholder
             : selectedItems.map((item) => (
-              <span
-                key={item.id}
-                className="bx bx-teal"
-                style={{ fontSize: '.68rem' }}
-              >
-                {item.name}
-              </span>
+              <span key={item.id} className="bx bx-teal" style={{ fontSize: '.68rem' }}>{item.name}</span>
             ))
           }
         </span>
         <ChevronDown size={13} style={{ color: 'var(--text3)', flexShrink: 0, marginLeft: 4, transform: open ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }} />
       </button>
-      {open && (
-        <div style={{ position: 'absolute', zIndex: 50, top: '100%', left: 0, right: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.1)', maxHeight: 200, overflowY: 'auto', marginTop: 4 }}>
-          {options.length === 0 && (
-            <div style={{ padding: '10px 12px', fontSize: '.78rem', color: 'var(--text4)' }}>No options available</div>
-          )}
-          {options.map((opt) => (
-            <label
-              key={opt.id}
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: '.82rem', color: 'var(--text1)', borderBottom: '1px solid var(--border)' }}
-            >
-              <input
-                type="checkbox"
-                checked={selected.includes(opt.id)}
-                onChange={() => toggle(opt.id)}
-                style={{ accentColor: 'var(--p)' }}
-              />
-              <span>{opt.name}</span>
-              <code style={{ fontSize: '.68rem', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', marginLeft: 'auto' }}>{opt.code}</code>
-            </label>
-          ))}
-        </div>
+      {open && dropPos && createPortal(
+        <>
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={() => setOpen(false)} />
+          <div style={{ position: 'fixed', top: dropPos.top, left: dropPos.left, width: dropPos.width, zIndex: 9999, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,.15)', maxHeight: 200, overflowY: 'auto' }}>
+            {options.length === 0 && (
+              <div style={{ padding: '10px 12px', fontSize: '.78rem', color: 'var(--text4)' }}>No options available</div>
+            )}
+            {options.map((opt) => (
+              <div key={opt.id} style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', borderBottom: '1px solid var(--border)' }}>
+                <Checkbox checked={selected.includes(opt.id)} onChange={() => toggle(opt.id)}>
+                  {opt.name}
+                </Checkbox>
+                <code style={{ fontSize: '.68rem', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 4, padding: '1px 5px', color: 'var(--text3)', marginLeft: 'auto' }}>{opt.code}</code>
+              </div>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
     </div>
   )
@@ -183,6 +185,9 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
   const [deleteOpen, setDeleteOpen]             = useState(false)
   const [deleteTarget, setDeleteTarget]         = useState<Holiday | null>(null)
   const [deleteProcessing, setDeleteProcessing] = useState(false)
+
+  const [toggleTarget, setToggleTarget]         = useState<Holiday | null>(null)
+  const [toggleProcessing, setToggleProcessing] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   useEffect(() => {
@@ -281,6 +286,16 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
     }
   }
 
+  // ── Toggle ─────────────────────────────────────────────────────────────────
+  function handleToggle() {
+    if (!toggleTarget) return
+    setToggleProcessing(true)
+    router.patch(`/hrms/organization/settings/holidays/${toggleTarget.id}/toggle`, {}, {
+      onSuccess: () => { setToggleTarget(null) },
+      onFinish:  () => setToggleProcessing(false),
+    })
+  }
+
   // ── Delete ─────────────────────────────────────────────────────────────────
   function openDelete(h: Holiday) {
     setDeleteTarget(h)
@@ -340,15 +355,17 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
             )}
           </div>
           {/* Year filter */}
-          <select
-            className="fi"
-            value={yearFilter === 'all' ? 'all' : String(yearFilter)}
-            onChange={(e) => setYearFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
-            style={{ width: 120, height: 36 }}
-          >
-            <option value="all">All Years</option>
-            {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <div style={{ width: 130 }}>
+            <SelectSearch
+              value={yearFilter === 'all' ? 'all' : String(yearFilter)}
+              onChange={(v) => setYearFilter(v === 'all' ? 'all' : Number(v))}
+              options={[
+                { value: 'all', label: 'All Years' },
+                ...availableYears.map((y) => ({ value: String(y), label: String(y) })),
+              ]}
+              placeholder="All Years"
+            />
+          </div>
           <button className="btn btn-ghost" title="Refresh" onClick={() => router.reload()} style={{ height: 36, padding: '0 12px', border: '1px solid var(--border)' }}>
             <RefreshCw size={13} style={{ transition: 'transform .4s', transform: isLoading ? 'rotate(360deg)' : 'none' }} />
           </button>
@@ -377,7 +394,7 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
                       <Th style={{ width: 100, textAlign: 'center' }}>Type</Th>
                       <Th style={{ width: 120, textAlign: 'center' }}>Apply To</Th>
                       <Th style={{ width: 160 }}>Scope</Th>
-                      <Th style={{ width: 100 }}>Actions</Th>
+                      <Th style={{ width: 140 }}>Actions</Th>
                     </tr>
                   </thead>
                   <tbody>
@@ -427,6 +444,13 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
                               <Edit2 size={13} />
                             </button>
                             <button
+                              onClick={() => setToggleTarget(h)}
+                              title={h.isActive ? 'Deactivate' : 'Activate'}
+                              style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: h.isActive ? 'var(--teal-lt)' : 'var(--bg2)', border: h.isActive ? '1px solid rgba(20,184,166,.2)' : '1px solid var(--border)', color: h.isActive ? 'var(--teal)' : 'var(--text3)', cursor: 'pointer' }}
+                            >
+                              {h.isActive ? <ToggleRight size={13} /> : <ToggleLeft size={13} />}
+                            </button>
+                            <button
                               onClick={() => openDelete(h)}
                               title="Delete"
                               style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-lt)', border: '1px solid rgba(220,38,38,.15)', color: 'var(--danger)', cursor: 'pointer' }}
@@ -462,94 +486,77 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Name */}
-          <div className="fg">
-            <label>Holiday Name <span className="req">*</span></label>
-            <input className="fi" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Republic Day" autoFocus />
-            {errors.name && <div className="fg-err">{errors.name}</div>}
-          </div>
-
-          {/* Date */}
-          <div className="fg">
-            <label>Date <span className="req">*</span></label>
-            <input type="date" className="fi" value={form.date} onChange={(e) => setField('date', e.target.value)} />
-            {errors.date && <div className="fg-err">{errors.date}</div>}
-          </div>
-
-          {/* Flexi toggle */}
-          <div className="fg">
-            <label>Holiday Type</label>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {(['false', 'true'] as const).map((val) => {
-                const isFlexi = val === 'true'
-                const active  = form.isFlexi === isFlexi
-                return (
-                  <label key={val} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '7px 14px', borderRadius: 8, border: `1px solid ${active ? (isFlexi ? 'rgba(217,119,6,.4)' : 'var(--p-mid)') : 'var(--border)'}`, background: active ? (isFlexi ? 'var(--warn-lt)' : 'var(--p-lt)') : 'var(--bg2)', flex: 1 }}>
-                    <input type="radio" name="isFlexi" checked={active} onChange={() => setField('isFlexi', isFlexi)} style={{ accentColor: 'var(--p)' }} />
-                    <span style={{ fontSize: '.82rem', fontWeight: 600, color: active ? (isFlexi ? 'var(--warn)' : 'var(--p)') : 'var(--text2)' }}>
-                      {isFlexi ? 'Flexi Holiday' : 'Fixed Holiday'}
-                    </span>
-                  </label>
-                )
-              })}
+          {/* Row 1: Name + Date */}
+          <div className="g2">
+            <div className="fg">
+              <label>Holiday Name <span className="req">*</span></label>
+              <input className="fi" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Republic Day" autoFocus />
+              {errors.name && <div className="fg-err">{errors.name}</div>}
+            </div>
+            <div className="fg">
+              <label>Date <span className="req">*</span></label>
+              <DatePicker value={form.date} onChange={(v) => setField('date', v)} placeholder="Select date…" />
+              {errors.date && <div className="fg-err">{errors.date}</div>}
             </div>
           </div>
 
-          {/* Description */}
+          {/* Row 2: Description (full width) */}
           <div className="fg">
             <label>Description</label>
-            <textarea className="fi" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Optional notes about this holiday" rows={2} style={{ resize: 'vertical' }} />
+            <textarea className="fi" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Optional notes…" rows={2} style={{ resize: 'vertical' }} />
           </div>
 
-          {/* Apply To */}
-          <div className="fg">
-            <label>Apply On <span className="req">*</span></label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(
-                [
-                  { value: 'division', label: 'Division Only' },
-                  { value: 'location', label: 'Location Only' },
-                  { value: 'both',     label: 'Both' },
-                ] as const
-              ).map((opt) => {
-                const active = form.applyTo === opt.value
-                return (
-                  <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '6px 12px', borderRadius: 8, border: `1px solid ${active ? 'var(--p-mid)' : 'var(--border)'}`, background: active ? 'var(--p-lt)' : 'var(--bg2)', flex: 1 }}>
-                    <input type="radio" name="applyTo" checked={active} onChange={() => setField('applyTo', opt.value)} style={{ accentColor: 'var(--p)' }} />
-                    <span style={{ fontSize: '.8rem', fontWeight: 600, color: active ? 'var(--p)' : 'var(--text2)' }}>{opt.label}</span>
-                  </label>
-                )
-              })}
+          {/* Row 3: Type + Apply On */}
+          <div className="g2">
+            <div className="fg">
+              <label>Type</label>
+              <div style={{ display: 'flex', alignItems: 'center', height: 36, paddingLeft: 2 }}>
+                <Checkbox checked={form.isFlexi} onChange={() => setField('isFlexi', !form.isFlexi)}>
+                  Flexi Holiday
+                </Checkbox>
+              </div>
+              <div className="fg-hint">Uncheck for a fixed (mandatory) holiday.</div>
+            </div>
+            <div className="fg">
+              <label>Apply On <span className="req">*</span></label>
+              <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 9, padding: 3, gap: 2, border: '1px solid var(--border)', height: 36 }}>
+                {(['division', 'location', 'both'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setField('applyTo', v)}
+                    style={{
+                      flex: 1, borderRadius: 7, border: 'none', cursor: 'pointer',
+                      fontSize: '.78rem', fontWeight: 600, transition: 'all .15s',
+                      background: form.applyTo === v ? 'var(--surface)' : 'transparent',
+                      color: form.applyTo === v ? 'var(--text1)' : 'var(--text3)',
+                      boxShadow: form.applyTo === v ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                    }}
+                  >
+                    {v === 'division' ? 'Division' : v === 'location' ? 'Location' : 'Both'}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Division multi-select */}
-          {(form.applyTo === 'division' || form.applyTo === 'both') && (
-            <div className="fg">
-              <label>Divisions <span className="req">*</span></label>
-              <MultiSelect
-                options={divisions}
-                selected={form.divisionIds}
-                onChange={(ids) => setField('divisionIds', ids)}
-                placeholder="Select divisions…"
-              />
-              {errors.divisionIds && <div className="fg-err">{errors.divisionIds}</div>}
-            </div>
-          )}
-
-          {/* Location multi-select */}
-          {(form.applyTo === 'location' || form.applyTo === 'both') && (
-            <div className="fg">
-              <label>Locations <span className="req">*</span></label>
-              <MultiSelect
-                options={locations}
-                selected={form.locationIds}
-                onChange={(ids) => setField('locationIds', ids)}
-                placeholder="Select locations…"
-              />
-              {errors.locationIds && <div className="fg-err">{errors.locationIds}</div>}
-            </div>
-          )}
+          {/* Row 4: Divisions + Locations (side-by-side when both) */}
+          <div className={form.applyTo === 'both' ? 'g2' : undefined}>
+            {(form.applyTo === 'division' || form.applyTo === 'both') && (
+              <div className="fg">
+                <label>Divisions <span className="req">*</span></label>
+                <MultiSelect options={divisions} selected={form.divisionIds} onChange={(ids) => setField('divisionIds', ids)} placeholder="Select divisions…" />
+                {errors.divisionIds && <div className="fg-err">{errors.divisionIds}</div>}
+              </div>
+            )}
+            {(form.applyTo === 'location' || form.applyTo === 'both') && (
+              <div className="fg">
+                <label>Locations <span className="req">*</span></label>
+                <MultiSelect options={locations} selected={form.locationIds} onChange={(ids) => setField('locationIds', ids)} placeholder="Select locations…" />
+                {errors.locationIds && <div className="fg-err">{errors.locationIds}</div>}
+              </div>
+            )}
+          </div>
         </div>
       </Modal>
 
@@ -574,6 +581,35 @@ export default function HolidaysPage({ holidays, divisions, locations }: Props) 
           Are you sure you want to delete holiday{' '}
           <strong style={{ color: 'var(--text1)' }}>{deleteTarget?.name}</strong>
           ? This action cannot be undone.
+        </p>
+      </Modal>
+
+      {/* ════════ TOGGLE MODAL ════════ */}
+      <Modal
+        open={toggleTarget !== null}
+        onClose={() => setToggleTarget(null)}
+        title={toggleTarget?.isActive ? 'Deactivate Holiday' : 'Activate Holiday'}
+        size="sm"
+        variant={toggleTarget?.isActive ? 'danger' : undefined}
+        icon={toggleTarget?.isActive ? <ToggleLeft size={15} /> : <ToggleRight size={15} />}
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setToggleTarget(null)}>Cancel</button>
+            <button
+              className={`btn ${toggleTarget?.isActive ? 'btn-danger' : 'btn-p'}`}
+              disabled={toggleProcessing}
+              onClick={handleToggle}
+            >
+              {toggleProcessing ? 'Saving…' : toggleTarget?.isActive ? 'Yes, Deactivate' : 'Yes, Activate'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+          {toggleTarget?.isActive
+            ? <>Are you sure you want to deactivate <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.name}</strong>? It will no longer appear as active.</>
+            : <>Activate <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.name}</strong>? It will be marked as active.</>
+          }
         </p>
       </Modal>
     </>

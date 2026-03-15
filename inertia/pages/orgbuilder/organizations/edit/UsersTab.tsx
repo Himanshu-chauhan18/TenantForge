@@ -2,7 +2,7 @@ import { useState, useRef, useLayoutEffect, useMemo, useEffect } from 'react'
 import {
   Users, Plus, Search, X, Filter, SlidersHorizontal,
   RefreshCw, Pencil, QrCode, LogIn, Activity, CheckCircle2,
-  UserX, ChevronDown, Download, Eye, EyeOff, ShieldCheck,
+  UserX, ChevronDown, Download, Eye, EyeOff, ShieldCheck, Lock,
 } from 'lucide-react'
 import { router } from '@inertiajs/react'
 import QRCode from 'qrcode'
@@ -10,6 +10,10 @@ import { DataTable, FixedDropdown } from '~/components/data-table'
 import type { DTColumn, VisibilityState } from '~/components/data-table'
 import { Modal } from '~/components/modal'
 import { SelectSearch } from '~/components/select-search'
+import { DatePicker } from '~/components/date-picker'
+import { Checkbox } from '~/components/checkbox'
+import { PhoneInput } from '~/components/phone-input'
+import type { CountryOption } from '~/components/country-select'
 import type { Org, OrgUser } from './types'
 import { safeDate, avColor, initials } from './data'
 import { RolesTab } from './RolesTab'
@@ -29,6 +33,16 @@ type BulkConfirm = { op: 'activate' | 'deactivate'; count: number } | null
 interface Props { org: Org }
 
 // ── Blank form ─────────────────────────────────────────────────────────────────
+
+/** Generates next sequential employee code: EMP00001, EMP00002, … */
+function nextEmployeeCode(users: { employeeCode: string | null }[]): string {
+  let max = 0
+  for (const u of users) {
+    const m = u.employeeCode?.match(/^EMP(\d+)$/i)
+    if (m) { const n = parseInt(m[1], 10); if (n > max) max = n }
+  }
+  return `EMP${String(max + 1).padStart(5, '0')}`
+}
 
 const BLANK_FORM = {
   fullName: '', companyEmail: '', password: '',
@@ -92,6 +106,19 @@ export function UsersTab({ org }: Props) {
 function UserListTab({ org }: { org: Org }) {
   const users    = org.orgUsers || []
   const profiles = org.profiles || []
+
+  // Org country (for phone prefix)
+  const [orgCountry, setOrgCountry] = useState<CountryOption | null>(null)
+  useEffect(() => {
+    if (!org.country) return
+    fetch(`/api/countries?search=${encodeURIComponent(org.country)}`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data: CountryOption[]) => {
+        const match = data.find((c) => c.name.toLowerCase() === org.country!.toLowerCase())
+        if (match) setOrgCountry(match)
+      })
+      .catch(() => {})
+  }, [org.country])
 
   // Loading
   const [isLoading, setIsLoading] = useState(false)
@@ -219,6 +246,11 @@ function UserListTab({ org }: { org: Org }) {
 
   // ── Add User ──────────────────────────────────────────────────────────────
 
+  function openAddUser() {
+    setAddForm({ ...BLANK_FORM, employeeCode: nextEmployeeCode(users) })
+    setAddOpen(true)
+  }
+
   function handleAddUser() {
     if (!addForm.fullName.trim() || !addForm.companyEmail.trim() || !addForm.password.trim()) return
     setAddLoading(true)
@@ -263,7 +295,7 @@ function UserListTab({ org }: { org: Org }) {
     setEditLoading(true)
     router.put(`/orgbuilder/organizations/${org.id}/users/${editUser.id}`, {
       fullName:     editForm.fullName.trim(),
-      employeeCode: editForm.employeeCode.trim() || undefined,
+      employeeCode: editForm.employeeCode || undefined,
       phone:        editForm.phone.trim() || undefined,
       gender:       editForm.gender || undefined,
       dateOfBirth:  editForm.dateOfBirth || undefined,
@@ -274,6 +306,19 @@ function UserListTab({ org }: { org: Org }) {
       onSuccess: () => { setEditUser(null); setEditLoading(false) },
       onError:   () => setEditLoading(false),
     })
+  }
+
+  // ── Login as user (impersonation) ─────────────────────────────────────────
+
+  async function loginAsUser(userId: number) {
+    const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '')
+    const res = await fetch(`/orgbuilder/organizations/${org.id}/users/${userId}/impersonate`, {
+      method: 'POST',
+      headers: { 'X-XSRF-TOKEN': xsrf, 'Accept': 'application/json' },
+    })
+    if (!res.ok) return
+    const { redirectUrl } = await res.json()
+    window.open(redirectUrl, '_blank')
   }
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
@@ -366,7 +411,7 @@ function UserListTab({ org }: { org: Org }) {
           <button
             title="Direct login"
             style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 6px', borderRadius: 7, color: 'var(--text3)', background: 'transparent', border: '1px solid var(--border)', cursor: 'pointer', transition: 'var(--t)' }}
-            onClick={() => {/* TODO: direct login */}}
+            onClick={() => loginAsUser(u.id)}
             onMouseEnter={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.color = '#10b981'; b.style.borderColor = '#a7f3d0'; b.style.background = '#ecfdf5' }}
             onMouseLeave={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.color = 'var(--text3)'; b.style.borderColor = 'var(--border)'; b.style.background = 'transparent' }}
           >
@@ -390,7 +435,7 @@ function UserListTab({ org }: { org: Org }) {
         <button
           className="btn btn-p btn-sm"
           style={{ height: 34, padding: '0 14px', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          onClick={() => { setAddForm(BLANK_FORM); setShowAddPw(false); setAddOpen(true) }}
+          onClick={() => { setShowAddPw(false); openAddUser() }}
         >
           <Plus size={13} /> Add User
         </button>
@@ -598,6 +643,14 @@ function UserListTab({ org }: { org: Org }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
+              <label>Employee Code</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none', zIndex: 1 }} />
+                <input className="fi" value={addForm.employeeCode} readOnly style={{ paddingLeft: 30, background: 'var(--bg)', color: 'var(--text2)', cursor: 'not-allowed', fontFamily: 'monospace', letterSpacing: '.08em', fontWeight: 700 }} />
+              </div>
+              <div className="fg-hint">Auto-generated · sequential · read-only</div>
+            </div>
+            <div className="fg">
               <label>Password <span className="req">*</span></label>
               <div style={{ position: 'relative' }}>
                 <input className="fi" type={showAddPw ? 'text' : 'password'} value={addForm.password} onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))} placeholder="Min 8 characters" style={{ paddingRight: 38 }} />
@@ -605,10 +658,6 @@ function UserListTab({ org }: { org: Org }) {
                   {showAddPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
-            </div>
-            <div className="fg">
-              <label>Employee Code</label>
-              <input className="fi" value={addForm.employeeCode} onChange={(e) => setAddForm((f) => ({ ...f, employeeCode: e.target.value }))} placeholder="e.g. EMP001" />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -632,20 +681,16 @@ function UserListTab({ org }: { org: Org }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Phone</label>
-              <input className="fi" value={addForm.phone} onChange={(e) => setAddForm((f) => ({ ...f, phone: e.target.value }))} placeholder="+91 99999 00000" />
+              <PhoneInput value={addForm.phone} onChange={(v) => setAddForm((f) => ({ ...f, phone: v }))} phonecode={orgCountry?.phonecode} emoji={orgCountry?.emoji} />
             </div>
             <div className="fg">
               <label>Date of Birth</label>
-              <input className="fi" type="date" value={addForm.dateOfBirth} onChange={(e) => setAddForm((f) => ({ ...f, dateOfBirth: e.target.value }))} />
+              <DatePicker value={addForm.dateOfBirth} onChange={(v) => setAddForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="Select date of birth" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.82rem', color: 'var(--text2)' }}>
-              <input type="checkbox" checked={addForm.isActive} onChange={(e) => setAddForm((f) => ({ ...f, isActive: e.target.checked }))} /> Active
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.82rem', color: 'var(--text2)' }}>
-              <input type="checkbox" checked={addForm.sendWelcomeMail} onChange={(e) => setAddForm((f) => ({ ...f, sendWelcomeMail: e.target.checked }))} /> Send welcome email
-            </label>
+            <Checkbox checked={addForm.isActive} onChange={() => setAddForm((f) => ({ ...f, isActive: !f.isActive }))}>Active</Checkbox>
+            <Checkbox checked={addForm.sendWelcomeMail} onChange={() => setAddForm((f) => ({ ...f, sendWelcomeMail: !f.sendWelcomeMail }))}>Send welcome email</Checkbox>
           </div>
         </div>
       </Modal>
@@ -671,15 +716,23 @@ function UserListTab({ org }: { org: Org }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
+              <label>Employee Code</label>
+              <div style={{ position: 'relative' }}>
+                <Lock size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none', zIndex: 1 }} />
+                <input className="fi" value={editForm.employeeCode} readOnly style={{ paddingLeft: 30, background: 'var(--bg)', color: 'var(--text2)', cursor: 'not-allowed', fontFamily: 'monospace', letterSpacing: '.08em', fontWeight: 700 }} />
+              </div>
+              <div className="fg-hint">Read-only · assigned at creation</div>
+            </div>
+            <div className="fg">
               <label>Full Name <span className="req">*</span></label>
               <input className="fi" value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} />
             </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Company Email</label>
               <input className="fi" value={editForm.companyEmail} disabled style={{ opacity: .6, cursor: 'not-allowed' }} />
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>New Password <span style={{ fontSize: '.7rem', color: 'var(--text4)' }}>(blank = unchanged)</span></label>
               <div style={{ position: 'relative' }}>
@@ -688,10 +741,6 @@ function UserListTab({ org }: { org: Org }) {
                   {showEditPw ? <EyeOff size={14} /> : <Eye size={14} />}
                 </button>
               </div>
-            </div>
-            <div className="fg">
-              <label>Employee Code</label>
-              <input className="fi" value={editForm.employeeCode} onChange={(e) => setEditForm((f) => ({ ...f, employeeCode: e.target.value }))} placeholder="e.g. EMP001" />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -715,16 +764,14 @@ function UserListTab({ org }: { org: Org }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Phone</label>
-              <input className="fi" value={editForm.phone} onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))} />
+              <PhoneInput value={editForm.phone} onChange={(v) => setEditForm((f) => ({ ...f, phone: v }))} phonecode={orgCountry?.phonecode} emoji={orgCountry?.emoji} />
             </div>
             <div className="fg">
               <label>Date of Birth</label>
-              <input className="fi" type="date" value={editForm.dateOfBirth} onChange={(e) => setEditForm((f) => ({ ...f, dateOfBirth: e.target.value }))} />
+              <DatePicker value={editForm.dateOfBirth} onChange={(v) => setEditForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="Select date of birth" />
             </div>
           </div>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '.82rem', color: 'var(--text2)' }}>
-            <input type="checkbox" checked={editForm.isActive} onChange={(e) => setEditForm((f) => ({ ...f, isActive: e.target.checked }))} /> Active
-          </label>
+          <Checkbox checked={editForm.isActive} onChange={() => setEditForm((f) => ({ ...f, isActive: !f.isActive }))}>Active</Checkbox>
         </div>
       </Modal>
 

@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react'
 import { router } from '@inertiajs/react'
 import {
-  Clock, Plus, Edit2, Trash2, X, Check, Search, RefreshCw, AlertCircle,
+  Clock, Plus, Check, Trash2, Pencil, Search, RefreshCw, X,
+  ToggleLeft, ToggleRight, AlertCircle,
 } from 'lucide-react'
 import { Modal } from '~/components/modal'
+import { DataTable, type DTColumn } from '~/components/data-table'
+import { SelectSearch, type SelectOption } from '~/components/select-search'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -25,40 +28,96 @@ interface Props {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text3)', whiteSpace: 'nowrap', background: 'var(--bg2)', ...style }}>
-      {children}
-    </th>
-  )
-}
-
-function Td({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <td style={{ padding: '11px 14px', verticalAlign: 'middle', fontSize: '.82rem', color: 'var(--text2)', borderBottom: '1px solid var(--border)', ...style }}>
-      {children}
-    </td>
-  )
-}
-
-function EmptyState({ search }: { search: string }) {
-  return (
-    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-      <div style={{ opacity: .15, color: 'var(--text3)', marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
-        <Clock size={40} />
-      </div>
-      <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>
-        {search ? 'No notice periods match your search' : 'No notice periods configured'}
-      </div>
-      <div style={{ fontSize: '.78rem', color: 'var(--text4)' }}>
-        {search ? 'Try a different keyword.' : 'Configure notice periods per designation.'}
-      </div>
-    </div>
-  )
-}
-
 function daysLabel(n: number): string {
   return `${n} day${n !== 1 ? 's' : ''}`
+}
+
+function getLabel(np: NoticePeriod): string {
+  return np.designationName ?? np.designation?.name ?? 'Default (All Designations)'
+}
+
+// ── Columns ───────────────────────────────────────────────────────────────────
+
+function buildColumns(
+  onEdit: (np: NoticePeriod) => void,
+  onDelete: (np: NoticePeriod) => void,
+  onToggle: (np: NoticePeriod) => void,
+): DTColumn<NoticePeriod>[] {
+  return [
+    {
+      key: 'designation',
+      label: 'Designation',
+      pinned: true,
+      render: (np) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: np.designationId ? 'var(--p-lt)' : 'var(--bg2)', border: `1px solid ${np.designationId ? 'var(--p-mid)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            {np.designationId
+              ? <Clock size={12} style={{ color: 'var(--p)' }} />
+              : <AlertCircle size={12} style={{ color: 'var(--text3)' }} />
+            }
+          </div>
+          <div>
+            <div style={{ fontWeight: 600, color: 'var(--text1)', fontSize: '.83rem' }}>{getLabel(np)}</div>
+            {!np.designationId && (
+              <div style={{ fontSize: '.71rem', color: 'var(--text4)' }}>Applies to all designations</div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'noticeDays',
+      label: 'Notice Period',
+      width: 160,
+      render: (np) => (
+        <span className="bx bx-teal" style={{ fontSize: '.83rem', fontWeight: 700 }}>
+          {daysLabel(np.noticeDays)}
+        </span>
+      ),
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      width: 110,
+      align: 'center',
+      render: (np) => (
+        <span className={`bx ${np.isActive ? 'bx-teal' : 'bx-gray'}`}>
+          {np.isActive ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      width: 140,
+      pinned: true,
+      render: (np) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={() => onEdit(np)}
+            title="Edit"
+            style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', color: 'var(--p)', cursor: 'pointer' }}
+          >
+            <Pencil size={13} />
+          </button>
+          <button
+            onClick={() => onToggle(np)}
+            title={np.isActive ? 'Deactivate' : 'Activate'}
+            style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: np.isActive ? 'var(--teal-lt)' : 'var(--bg2)', border: `1px solid ${np.isActive ? 'rgba(20,184,166,.2)' : 'var(--border)'}`, color: np.isActive ? 'var(--teal)' : 'var(--text3)', cursor: 'pointer' }}
+          >
+            {np.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+          </button>
+          <button
+            onClick={() => onDelete(np)}
+            title="Delete"
+            style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-lt)', border: '1px solid rgba(220,38,38,.15)', color: 'var(--danger)', cursor: 'pointer' }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ),
+    },
+  ]
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -75,6 +134,9 @@ export default function NoticePeriodPage({ noticePeriods, designations }: Props)
   const [deleteOpen, setDeleteOpen]             = useState(false)
   const [deleteTarget, setDeleteTarget]         = useState<NoticePeriod | null>(null)
   const [deleteProcessing, setDeleteProcessing] = useState(false)
+
+  const [toggleTarget, setToggleTarget]         = useState<NoticePeriod | null>(null)
+  const [toggleProcessing, setToggleProcessing] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   useEffect(() => {
@@ -135,11 +197,6 @@ export default function NoticePeriodPage({ noticePeriods, designations }: Props)
   }
 
   // ── Delete ─────────────────────────────────────────────────────────────────
-  function openDelete(np: NoticePeriod) {
-    setDeleteTarget(np)
-    setDeleteOpen(true)
-  }
-
   function handleDelete() {
     if (!deleteTarget) return
     setDeleteProcessing(true)
@@ -149,9 +206,22 @@ export default function NoticePeriodPage({ noticePeriods, designations }: Props)
     })
   }
 
-  function getLabel(np: NoticePeriod): string {
-    return np.designationName ?? np.designation?.name ?? 'Default (All Designations)'
+  // ── Toggle ─────────────────────────────────────────────────────────────────
+  function handleToggle() {
+    if (!toggleTarget) return
+    setToggleProcessing(true)
+    router.patch(`/hrms/organization/settings/notice-period/${toggleTarget.id}/toggle`, {}, {
+      onSuccess: () => { setToggleTarget(null) },
+      onFinish:  () => setToggleProcessing(false),
+    })
   }
+
+  const desigOptions: SelectOption[] = [
+    { value: '', label: 'Default (All Designations)' },
+    ...designations.map((d) => ({ value: String(d.id), label: d.name, sub: d.code })),
+  ]
+
+  const columns = buildColumns(openEdit, (np) => { setDeleteTarget(np); setDeleteOpen(true) }, setToggleTarget)
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -190,75 +260,15 @@ export default function NoticePeriodPage({ noticePeriods, designations }: Props)
           </div>
         </div>
 
-        {/* Table */}
-        <div className="tw">
-          {filtered.length === 0 ? (
-            <EmptyState search={search} />
-          ) : (
-            <table className="dt">
-              <thead>
-                <tr>
-                  <Th>Designation</Th>
-                  <Th style={{ width: 180 }}>Notice Period</Th>
-                  <Th style={{ textAlign: 'center', width: 110 }}>Status</Th>
-                  <Th style={{ width: 100 }}>Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((np) => (
-                  <tr key={np.id}>
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: np.designationId ? 'var(--p-lt)' : 'var(--bg2)', border: `1px solid ${np.designationId ? 'var(--p-mid)' : 'var(--border)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {np.designationId
-                            ? <Clock size={12} style={{ color: 'var(--p)' }} />
-                            : <AlertCircle size={12} style={{ color: 'var(--text3)' }} />
-                          }
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, color: 'var(--text1)', fontSize: '.83rem' }}>
-                            {getLabel(np)}
-                          </div>
-                          {!np.designationId && (
-                            <div style={{ fontSize: '.71rem', color: 'var(--text4)' }}>Applies to all designations</div>
-                          )}
-                        </div>
-                      </div>
-                    </Td>
-                    <Td>
-                      <span className="bx bx-teal" style={{ fontSize: '.83rem', fontWeight: 700 }}>
-                        {daysLabel(np.noticeDays)}
-                      </span>
-                    </Td>
-                    <Td style={{ textAlign: 'center' }}>
-                      <span className={`bx ${np.isActive ? 'bx-teal' : 'bx-gray'}`}>
-                        {np.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </Td>
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button
-                          onClick={() => openEdit(np)}
-                          title="Edit"
-                          style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', color: 'var(--p)', cursor: 'pointer' }}
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => openDelete(np)}
-                          title="Delete"
-                          style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-lt)', border: '1px solid rgba(220,38,38,.15)', color: 'var(--danger)', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <DataTable
+          data={filtered}
+          columns={columns}
+          rowKey={(np) => np.id}
+          noun="notice periods"
+          emptyIcon={<Clock size={36} style={{ opacity: .15, color: 'var(--text3)' }} />}
+          emptyTitle="No notice periods configured"
+          emptyDesc="Configure notice periods per designation."
+        />
       </div>
 
       {/* ════════ ADD / EDIT MODAL ════════ */}
@@ -280,16 +290,12 @@ export default function NoticePeriodPage({ noticePeriods, designations }: Props)
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="fg">
             <label>Designation</label>
-            <select
-              className="fi"
+            <SelectSearch
               value={desigId}
-              onChange={(e) => setDesigId(e.target.value)}
-            >
-              <option value="">Default (All Designations)</option>
-              {designations.map((d) => (
-                <option key={d.id} value={d.id}>{d.name} ({d.code})</option>
-              ))}
-            </select>
+              onChange={setDesigId}
+              options={desigOptions}
+              placeholder="Default (All Designations)"
+            />
             <div className="fg-hint">Leave blank to apply as default for all designations.</div>
           </div>
 
@@ -332,6 +338,35 @@ export default function NoticePeriodPage({ noticePeriods, designations }: Props)
             {deleteTarget ? getLabel(deleteTarget) : ''}
           </strong>
           ? This action cannot be undone.
+        </p>
+      </Modal>
+
+      {/* ════════ TOGGLE MODAL ════════ */}
+      <Modal
+        open={toggleTarget !== null}
+        onClose={() => setToggleTarget(null)}
+        title={toggleTarget?.isActive ? 'Deactivate Notice Period' : 'Activate Notice Period'}
+        size="sm"
+        variant={toggleTarget?.isActive ? 'danger' : undefined}
+        icon={toggleTarget?.isActive ? <ToggleLeft size={15} /> : <ToggleRight size={15} />}
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setToggleTarget(null)}>Cancel</button>
+            <button
+              className={`btn ${toggleTarget?.isActive ? 'btn-danger' : 'btn-p'}`}
+              disabled={toggleProcessing}
+              onClick={handleToggle}
+            >
+              {toggleProcessing ? 'Saving…' : toggleTarget?.isActive ? 'Yes, Deactivate' : 'Yes, Activate'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+          {toggleTarget?.isActive
+            ? <>Deactivate the notice period for <strong style={{ color: 'var(--text1)' }}>{toggleTarget ? getLabel(toggleTarget) : ''}</strong>? It will be marked inactive.</>
+            : <>Activate the notice period for <strong style={{ color: 'var(--text1)' }}>{toggleTarget ? getLabel(toggleTarget) : ''}</strong>? It will be marked active.</>
+          }
         </p>
       </Modal>
     </>

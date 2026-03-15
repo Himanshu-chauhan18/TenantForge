@@ -10,6 +10,9 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { SelectSearch } from '~/components/select-search'
+import { SelectCurrency } from '~/components/select-currency'
+import { SelectTimezone } from '~/components/select-timezone'
+import { SelectDateFormat } from '~/components/select-date-format'
 import { CountrySelect, type CountryOption } from '~/components/country-select'
 import { CitySelect, type CityOption } from '~/components/city-select'
 import { PhoneInput } from '~/components/phone-input'
@@ -169,10 +172,6 @@ export function OverviewTab({ org, leadOwners }: Props) {
   })
   const [dTimeFormat, setDTimeFormat] = useState(org.timeFormat || '12')
 
-  // ── API option lists ──
-  const [currencyOptions, setCurrencyOptions] = useState<{ value: string; label: string; sub: string }[]>([])
-  const [timezoneOptions, setTimezoneOptions] = useState<{ value: string; label: string }[]>([])
-
   // ── Super admin form state ──
   const superAdmin = (org.orgUsers || [])[0] ?? null
   const [aName,   setAName]   = useState(superAdmin?.fullName || '')
@@ -185,18 +184,11 @@ export function OverviewTab({ org, leadOwners }: Props) {
     return dob.includes('T') ? dob.slice(0, 10) : dob
   })
 
-  // ── Fetch currencies & timezones ──
+  // ── Sync currency & timezone when country changes ──
   useEffect(() => {
-    fetch('/api/currencies')
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: { code: string; name: string; symbol: string }[]) =>
-        setCurrencyOptions(data.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}`, sub: c.symbol })))
-      ).catch(() => {})
-    fetch('/api/timezones')
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: { value: string; label: string }[]) => setTimezoneOptions(data))
-      .catch(() => {})
-  }, [])
+    if (selectedCountry?.currency) setDCurrency(selectedCountry.currency)
+    if (selectedCountry?.timezone) setDTimezone(selectedCountry.timezone)
+  }, [selectedCountry])
 
   // ── Pre-populate country/city selects ──
   useEffect(() => {
@@ -241,7 +233,6 @@ export function OverviewTab({ org, leadOwners }: Props) {
   const leadOwnerOptions = leadOwners.map((o) => ({ value: String(o.id), label: o.name, sub: o.designation || o.email }))
   const sizeOptions      = COMPANY_SIZES.map((s) => ({ value: s, label: `${s} employees` }))
   const industryOptions  = INDUSTRIES.map((i) => ({ value: i, label: i }))
-  const dateFormatOptions = DATE_FORMATS.map((f) => ({ value: f.value, label: `${f.value}  (e.g. ${f.example})` }))
   const timeFormatOptions = [
     { value: '12', label: '12-hour  (e.g. 1:30 PM)' },
     { value: '24', label: '24-hour  (e.g. 13:30)' },
@@ -330,6 +321,18 @@ export function OverviewTab({ org, leadOwners }: Props) {
       onError:   () => toast.error('Failed to update super admin. Please try again.'),
       onFinish:  () => setProcAdmin(false),
     })
+  }
+
+  async function loginAsSuperAdmin() {
+    if (!superAdmin) return
+    const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '')
+    const res = await fetch(`/orgbuilder/organizations/${org.id}/super-admin/impersonate`, {
+      method: 'POST',
+      headers: { 'X-XSRF-TOKEN': xsrf, 'Accept': 'application/json' },
+    })
+    if (!res.ok) return
+    const { redirectUrl } = await res.json()
+    window.open(redirectUrl, '_blank')
   }
 
   function handleResetPassword() {
@@ -616,25 +619,15 @@ export function OverviewTab({ org, leadOwners }: Props) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div className="fg">
                 <label>Currency <span className="req">*</span></label>
-                <SelectSearch
-                  value={dCurrency}
-                  onChange={setDCurrency}
-                  options={currencyOptions.length > 0 ? currencyOptions : [{ value: dCurrency, label: dCurrency, sub: '' }]}
-                  placeholder="Select currency…"
-                />
+                <SelectCurrency value={dCurrency} onChange={setDCurrency} country={selectedCountry} />
               </div>
               <div className="fg">
                 <label>Timezone <span className="req">*</span></label>
-                <SelectSearch
-                  value={dTimezone}
-                  onChange={setDTimezone}
-                  options={timezoneOptions.length > 0 ? timezoneOptions : [{ value: dTimezone, label: dTimezone }]}
-                  placeholder="Select timezone…"
-                />
+                <SelectTimezone value={dTimezone} onChange={setDTimezone} country={selectedCountry} />
               </div>
               <div className="fg">
                 <label>Date Format <span className="req">*</span></label>
-                <SelectSearch value={dDateFormat} onChange={setDDateFormat} options={dateFormatOptions} placeholder="Select date format…" />
+                <SelectDateFormat value={dDateFormat} onChange={setDDateFormat} />
               </div>
               <div className="fg">
                 <label>Time Format <span className="req">*</span></label>
@@ -715,9 +708,11 @@ export function OverviewTab({ org, leadOwners }: Props) {
                     </div>
                   </div>
                   <button
-                    disabled
-                    title="Direct login — coming soon"
-                    style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '6px 11px', borderRadius: 8, fontSize: '.71rem', fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text4)', cursor: 'not-allowed' }}
+                    title="Login as super admin"
+                    onClick={loginAsSuperAdmin}
+                    style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, padding: '6px 11px', borderRadius: 8, fontSize: '.71rem', fontWeight: 600, background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text3)', cursor: 'pointer', transition: 'var(--t)' }}
+                    onMouseEnter={(e) => { const b = e.currentTarget; b.style.color = '#10b981'; b.style.borderColor = '#a7f3d0'; b.style.background = '#ecfdf5' }}
+                    onMouseLeave={(e) => { const b = e.currentTarget; b.style.color = 'var(--text3)'; b.style.borderColor = 'var(--border)'; b.style.background = 'var(--bg)' }}
                   >
                     <LogIn size={12} /> Login
                   </button>

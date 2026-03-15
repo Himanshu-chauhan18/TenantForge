@@ -234,7 +234,7 @@ export default class OrganizationController {
     user.gender = gender && ['male', 'female', 'other'].includes(gender)
       ? (gender as 'male' | 'female' | 'other')
       : null
-    user.dateOfBirth = dateOfBirth ? String(dateOfBirth) : null
+    user.dateOfBirth = dateOfBirth ? String(dateOfBirth).split('T')[0] : null
     await user.save()
 
     session.flash('success', 'Super admin updated successfully!')
@@ -398,7 +398,7 @@ export default class OrganizationController {
       employeeCode: employeeCode ? String(employeeCode).trim() : null,
       phone: phone ? String(phone).trim() : null,
       gender: gender && ['male', 'female', 'other'].includes(gender) ? (gender as 'male' | 'female' | 'other') : null,
-      dateOfBirth: dateOfBirth ? String(dateOfBirth) : null,
+      dateOfBirth: dateOfBirth ? String(dateOfBirth).split('T')[0] : null,
       sendWelcomeMail: sendWelcomeMail === true || sendWelcomeMail === 'true' || sendWelcomeMail === '1',
       isActive: isActive !== false && isActive !== 'false' && isActive !== '0',
     })
@@ -428,7 +428,7 @@ export default class OrganizationController {
     user.gender = gender && ['male', 'female', 'other'].includes(gender)
       ? (gender as 'male' | 'female' | 'other')
       : null
-    user.dateOfBirth = dateOfBirth ? String(dateOfBirth) : null
+    user.dateOfBirth = dateOfBirth ? String(dateOfBirth).split('T')[0] : null
     user.isActive = isActive !== false && isActive !== 'false' && isActive !== '0'
 
     if (password && String(password).trim()) {
@@ -458,5 +458,60 @@ export default class OrganizationController {
       session.flash('flashToasts', JSON.stringify(['Unknown operation.']))
     }
     return response.redirect().back()
+  }
+
+  /**
+   * Securely log in as an org user from OrgBuilder.
+   * - Only accessible to authenticated OrgBuilder admins (middleware.auth())
+   * - Validates the target employee is active and org is active/not expired
+   * - Sets hrms_session in the server-side session; caller opens /hrms/self-service in a new tab
+   */
+  async impersonateUser({ params, response, session }: HttpContext) {
+    const user = await OrganizationUser.query()
+      .where('id', params.userId)
+      .where('org_id', params.id)
+      .first()
+
+    if (!user || !user.isActive) {
+      return response.status(404).json({ error: 'User not found or inactive.' })
+    }
+
+    const org = await Organization.query()
+      .where('id', params.id)
+      .whereNull('deleted_at')
+      .first()
+
+    if (!org || org.status !== 'active') {
+      return response.status(403).json({ error: 'Organization is not active.' })
+    }
+
+    session.put('hrms_session', { employeeId: user.id, orgId: org.id })
+    return response.json({ redirectUrl: '/hrms/self-service' })
+  }
+
+  /**
+   * Securely log in as the org's super admin (first user by ID) from OrgBuilder.
+   */
+  async impersonateSuperAdmin({ params, response, session }: HttpContext) {
+    const user = await OrganizationUser.query()
+      .where('org_id', params.id)
+      .orderBy('id', 'asc')
+      .first()
+
+    if (!user || !user.isActive) {
+      return response.status(404).json({ error: 'Super admin not found or inactive.' })
+    }
+
+    const org = await Organization.query()
+      .where('id', params.id)
+      .whereNull('deleted_at')
+      .first()
+
+    if (!org || org.status !== 'active') {
+      return response.status(403).json({ error: 'Organization is not active.' })
+    }
+
+    session.put('hrms_session', { employeeId: user.id, orgId: org.id })
+    return response.json({ redirectUrl: '/hrms/self-service' })
   }
 }

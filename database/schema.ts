@@ -7,6 +7,94 @@
 import { BaseModel, column } from '@adonisjs/lucid/orm'
 import { DateTime } from 'luxon'
 
+export class CitySchema extends BaseModel {
+  static $columns = ['id', 'name', 'stateId', 'stateCode', 'countryId', 'countryCode', 'latitude', 'longitude', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = CitySchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare stateId: number
+  @column()
+  declare stateCode: string
+  @column()
+  declare countryId: number
+  @column()
+  declare countryCode: string
+  @column()
+  declare latitude: string
+  @column()
+  declare longitude: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
+export class CountrySchema extends BaseModel {
+  static $columns = ['id', 'name', 'iso3', 'numericCode', 'iso2', 'phonecode', 'capital', 'currency', 'currencyName', 'currencySymbol', 'tld', 'native', 'region', 'regionId', 'subregion', 'subregionId', 'nationality', 'timezones', 'translations', 'latitude', 'longitude', 'emoji', 'emojiU', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = CountrySchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare iso3: string | null
+  @column()
+  declare numericCode: string | null
+  @column()
+  declare iso2: string | null
+  @column()
+  declare phonecode: string | null
+  @column()
+  declare capital: string | null
+  @column()
+  declare currency: string | null
+  @column()
+  declare currencyName: string | null
+  @column()
+  declare currencySymbol: string | null
+  @column()
+  declare tld: string | null
+  @column()
+  declare native: string | null
+  @column()
+  declare region: string | null
+  @column()
+  declare regionId: number | null
+  @column()
+  declare subregion: string | null
+  @column()
+  declare subregionId: number | null
+  @column()
+  declare nationality: string | null
+  @column()
+  declare timezones: string | null
+  @column()
+  declare translations: string | null
+  @column()
+  declare latitude: string | null
+  @column()
+  declare longitude: string | null
+  @column()
+  declare emoji: string | null
+  @column()
+  declare emojiU: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
 export class FiscalYearSchema extends BaseModel {
   static $columns = ['id', 'orgId', 'name', 'startDate', 'endDate', 'isActive', 'createdAt', 'updatedAt'] as const
   $columns = FiscalYearSchema.$columns
@@ -22,6 +110,410 @@ export class FiscalYearSchema extends BaseModel {
   declare endDate: DateTime
   @column()
   declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsApprovalSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'moduleName', 'approvalType', 'basedOn', 'referenceId', 'referenceName', 'escalationPeriodDays', 'sendMailOnEscalation', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsApprovalSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare moduleName: string
+  @column()
+  declare approvalType: string
+  @column()
+  declare basedOn: string
+  @column()
+  declare referenceId: number | null
+  @column()
+  declare referenceName: string | null
+  @column()
+  declare escalationPeriodDays: number | null
+  @column()
+  declare sendMailOnEscalation: boolean | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsChecklistSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'name', 'type', 'description', 'items', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsChecklistSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare name: string
+  @column()
+  declare type: string | null
+  @column()
+  declare description: string | null
+  @column()
+  declare items: any | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsCompanyDocumentSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'name', 'documentType', 'filePath', 'description', 'isMandatory', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsCompanyDocumentSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare name: string
+  @column()
+  declare documentType: string | null
+  @column()
+  declare filePath: string | null
+  @column()
+  declare description: string | null
+  @column()
+  declare isMandatory: boolean | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsDepartmentSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsDepartmentSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsDesignationSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt', 'jobDescription'] as const
+  $columns = HrmsDesignationSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+  @column()
+  declare jobDescription: string | null
+}
+
+export class HrmsDivisionSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'code', 'name', 'shortName', 'legalEmployeeId', 'bankName', 'bankAgentCode', 'bankAccountNo', 'ifscCode', 'establishmentNo', 'contactPerson', 'contactPhone', 'address', 'email', 'country', 'city', 'currency', 'dateFormat', 'timezone', 'timeFormat', 'letterheadPath', 'signaturePath', 'stampPath', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsDivisionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare shortName: string | null
+  @column()
+  declare legalEmployeeId: string | null
+  @column()
+  declare bankName: string | null
+  @column()
+  declare bankAgentCode: string | null
+  @column()
+  declare bankAccountNo: string | null
+  @column()
+  declare ifscCode: string | null
+  @column()
+  declare establishmentNo: string | null
+  @column()
+  declare contactPerson: string | null
+  @column()
+  declare contactPhone: string | null
+  @column()
+  declare address: string | null
+  @column()
+  declare email: string | null
+  @column()
+  declare country: string | null
+  @column()
+  declare city: string | null
+  @column()
+  declare currency: string | null
+  @column()
+  declare dateFormat: string | null
+  @column()
+  declare timezone: string | null
+  @column()
+  declare timeFormat: string | null
+  @column()
+  declare letterheadPath: string | null
+  @column()
+  declare signaturePath: string | null
+  @column()
+  declare stampPath: string | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsGradeSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsGradeSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsHierarchyNodeSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'parentId', 'title', 'department', 'employeeId', 'sortOrder', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsHierarchyNodeSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare parentId: number | null
+  @column()
+  declare title: string
+  @column()
+  declare department: string | null
+  @column()
+  declare employeeId: number | null
+  @column()
+  declare sortOrder: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsHolidaySchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'name', 'date', 'isFlexi', 'description', 'applyTo', 'divisionIds', 'locationIds', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsHolidaySchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare name: string
+  @column.date()
+  declare date: DateTime
+  @column()
+  declare isFlexi: boolean | null
+  @column()
+  declare description: string | null
+  @column()
+  declare applyTo: string | null
+  @column()
+  declare divisionIds: any | null
+  @column()
+  declare locationIds: any | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsLocationSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'code', 'name', 'country', 'city', 'address', 'landmark', 'zipCode', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsLocationSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare country: string
+  @column()
+  declare city: string
+  @column()
+  declare address: string
+  @column()
+  declare landmark: string | null
+  @column()
+  declare zipCode: string | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsNoticePeriodSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'designationId', 'designationName', 'noticeDays', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsNoticePeriodSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare designationId: number | null
+  @column()
+  declare designationName: string | null
+  @column()
+  declare noticeDays: number
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsSectionSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'departmentId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsSectionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare departmentId: number | null
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsSubDepartmentSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'departmentId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsSubDepartmentSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare departmentId: number | null
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsSubSectionSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'sectionId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsSubSectionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare sectionId: number | null
+  @column()
+  declare code: string
+  @column()
+  declare name: string
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class HrmsTemplateSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'name', 'type', 'content', 'description', 'isActive', 'createdAt', 'updatedAt'] as const
+  $columns = HrmsTemplateSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare name: string
+  @column()
+  declare type: string
+  @column()
+  declare content: string | null
+  @column()
+  declare description: string | null
+  @column()
+  declare isActive: boolean | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
+}
+
+export class LeadOwnerSchema extends BaseModel {
+  static $columns = ['id', 'name', 'email', 'phone', 'designation', 'status', 'createdAt', 'updatedAt'] as const
+  $columns = LeadOwnerSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare email: string
+  @column()
+  declare phone: string | null
+  @column()
+  declare designation: string | null
+  @column()
+  declare status: boolean
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })
@@ -74,47 +566,70 @@ export class ModuleSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
-export class OrganizationAddonSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'moduleKey', 'addonKey', 'enabled', 'createdAt'] as const
-  $columns = OrganizationAddonSchema.$columns
+export class OrganizationModuleConfigSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'moduleId', 'enabled', 'addonIds', 'createdAt'] as const
+  $columns = OrganizationModuleConfigSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare orgId: number
   @column()
-  declare moduleKey: string
-  @column()
-  declare addonKey: string
+  declare moduleId: number
   @column()
   declare enabled: boolean | null
+  @column()
+  declare addonIds: any
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 }
 
-export class OrganizationModuleSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'moduleId', 'moduleKey', 'enabled', 'createdAt'] as const
-  $columns = OrganizationModuleSchema.$columns
+export class OrganizationProfilePermissionSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'profileId', 'moduleId', 'permissions', 'createdAt', 'updatedAt'] as const
+  $columns = OrganizationProfilePermissionSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare orgId: number
   @column()
-  declare moduleId: number | null
+  declare profileId: number
   @column()
-  declare moduleKey: string
+  declare moduleId: number
   @column()
-  declare enabled: boolean | null
+  declare permissions: any
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+}
+
+export class OrganizationProfileSchema extends BaseModel {
+  static $columns = ['id', 'orgId', 'name', 'description', 'dataAccess', 'createdAt', 'updatedAt'] as const
+  $columns = OrganizationProfileSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare orgId: number
+  @column()
+  declare name: string
+  @column()
+  declare description: string | null
+  @column()
+  declare dataAccess: string
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
 }
 
 export class OrganizationUserSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'employeeCode', 'fullName', 'gender', 'phone', 'dateOfBirth', 'companyEmail', 'passwordHash', 'sendWelcomeMail', 'isActive', 'createdAt', 'updatedAt'] as const
+  static $columns = ['id', 'orgId', 'profileId', 'employeeCode', 'fullName', 'gender', 'phone', 'dateOfBirth', 'companyEmail', 'passwordHash', 'sendWelcomeMail', 'isActive', 'createdAt', 'updatedAt', 'divisionId', 'departmentId', 'subDepartmentId', 'designationId', 'locationId', 'gradeId', 'sectionId', 'subSectionId'] as const
   $columns = OrganizationUserSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare orgId: number
+  @column()
+  declare profileId: number | null
   @column()
   declare employeeCode: string | null
   @column()
@@ -137,10 +652,26 @@ export class OrganizationUserSchema extends BaseModel {
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+  @column()
+  declare divisionId: number | null
+  @column()
+  declare departmentId: number | null
+  @column()
+  declare subDepartmentId: number | null
+  @column()
+  declare designationId: number | null
+  @column()
+  declare locationId: number | null
+  @column()
+  declare gradeId: number | null
+  @column()
+  declare sectionId: number | null
+  @column()
+  declare subSectionId: number | null
 }
 
 export class OrganizationSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'name', 'slug', 'logo', 'companySize', 'industry', 'website', 'about', 'gstNo', 'parentOrgId', 'fiscalName', 'fiscalStart', 'fiscalEnd', 'country', 'city', 'phone', 'email', 'address', 'leadOwnerId', 'currency', 'timezone', 'dateFormat', 'timeFormat', 'planType', 'userLimit', 'planStart', 'planEnd', 'status', 'isArchived', 'deletedAt', 'createdAt', 'updatedAt'] as const
+  static $columns = ['id', 'orgId', 'name', 'slug', 'logo', 'companySize', 'industry', 'website', 'about', 'gstNo', 'parentOrgId', 'fiscalName', 'fiscalStart', 'fiscalEnd', 'country', 'city', 'phone', 'email', 'address', 'pincode', 'leadOwnerId', 'currency', 'timezone', 'dateFormat', 'timeFormat', 'planType', 'userLimit', 'planStart', 'planEnd', 'status', 'isArchived', 'deletedAt', 'createdAt', 'updatedAt'] as const
   $columns = OrganizationSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -181,6 +712,8 @@ export class OrganizationSchema extends BaseModel {
   @column()
   declare address: string | null
   @column()
+  declare pincode: string | null
+  @column()
   declare leadOwnerId: number | null
   @column()
   declare currency: string | null
@@ -191,7 +724,7 @@ export class OrganizationSchema extends BaseModel {
   @column()
   declare timeFormat: string | null
   @column()
-  declare planType: string | null
+  declare planType: boolean
   @column()
   declare userLimit: number | null
   @column.date()
@@ -199,7 +732,7 @@ export class OrganizationSchema extends BaseModel {
   @column.date()
   declare planEnd: DateTime | null
   @column()
-  declare status: string | null
+  declare status: boolean
   @column()
   declare isArchived: boolean | null
   @column.dateTime()
@@ -210,27 +743,86 @@ export class OrganizationSchema extends BaseModel {
   declare updatedAt: DateTime | null
 }
 
-export class ProfilePermissionSchema extends BaseModel {
-  static $columns = ['id', 'profileId', 'moduleKey', 'featureKey', 'canView', 'canAdd', 'canEdit', 'canDelete', 'createdAt'] as const
-  $columns = ProfilePermissionSchema.$columns
+export class RegionSchema extends BaseModel {
+  static $columns = ['id', 'name', 'translations', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = RegionSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
-  declare profileId: number
+  declare name: string
   @column()
-  declare moduleKey: string
-  @column()
-  declare featureKey: string
-  @column()
-  declare canView: boolean | null
-  @column()
-  declare canAdd: boolean | null
-  @column()
-  declare canEdit: boolean | null
-  @column()
-  declare canDelete: boolean | null
+  declare translations: string | null
   @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
+export class SessionSchema extends BaseModel {
+  static $columns = ['id', 'data', 'expiresAt'] as const
+  $columns = SessionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: string
+  @column()
+  declare data: string
+  @column.dateTime()
+  declare expiresAt: DateTime
+}
+
+export class StateSchema extends BaseModel {
+  static $columns = ['id', 'name', 'countryId', 'countryCode', 'fipsCode', 'iso2', 'type', 'latitude', 'longitude', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = StateSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare countryId: number
+  @column()
+  declare countryCode: string
+  @column()
+  declare fipsCode: string | null
+  @column()
+  declare iso2: string | null
+  @column()
+  declare type: string | null
+  @column()
+  declare latitude: string | null
+  @column()
+  declare longitude: string | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
+}
+
+export class SubregionSchema extends BaseModel {
+  static $columns = ['id', 'name', 'translations', 'regionId', 'createdAt', 'updatedAt', 'flag', 'wikiDataId'] as const
+  $columns = SubregionSchema.$columns
+  @column({ isPrimary: true })
+  declare id: number
+  @column()
+  declare name: string
+  @column()
+  declare translations: string | null
+  @column()
+  declare regionId: number
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime | null
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime
+  @column()
+  declare flag: boolean
+  @column()
+  declare wikiDataId: string | null
 }
 
 export class SystemSettingSchema extends BaseModel {
@@ -242,25 +834,6 @@ export class SystemSettingSchema extends BaseModel {
   declare key: string
   @column()
   declare value: string | null
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime | null
-}
-
-export class UserProfileSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'name', 'description', 'dataAccess', 'createdAt', 'updatedAt'] as const
-  $columns = UserProfileSchema.$columns
-  @column({ isPrimary: true })
-  declare id: number
-  @column()
-  declare orgId: number
-  @column()
-  declare name: string
-  @column()
-  declare description: string | null
-  @column()
-  declare dataAccess: string | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })

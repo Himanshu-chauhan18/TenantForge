@@ -19,8 +19,10 @@ const ACCORDION_CSS = `
   }
   .perm-acc-hd:hover { background:var(--bg2); }
   .perm-acc-hd.open  { background:var(--p-lt);border-left-color:var(--p); }
-  .perm-acc-body { overflow:hidden;transition:max-height .28s cubic-bezier(.4,0,.2,1); }
+  .perm-acc-body { overflow:hidden;transition:max-height .22s cubic-bezier(.4,0,.2,1); }
 `
+
+// Preferred order for module tabs (employee-centric first, admin last)
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PermMap {
@@ -88,22 +90,38 @@ function getOrgEnabledAddons(mod: OrgModule): Array<{ id: number; name: string; 
 }
 
 function permsToMap(permissions: OrgProfilePermission[], modules: OrgModule[]): PermMap {
-  // Build moduleId → moduleKey and addonId → addon name lookups
+  // Build lookups: moduleId → key, addonId → name, moduleKey → enabled addons
   const keyById: Record<number, string> = {}
   const addonNameById: Record<number, string> = {}
+  const enabledAddonsByMKey: Record<string, Array<{ id: number; name: string }>> = {}
   for (const m of modules) {
     keyById[m.module.id] = m.module.key
     for (const a of m.module.addons) addonNameById[a.id] = a.name
+    const enabledSet = new Set(m.addonIds.filter((a) => a.enabled).map((a) => a.id))
+    enabledAddonsByMKey[m.module.key] = m.module.addons.filter((a) => enabledSet.has(a.id))
   }
 
   const map: PermMap = {}
   for (const p of permissions) {
     const mKey = keyById[p.moduleId]
     if (!mKey) continue
-    map[mKey] = {}
+    map[mKey] ??= {}
     for (const [rawKey, entry] of Object.entries(p.permissions)) {
-      // "module" key stays as-is; numeric string key → resolve to addon name
-      const fKey = rawKey === 'module' ? 'module' : (addonNameById[Number(rawKey)] ?? rawKey)
+      if (rawKey === 'module') {
+        // Legacy format: cascade module-level perm to all org-enabled addons (only if not already set by an explicit addon key)
+        for (const addon of (enabledAddonsByMKey[mKey] ?? [])) {
+          if (!(addon.name in map[mKey])) {
+            map[mKey][addon.name] = {
+              canView:   Boolean(entry.v),
+              canAdd:    Boolean(entry.a),
+              canEdit:   Boolean(entry.e),
+              canDelete: Boolean(entry.d),
+            }
+          }
+        }
+        continue
+      }
+      const fKey = addonNameById[Number(rawKey)] ?? rawKey
       map[mKey][fKey] = {
         canView:   Boolean(entry.v),
         canAdd:    Boolean(entry.a),
@@ -116,27 +134,11 @@ function permsToMap(permissions: OrgProfilePermission[], modules: OrgModule[]): 
 }
 
 /**
- * Build a perm map from saved DB rows, then cascade module-level perms down to
- * org-enabled addons that have no explicit saved row.
- * - Only org-enabled addons (filtered via getOrgEnabledAddons) are included.
- * - Addons with an explicit saved row keep their own value unchanged.
- * - Non-org-enabled addons are never added to the map (they don't appear in UI).
+ * Build a perm map from saved DB rows (addon-level only, no module-level cascade).
+ * Each addon key is the addon name resolved from its stored addon_id.
  */
 function buildPermMap(permissions: OrgProfilePermission[], modules: OrgModule[]): PermMap {
-  const map = permsToMap(permissions, modules)
-  for (const mod of modules) {
-    if (!mod.enabled) continue
-    const mKey     = mod.module.key
-    const modLevel = map[mKey]?.['module']
-    if (!modLevel) continue  // no module-level perm saved → nothing to cascade
-    for (const addon of getOrgEnabledAddons(mod)) {
-      if (map[mKey]?.[addon.name] === undefined) {
-        if (!map[mKey]) map[mKey] = {}
-        map[mKey][addon.name] = { ...modLevel }
-      }
-    }
-  }
-  return map
+  return permsToMap(permissions, modules)
 }
 
 /** Convert local PermMap → server payload grouped by moduleId (one row per module).
@@ -158,8 +160,8 @@ function mapToSavePerms(
     if (moduleId === undefined) continue
     const permissions: Record<string, { v: 0|1; a: 0|1; e: 0|1; d: 0|1 }> = {}
     for (const [fKey, perm] of Object.entries(features)) {
-      // "module" key stays as-is; addon name → its id as string key
-      const jsonKey = fKey === 'module' ? 'module' : String(addonIdByName[fKey] ?? fKey)
+      if (fKey === 'module') continue  // module-level key no longer stored
+      const jsonKey = String(addonIdByName[fKey] ?? fKey)
       permissions[jsonKey] = {
         v: perm.canView   ? 1 : 0,
         a: perm.canAdd    ? 1 : 0,
@@ -175,7 +177,9 @@ function mapToSavePerms(
 // ── Main component ────────────────────────────────────────────────────────────
 export function RolesTab({ org }: Props) {
   const profiles = org.profiles || []
-  const modules  = (org.modules || []).filter((m) => m.enabled)
+  const modules  = (org.modules || [])
+    .filter((m) => m.enabled)
+    .sort((a, b) => (a.module.sortOrder ?? 999) - (b.module.sortOrder ?? 999))
 
   const [selectedId,        setSelectedId]        = useState<number | null>(profiles[0]?.id ?? null)
   const [selectedModuleKey, setSelectedModuleKey]  = useState<string | null>(modules[0]?.module?.key ?? null)
@@ -235,28 +239,6 @@ export function RolesTab({ org }: Props) {
       if (key !== 'canView' && val)  { updated.canView = true }
       modulePerms[fKey] = updated
 
-      // ── Cascade from module row to all addons ──────────────────────────────
-      if (fKey === 'module') {
-        for (const addonKey of getAddonNames(mKey)) {
-          const addonCur = { ...(modulePerms[addonKey] ?? { ...EMPTY_PERM }) }
-          if (key === 'canView') {
-            if (val) {
-              // View ON  → turn on view for all addons
-              addonCur.canView = true
-            } else {
-              // View OFF → clear everything
-              addonCur.canView = false; addonCur.canAdd = false; addonCur.canEdit = false; addonCur.canDelete = false
-            }
-          } else {
-            // Add/Edit/Delete ON  → enable that perm (and view) for every addon
-            // Add/Edit/Delete OFF → disable that perm for every addon
-            addonCur[key] = val
-            if (val) addonCur.canView = true
-          }
-          modulePerms[addonKey] = addonCur
-        }
-      }
-
       return { ...prev, [mKey]: modulePerms }
     })
     setPermDirty(true)
@@ -271,7 +253,7 @@ export function RolesTab({ org }: Props) {
   }
 
   function setModuleAll(mKey: string, val: boolean) {
-    const keys = ['module', ...getAddonNames(mKey)]
+    const keys = getAddonNames(mKey)
     setPermMap((prev) => {
       const next: PermMap[string] = {}
       for (const fk of keys) next[fk] = { canView: val, canAdd: val, canEdit: val, canDelete: val }
@@ -290,15 +272,22 @@ export function RolesTab({ org }: Props) {
   }
 
   function isModuleAllGranted(mKey: string): boolean {
-    return ['module', ...getAddonNames(mKey)].every((fk) => {
+    const names = getAddonNames(mKey)
+    return names.length > 0 && names.every((fk) => {
       const p = getPerm(mKey, fk)
       return p.canView && p.canAdd && p.canEdit && p.canDelete
     })
   }
 
   function modulePermSummary(mKey: string) {
-    const p = getPerm(mKey, 'module')
-    return { view: p.canView, write: p.canAdd || p.canEdit || p.canDelete }
+    let view = false, write = false
+    for (const n of getAddonNames(mKey)) {
+      const p = getPerm(mKey, n)
+      if (p.canView) view = true
+      if (p.canAdd || p.canEdit || p.canDelete) write = true
+      if (view && write) break
+    }
+    return { view, write }
   }
 
   function toggleGroup(key: string) {
@@ -484,28 +473,6 @@ export function RolesTab({ org }: Props) {
               ) : (
                 <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
 
-                  {/* Module-level access card */}
-                  <div style={{ margin: '14px 16px', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ padding: '9px 14px', background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                      <div>
-                        <div style={{ fontSize: '.8rem', fontWeight: 700, color: 'var(--text1)' }}>{selectedMod.module.label} — Module Access</div>
-                        <div style={{ fontSize: '.69rem', color: 'var(--text4)', marginTop: 1 }}>Top-level access for the entire module</div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexShrink: 0 }}>
-                        <span style={{ fontSize: '.67rem', color: 'var(--text4)' }}>Grant all</span>
-                        <PermCheckbox checked={isModuleAllGranted(selectedMod.module.key)} onChange={(v) => setModuleAll(selectedMod.module.key, v)} accent />
-                      </div>
-                    </div>
-                    <div style={{ padding: '11px 14px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {PERM_KEYS.map((k) => {
-                        const perm = getPerm(selectedMod.module.key, 'module')
-                        return (
-                          <PermPill key={k} label={PERM_LABELS[k]} checked={perm[k]} disabled={k !== 'canView' && !perm.canView} onChange={(v) => setPerm(selectedMod.module.key, 'module', k, v)} />
-                        )
-                      })}
-                    </div>
-                  </div>
-
                   {/* Addon type sections — only org-enabled addons */}
                   {getOrgEnabledAddons(selectedMod).length > 0 && (
                     <div style={{ margin: '0 16px 16px' }}>
@@ -640,7 +607,6 @@ function AddonGroupAccordion({ grp, mKey, isOpen, onToggle, getPerm, setPerm, se
   }, [someSel])
 
   const rowHeight = 40
-  const maxH = isOpen ? `${grp.items.length * rowHeight + 4}px` : '0px'
 
   return (
     <div style={{ borderTop: '1px solid var(--border)' }}>
@@ -677,8 +643,8 @@ function AddonGroupAccordion({ grp, mKey, isOpen, onToggle, getPerm, setPerm, se
         </div>
       </div>
 
-      {/* Addon rows */}
-      <div className="perm-acc-body" style={{ maxHeight: maxH }}>
+      {/* Addon rows — open: no max-height limit (no mount animation); close: animate to 0 */}
+      <div className="perm-acc-body" style={{ maxHeight: isOpen ? 'none' : '0px', overflow: isOpen ? 'visible' : 'hidden' }}>
         {grp.items.map((addon, idx) => {
           const fKey  = addon.name
           const perm  = getPerm(mKey, fKey)

@@ -8,6 +8,9 @@ import {
   X, Sparkles, Puzzle,
 } from 'lucide-react'
 import { SelectSearch } from '~/components/select-search'
+import { SelectCurrency } from '~/components/select-currency'
+import { SelectTimezone } from '~/components/select-timezone'
+import { SelectDateFormat } from '~/components/select-date-format'
 import { DatePicker } from '~/components/date-picker'
 import { RadioGroup } from '~/components/radio-group'
 import { Checkbox } from '~/components/checkbox'
@@ -16,7 +19,7 @@ import { CountrySelect, type CountryOption } from '~/components/country-select'
 import { CitySelect, type CityOption } from '~/components/city-select'
 import { PhoneInput } from '~/components/phone-input'
 import { SectionHead } from '~/components/section-head'
-import { INDUSTRIES, COMPANY_SIZES, DATE_FORMATS } from '~/data/org-options'
+import { INDUSTRIES, COMPANY_SIZES } from '~/data/org-options'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 function fiscalDefaults() {
@@ -178,9 +181,7 @@ export function CreateOrgForm({ leadOwners, organizations }: CreateOrgFormProps)
   // Locale
   const [currency, setCurrency] = useState('INR')
   const [timezone, setTimezone] = useState('Asia/Kolkata')
-  const [currencyOptions, setCurrencyOptions] = useState<{ value: string; label: string; sub: string }[]>([])
-  const [timezoneOptions, setTimezoneOptions] = useState<{ value: string; label: string }[]>([])
-  const [dateFormat, setDateFormat] = useState('DD/MM/YYYY')
+const [dateFormat, setDateFormat] = useState('DD/MM/YYYY')
   const [timeFormat, setTimeFormat] = useState('24h')
 
   // Plan
@@ -215,16 +216,6 @@ export function CreateOrgForm({ leadOwners, organizations }: CreateOrgFormProps)
   const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
-    fetch('/api/currencies')
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: { code: string; name: string; symbol: string }[]) => {
-        setCurrencyOptions(data.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}`, sub: c.symbol })))
-      })
-      .catch(() => {})
-    fetch('/api/timezones')
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: { value: string; label: string }[]) => setTimezoneOptions(data))
-      .catch(() => {})
     // Default country to India
     fetch('/api/countries?search=India')
       .then((r) => r.ok ? r.json() : [])
@@ -680,7 +671,7 @@ export function CreateOrgForm({ leadOwners, organizations }: CreateOrgFormProps)
                       <span className="bx bx-teal bx-no-dot" style={{ fontSize: '.62rem' }}>Auto-filled</span>
                     )}
                   </label>
-                  <SelectSearch value={currency} onChange={setCurrency} options={currencyOptions} placeholder="Select currency…" />
+                  <SelectCurrency value={currency} onChange={setCurrency} country={selectedCountry} />
                 </div>
 
                 <div className="fg">
@@ -690,36 +681,12 @@ export function CreateOrgForm({ leadOwners, organizations }: CreateOrgFormProps)
                       <span className="bx bx-teal bx-no-dot" style={{ fontSize: '.62rem' }}>Auto-filled</span>
                     )}
                   </label>
-                  <SelectSearch value={timezone} onChange={setTimezone} options={timezoneOptions} placeholder="Select timezone…" />
+                  <SelectTimezone value={timezone} onChange={setTimezone} country={selectedCountry} />
                 </div>
 
                 <div className="fg col2">
                   <label>Date Format <Req /></label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: 2 }}>
-                    {DATE_FORMATS.map((f) => {
-                      const sel = dateFormat === f.value
-                      return (
-                        <div
-                          key={f.value}
-                          onClick={() => setDateFormat(f.value)}
-                          style={{
-                            flex: '1 0 0', minWidth: 0,
-                            padding: '8px 10px', borderRadius: 9, cursor: 'pointer', userSelect: 'none',
-                            border: `1.5px solid ${sel ? 'var(--p)' : 'var(--border)'}`,
-                            background: sel ? 'var(--p-lt)' : 'var(--surface)',
-                            transition: 'border-color .15s, background .15s',
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                          }}
-                        >
-                          <div style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${sel ? 'var(--p)' : 'var(--border2)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'border-color .15s' }}>
-                            {sel && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--p)' }} />}
-                          </div>
-                          <span style={{ fontSize: '.72rem', fontWeight: 700, color: sel ? 'var(--p)' : 'var(--text1)', fontFamily: 'monospace', letterSpacing: '.02em', whiteSpace: 'nowrap' }}>{f.value}</span>
-                          <span style={{ fontSize: '.63rem', color: sel ? 'var(--p)' : 'var(--text3)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{f.example}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
+                  <SelectDateFormat value={dateFormat} onChange={setDateFormat} />
                 </div>
 
                 <div className="fg">

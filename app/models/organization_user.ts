@@ -40,6 +40,30 @@ export default class OrganizationUser extends BaseModel {
   declare sendWelcomeMail: boolean
 
   @column()
+  declare divisionId: number | null
+
+  @column()
+  declare departmentId: number | null
+
+  @column()
+  declare subDepartmentId: number | null
+
+  @column()
+  declare designationId: number | null
+
+  @column()
+  declare locationId: number | null
+
+  @column()
+  declare gradeId: number | null
+
+  @column()
+  declare sectionId: number | null
+
+  @column()
+  declare subSectionId: number | null
+
+  @column()
   declare isActive: boolean
 
   @column.dateTime({ autoCreate: true })

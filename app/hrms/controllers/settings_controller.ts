@@ -1,5 +1,7 @@
 import type { HttpContext } from '@adonisjs/core/http'
 import HrmsSettingsRepository from '#hrms/repositories/settings_repository'
+import FiscalYear from '#models/fiscal_year'
+import OrganizationUser from '#models/organization_user'
 import {
   divisionStep1Validator,
   locationValidator,
@@ -17,8 +19,31 @@ const repo = new HrmsSettingsRepository()
 export default class HrmsSettingsController {
   // ── Divisions ────────────────────────────────────────────────────────────────
   async divisionsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const divisions = await repo.listDivisions(hrmsOrg.id)
-    return inertia.render('hrms/organization/settings/divisions', { divisions: divisions.map((d) => d.serialize()) })
+    const [divisions, employees, departments, designations, locations, grades] = await Promise.all([
+      repo.listDivisions(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDepartments(hrmsOrg.id),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
+    ])
+    return inertia.render('hrms/organization/settings/divisions', {
+      divisions: divisions.map((d) => d.serialize()),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, divisionId: e.divisionId, designationId: e.designationId, departmentId: e.departmentId, locationId: e.locationId, gradeId: e.gradeId })),
+      departments: departments.map((d) => ({ id: d.id, name: d.name })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
+    })
+  }
+  async divisionsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ division_id: params.id })
+    session.flash('success', 'Employees assigned to division.')
+    return response.redirect('/hrms/organization/settings/divisions')
   }
   async divisionsStore({ request, response, hrmsOrg, session }: HttpContext) {
     const data = await request.validateUsing(divisionStep1Validator)
@@ -37,11 +62,37 @@ export default class HrmsSettingsController {
     session.flash('success', 'Division deleted.')
     return response.redirect('/hrms/organization/settings/divisions')
   }
+  async divisionsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const div = await repo.toggleDivision(params.id, hrmsOrg.id)
+    session.flash('success', `Division ${div.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/divisions')
+  }
 
   // ── Locations ────────────────────────────────────────────────────────────────
   async locationsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const locations = await repo.listLocations(hrmsOrg.id)
-    return inertia.render('hrms/organization/settings/locations', { locations: locations.map((l) => l.serialize()) })
+    const [locations, employees, designations, departments, grades] = await Promise.all([
+      repo.listLocations(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listDepartments(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
+    ])
+    return inertia.render('hrms/organization/settings/locations', {
+      locations: locations.map((l) => l.serialize()),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, locationId: e.locationId, designationId: e.designationId, departmentId: e.departmentId, gradeId: e.gradeId })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      departments: departments.map((d) => ({ id: d.id, name: d.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
+    })
+  }
+  async locationsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ location_id: params.id })
+    session.flash('success', 'Employees assigned to location.')
+    return response.redirect('/hrms/organization/settings/locations')
   }
   async locationsStore({ request, response, hrmsOrg, session }: HttpContext) {
     const data = await request.validateUsing(locationValidator)
@@ -60,11 +111,37 @@ export default class HrmsSettingsController {
     session.flash('success', 'Location deleted.')
     return response.redirect('/hrms/organization/settings/locations')
   }
+  async locationsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const loc = await repo.toggleLocation(params.id, hrmsOrg.id)
+    session.flash('success', `Location ${loc.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/locations')
+  }
 
   // ── Departments ──────────────────────────────────────────────────────────────
   async departmentsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const departments = await repo.listDepartments(hrmsOrg.id)
-    return inertia.render('hrms/organization/settings/departments', { departments: departments.map((d) => d.serialize()) })
+    const [departments, employees, designations, locations, grades] = await Promise.all([
+      repo.listDepartments(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
+    ])
+    return inertia.render('hrms/organization/settings/departments', {
+      departments: departments.map((d) => d.serialize()),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, departmentId: e.departmentId, designationId: e.designationId, locationId: e.locationId, gradeId: e.gradeId })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
+    })
+  }
+  async departmentsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ department_id: params.id })
+    session.flash('success', 'Employees assigned to department.')
+    return response.redirect('/hrms/organization/settings/departments')
   }
   async departmentsStore({ request, response, hrmsOrg, session }: HttpContext) {
     const data = await request.validateUsing(nameOnlyValidator)
@@ -83,17 +160,39 @@ export default class HrmsSettingsController {
     session.flash('success', 'Department deleted.')
     return response.redirect('/hrms/organization/settings/departments')
   }
+  async departmentsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const dep = await repo.toggleDepartment(params.id, hrmsOrg.id)
+    session.flash('success', `Department ${dep.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/departments')
+  }
 
   // ── Sub Departments ──────────────────────────────────────────────────────────
   async subDepartmentsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const [subDepts, departments] = await Promise.all([
+    const [subDepts, departments, employees, designations, locations, grades] = await Promise.all([
       repo.listSubDepartments(hrmsOrg.id),
       repo.listDepartments(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
     ])
     return inertia.render('hrms/organization/settings/sub-departments', {
       subDepartments: subDepts.map((d) => d.serialize()),
       departments: departments.map((d) => d.serialize()),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, subDepartmentId: e.subDepartmentId, designationId: e.designationId, departmentId: e.departmentId, locationId: e.locationId, gradeId: e.gradeId })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
     })
+  }
+  async subDepartmentsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ sub_department_id: params.id })
+    session.flash('success', 'Employees assigned to sub-department.')
+    return response.redirect('/hrms/organization/settings/sub-departments')
   }
   async subDepartmentsStore({ request, response, hrmsOrg, session }: HttpContext) {
     const body = request.body()
@@ -112,21 +211,47 @@ export default class HrmsSettingsController {
     session.flash('success', 'Sub-department deleted.')
     return response.redirect('/hrms/organization/settings/sub-departments')
   }
+  async subDepartmentsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const dep = await repo.toggleSubDepartment(params.id, hrmsOrg.id)
+    session.flash('success', `Sub-department ${dep.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/sub-departments')
+  }
 
   // ── Designations ─────────────────────────────────────────────────────────────
   async designationsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const designations = await repo.listDesignations(hrmsOrg.id)
-    return inertia.render('hrms/organization/settings/designations', { designations: designations.map((d) => d.serialize()) })
+    const [designations, employees, departments, locations, grades] = await Promise.all([
+      repo.listDesignations(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDepartments(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
+    ])
+    return inertia.render('hrms/organization/settings/designations', {
+      designations: designations.map((d) => ({ id: d.id, code: d.code, name: d.name, jobDescription: d.jobDescription, isActive: d.isActive })),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, designationId: e.designationId, departmentId: e.departmentId, locationId: e.locationId, gradeId: e.gradeId })),
+      departments: departments.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
+    })
+  }
+  async designationsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ designation_id: params.id })
+    session.flash('success', 'Employees assigned to designation.')
+    return response.redirect('/hrms/organization/settings/designations')
   }
   async designationsStore({ request, response, hrmsOrg, session }: HttpContext) {
-    const data = await request.validateUsing(nameOnlyValidator)
-    await repo.createDesignation(hrmsOrg.id, data.name)
+    const body = request.body() as { name: string; jobDescription?: string | null }
+    await repo.createDesignation(hrmsOrg.id, body.name, body.jobDescription)
     session.flash('success', 'Designation created.')
     return response.redirect('/hrms/organization/settings/designations')
   }
   async designationsUpdate({ params, request, response, hrmsOrg, session }: HttpContext) {
-    const data = await request.validateUsing(nameOnlyValidator)
-    await repo.updateDesignation(params.id, hrmsOrg.id, data.name)
+    const body = request.body() as { name: string; jobDescription?: string | null }
+    await repo.updateDesignation(params.id, hrmsOrg.id, body.name, body.jobDescription)
     session.flash('success', 'Designation updated.')
     return response.redirect('/hrms/organization/settings/designations')
   }
@@ -135,11 +260,37 @@ export default class HrmsSettingsController {
     session.flash('success', 'Designation deleted.')
     return response.redirect('/hrms/organization/settings/designations')
   }
+  async designationsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const des = await repo.toggleDesignation(params.id, hrmsOrg.id)
+    session.flash('success', `Designation ${des.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/designations')
+  }
 
   // ── Grades ───────────────────────────────────────────────────────────────────
   async gradesIndex({ inertia, hrmsOrg }: HttpContext) {
-    const grades = await repo.listGrades(hrmsOrg.id)
-    return inertia.render('hrms/organization/settings/grades', { grades: grades.map((g) => g.serialize()) })
+    const [grades, employees, designations, departments, locations] = await Promise.all([
+      repo.listGrades(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listDepartments(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+    ])
+    return inertia.render('hrms/organization/settings/grades', {
+      grades: grades.map((g) => g.serialize()),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, gradeId: e.gradeId, designationId: e.designationId, departmentId: e.departmentId, locationId: e.locationId })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      departments: departments.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+    })
+  }
+  async gradesAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ grade_id: params.id })
+    session.flash('success', 'Employees assigned to grade.')
+    return response.redirect('/hrms/organization/settings/grades')
   }
   async gradesStore({ request, response, hrmsOrg, session }: HttpContext) {
     const data = await request.validateUsing(nameOnlyValidator)
@@ -158,17 +309,39 @@ export default class HrmsSettingsController {
     session.flash('success', 'Grade deleted.')
     return response.redirect('/hrms/organization/settings/grades')
   }
+  async gradesToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const grade = await repo.toggleGrade(params.id, hrmsOrg.id)
+    session.flash('success', `Grade ${grade.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/grades')
+  }
 
   // ── Sections ─────────────────────────────────────────────────────────────────
   async sectionsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const [sections, departments] = await Promise.all([
+    const [sections, departments, employees, designations, locations, grades] = await Promise.all([
       repo.listSections(hrmsOrg.id),
       repo.listDepartments(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
     ])
     return inertia.render('hrms/organization/settings/sections', {
       sections: sections.map((s) => s.serialize()),
-      departments: departments.map((d) => d.serialize()),
+      departments: departments.map((d) => ({ id: d.id, name: d.name, code: d.code })),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, sectionId: e.sectionId, designationId: e.designationId, departmentId: e.departmentId, locationId: e.locationId, gradeId: e.gradeId })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
     })
+  }
+  async sectionsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ section_id: params.id })
+    session.flash('success', 'Employees assigned to section.')
+    return response.redirect('/hrms/organization/settings/sections')
   }
   async sectionsStore({ request, response, hrmsOrg, session }: HttpContext) {
     const body = request.body()
@@ -187,17 +360,39 @@ export default class HrmsSettingsController {
     session.flash('success', 'Section deleted.')
     return response.redirect('/hrms/organization/settings/sections')
   }
+  async sectionsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const sec = await repo.toggleSection(params.id, hrmsOrg.id)
+    session.flash('success', `Section ${sec.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/sections')
+  }
 
   // ── Sub Sections ─────────────────────────────────────────────────────────────
   async subSectionsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const [subSections, sections] = await Promise.all([
+    const [subSections, sections, employees, designations, locations, grades] = await Promise.all([
       repo.listSubSections(hrmsOrg.id),
       repo.listSections(hrmsOrg.id),
+      OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
+      repo.listDesignations(hrmsOrg.id),
+      repo.listLocations(hrmsOrg.id),
+      repo.listGrades(hrmsOrg.id),
     ])
     return inertia.render('hrms/organization/settings/sub-sections', {
       subSections: subSections.map((s) => s.serialize()),
-      sections: sections.map((s) => s.serialize()),
+      sections: sections.map((s) => ({ id: s.id, name: s.name, code: s.code })),
+      employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, subSectionId: e.subSectionId, designationId: e.designationId, departmentId: e.departmentId, locationId: e.locationId, gradeId: e.gradeId })),
+      designations: designations.map((d) => ({ id: d.id, name: d.name })),
+      locations: locations.map((l) => ({ id: l.id, name: l.name })),
+      grades: grades.map((g) => ({ id: g.id, name: g.name })),
     })
+  }
+  async subSectionsAssign({ params, request, response, hrmsOrg, session }: HttpContext) {
+    const { employeeIds } = request.body() as { employeeIds: number[] }
+    await OrganizationUser.query()
+      .where('org_id', hrmsOrg.id)
+      .whereIn('id', Array.isArray(employeeIds) ? employeeIds : [])
+      .update({ sub_section_id: params.id })
+    session.flash('success', 'Employees assigned to sub-section.')
+    return response.redirect('/hrms/organization/settings/sub-sections')
   }
   async subSectionsStore({ request, response, hrmsOrg, session }: HttpContext) {
     const body = request.body()
@@ -214,6 +409,11 @@ export default class HrmsSettingsController {
   async subSectionsDestroy({ params, response, hrmsOrg, session }: HttpContext) {
     await repo.deleteSubSection(params.id, hrmsOrg.id)
     session.flash('success', 'Sub-section deleted.')
+    return response.redirect('/hrms/organization/settings/sub-sections')
+  }
+  async subSectionsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const sub = await repo.toggleSubSection(params.id, hrmsOrg.id)
+    session.flash('success', `Sub-section ${sub.isActive ? 'activated' : 'deactivated'}.`)
     return response.redirect('/hrms/organization/settings/sub-sections')
   }
 
@@ -247,6 +447,11 @@ export default class HrmsSettingsController {
     session.flash('success', 'Holiday deleted.')
     return response.redirect('/hrms/organization/settings/holidays')
   }
+  async holidaysToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const h = await repo.toggleHoliday(params.id, hrmsOrg.id)
+    session.flash('success', `Holiday ${h.isActive ? 'activated' : 'deactivated'}.`)
+    return response.redirect('/hrms/organization/settings/holidays')
+  }
 
   // ── Notice Periods ───────────────────────────────────────────────────────────
   async noticePeriodIndex({ inertia, hrmsOrg }: HttpContext) {
@@ -274,6 +479,11 @@ export default class HrmsSettingsController {
   async noticePeriodDestroy({ params, response, hrmsOrg, session }: HttpContext) {
     await repo.deleteNoticePeriod(params.id, hrmsOrg.id)
     session.flash('success', 'Notice period deleted.')
+    return response.redirect('/hrms/organization/settings/notice-period')
+  }
+  async noticePeriodToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const np = await repo.toggleNoticePeriod(params.id, hrmsOrg.id)
+    session.flash('success', `Notice period ${np.isActive ? 'activated' : 'deactivated'}.`)
     return response.redirect('/hrms/organization/settings/notice-period')
   }
 
@@ -305,6 +515,11 @@ export default class HrmsSettingsController {
   async approvalsDestroy({ params, response, hrmsOrg, session }: HttpContext) {
     await repo.deleteApproval(params.id, hrmsOrg.id)
     session.flash('success', 'Approval workflow deleted.')
+    return response.redirect('/hrms/organization/settings/approvals')
+  }
+  async approvalsToggle({ params, response, hrmsOrg, session }: HttpContext) {
+    const ap = await repo.toggleApproval(params.id, hrmsOrg.id)
+    session.flash('success', `Approval workflow ${ap.isActive ? 'activated' : 'deactivated'}.`)
     return response.redirect('/hrms/organization/settings/approvals')
   }
 
@@ -385,6 +600,11 @@ export default class HrmsSettingsController {
     return inertia.render('hrms/organization/settings/notifications')
   }
   async fiscalYearIndex({ inertia, hrmsOrg }: HttpContext) {
-    return inertia.render('hrms/organization/settings/fiscal-year', { company: hrmsOrg.serialize() })
+    const fiscalYears = await FiscalYear.query()
+      .where('org_id', hrmsOrg.id)
+      .orderBy('start_date', 'desc')
+    return inertia.render('hrms/organization/settings/fiscal-year', {
+      fiscalYears: fiscalYears.map((fy) => fy.serialize()),
+    })
   }
 }

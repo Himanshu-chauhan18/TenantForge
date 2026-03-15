@@ -104,14 +104,14 @@ export default class LocationController {
     return response.json(result)
   }
 
-  async timezones({ response }: HttpContext) {
+  async timezones({ request, response }: HttpContext) {
     response.header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=300')
 
-    const rows = await db
-      .from('countries')
-      .where('flag', 1)
-      .whereNotNull('timezones')
-      .select(['timezones'])
+    const countryId = request.input('country_id')
+    const query = db.from('countries').where('flag', 1).whereNotNull('timezones').select(['timezones'])
+    if (countryId) query.where('id', Number(countryId))
+
+    const rows = await query
 
     const seen = new Set<string>()
     const result: { value: string; label: string }[] = []

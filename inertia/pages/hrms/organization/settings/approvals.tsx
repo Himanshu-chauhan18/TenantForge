@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { router } from '@inertiajs/react'
 import {
-  GitBranch, Plus, Edit2, Trash2, X, Check, Search, RefreshCw, Mail, MailX,
+  GitBranch, Plus, Check, Trash2, Pencil, Search, RefreshCw, X,
+  Mail, MailX, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 import { Modal } from '~/components/modal'
+import { DataTable, type DTColumn } from '~/components/data-table'
+import { SelectSearch, type SelectOption } from '~/components/select-search'
+import { Checkbox } from '~/components/checkbox'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -50,49 +54,135 @@ const APPROVAL_TYPE_COLOR: Record<string, string> = {
   'Other':                 'bx-gray',
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function Th({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <th style={{ padding: '10px 14px', textAlign: 'left', fontSize: '.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '.06em', color: 'var(--text3)', whiteSpace: 'nowrap', background: 'var(--bg2)', ...style }}>
-      {children}
-    </th>
-  )
-}
-
-function Td({ children, style }: { children?: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <td style={{ padding: '11px 14px', verticalAlign: 'middle', fontSize: '.82rem', color: 'var(--text2)', borderBottom: '1px solid var(--border)', ...style }}>
-      {children}
-    </td>
-  )
-}
-
-function EmptyState({ search }: { search: string }) {
-  return (
-    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-      <div style={{ opacity: .15, color: 'var(--text3)', marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
-        <GitBranch size={40} />
-      </div>
-      <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>
-        {search ? 'No approval workflows match your search' : 'No approval workflows defined'}
-      </div>
-      <div style={{ fontSize: '.78rem', color: 'var(--text4)' }}>
-        {search ? 'Try a different keyword.' : 'Define approval workflows for HR modules.'}
-      </div>
-    </div>
-  )
-}
+// ── Default form state ────────────────────────────────────────────────────────
 
 function defaultForm() {
   return {
-    moduleName:          '',
-    approvalType:        'Leave' as ApprovalType,
-    basedOn:             'designation' as 'designation' | 'division',
-    referenceId:         '' as string,
+    moduleName:           '',
+    approvalType:         'Leave' as ApprovalType,
+    basedOn:              'designation' as 'designation' | 'division',
+    referenceId:          '' as string,
     escalationPeriodDays: '3',
     sendMailOnEscalation: false,
   }
+}
+
+// ── Columns ───────────────────────────────────────────────────────────────────
+
+function buildColumns(
+  onEdit: (a: Approval) => void,
+  onDelete: (a: Approval) => void,
+  onToggle: (a: Approval) => void,
+): DTColumn<Approval>[] {
+  return [
+    {
+      key: 'moduleName',
+      label: 'Module',
+      pinned: true,
+      render: (a) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--p-lt)', border: '1px solid var(--p-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <GitBranch size={12} style={{ color: 'var(--p)' }} />
+          </div>
+          <span style={{ fontWeight: 600, color: 'var(--text1)', fontSize: '.83rem' }}>{a.moduleName}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'approvalType',
+      label: 'Approval Type',
+      width: 180,
+      render: (a) => (
+        <span className={`bx ${APPROVAL_TYPE_COLOR[a.approvalType] ?? 'bx-gray'}`}>
+          {a.approvalType}
+        </span>
+      ),
+    },
+    {
+      key: 'basedOn',
+      label: 'Based On',
+      width: 120,
+      render: (a) => (
+        <span className={`bx ${a.basedOn === 'designation' ? 'bx-purple' : 'bx-green'}`}>
+          {a.basedOn === 'designation' ? 'Designation' : 'Division'}
+        </span>
+      ),
+    },
+    {
+      key: 'referenceName',
+      label: 'Reference',
+      width: 160,
+      render: (a) => (
+        <span style={{ fontSize: '.8rem', color: a.referenceName ? 'var(--text1)' : 'var(--text4)', fontWeight: a.referenceName ? 600 : 400 }}>
+          {a.referenceName ?? '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'escalationPeriodDays',
+      label: 'Escalation',
+      width: 120,
+      align: 'center',
+      render: (a) => (
+        <span className="bx bx-amber" style={{ fontSize: '.8rem' }}>
+          {a.escalationPeriodDays} day{a.escalationPeriodDays !== 1 ? 's' : ''}
+        </span>
+      ),
+    },
+    {
+      key: 'sendMailOnEscalation',
+      label: 'Mail',
+      width: 70,
+      align: 'center',
+      render: (a) => (
+        a.sendMailOnEscalation
+          ? <Mail size={15} style={{ color: 'var(--p)', margin: '0 auto' }} />
+          : <MailX size={15} style={{ color: 'var(--text4)', margin: '0 auto' }} />
+      ),
+    },
+    {
+      key: 'isActive',
+      label: 'Status',
+      width: 100,
+      align: 'center',
+      render: (a) => (
+        <span className={`bx ${a.isActive ? 'bx-teal' : 'bx-gray'}`}>
+          {a.isActive ? 'Active' : 'Inactive'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      label: 'Actions',
+      width: 140,
+      pinned: true,
+      render: (a) => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <button
+            onClick={() => onEdit(a)}
+            title="Edit"
+            style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', color: 'var(--p)', cursor: 'pointer' }}
+          >
+            <Pencil size={13} />
+          </button>
+          <button
+            onClick={() => onToggle(a)}
+            title={a.isActive ? 'Deactivate' : 'Activate'}
+            style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: a.isActive ? 'var(--teal-lt)' : 'var(--bg2)', border: `1px solid ${a.isActive ? 'rgba(20,184,166,.2)' : 'var(--border)'}`, color: a.isActive ? 'var(--teal)' : 'var(--text3)', cursor: 'pointer' }}
+          >
+            {a.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+          </button>
+          <button
+            onClick={() => onDelete(a)}
+            title="Delete"
+            style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-lt)', border: '1px solid rgba(220,38,38,.15)', color: 'var(--danger)', cursor: 'pointer' }}
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
+      ),
+    },
+  ]
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
@@ -108,6 +198,9 @@ export default function ApprovalsPage({ approvals, designations, divisions }: Pr
   const [deleteOpen, setDeleteOpen]             = useState(false)
   const [deleteTarget, setDeleteTarget]         = useState<Approval | null>(null)
   const [deleteProcessing, setDeleteProcessing] = useState(false)
+
+  const [toggleTarget, setToggleTarget]         = useState<Approval | null>(null)
+  const [toggleProcessing, setToggleProcessing] = useState(false)
 
   const [isLoading, setIsLoading] = useState(false)
   useEffect(() => {
@@ -187,11 +280,6 @@ export default function ApprovalsPage({ approvals, designations, divisions }: Pr
   }
 
   // ── Delete ─────────────────────────────────────────────────────────────────
-  function openDelete(a: Approval) {
-    setDeleteTarget(a)
-    setDeleteOpen(true)
-  }
-
   function handleDelete() {
     if (!deleteTarget) return
     setDeleteProcessing(true)
@@ -201,7 +289,21 @@ export default function ApprovalsPage({ approvals, designations, divisions }: Pr
     })
   }
 
-  const refOptions = form.basedOn === 'designation' ? designations : divisions
+  // ── Toggle ─────────────────────────────────────────────────────────────────
+  function handleToggle() {
+    if (!toggleTarget) return
+    setToggleProcessing(true)
+    router.patch(`/hrms/organization/settings/approvals/${toggleTarget.id}/toggle`, {}, {
+      onSuccess: () => { setToggleTarget(null) },
+      onFinish:  () => setToggleProcessing(false),
+    })
+  }
+
+  const refOptions: SelectOption[] = form.basedOn === 'designation'
+    ? [{ value: '', label: '— None —' }, ...designations.map((d) => ({ value: String(d.id), label: d.name }))]
+    : [{ value: '', label: '— None —' }, ...divisions.map((d) => ({ value: String(d.id), label: d.name }))]
+
+  const columns = buildColumns(openEdit, (a) => { setDeleteTarget(a); setDeleteOpen(true) }, setToggleTarget)
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -240,84 +342,15 @@ export default function ApprovalsPage({ approvals, designations, divisions }: Pr
           </div>
         </div>
 
-        {/* Table */}
-        <div className="tw">
-          {filtered.length === 0 ? (
-            <EmptyState search={search} />
-          ) : (
-            <table className="dt">
-              <thead>
-                <tr>
-                  <Th>Module</Th>
-                  <Th style={{ width: 180 }}>Approval Type</Th>
-                  <Th style={{ width: 120 }}>Based On</Th>
-                  <Th style={{ width: 180 }}>Reference</Th>
-                  <Th style={{ width: 130, textAlign: 'center' }}>Escalation</Th>
-                  <Th style={{ width: 80, textAlign: 'center' }}>Mail</Th>
-                  <Th style={{ width: 100 }}>Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((a) => (
-                  <tr key={a.id}>
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--p-lt)', border: '1px solid var(--p-mid)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <GitBranch size={12} style={{ color: 'var(--p)' }} />
-                        </div>
-                        <span style={{ fontWeight: 600, color: 'var(--text1)', fontSize: '.83rem' }}>{a.moduleName}</span>
-                      </div>
-                    </Td>
-                    <Td>
-                      <span className={`bx ${APPROVAL_TYPE_COLOR[a.approvalType] ?? 'bx-gray'}`}>
-                        {a.approvalType}
-                      </span>
-                    </Td>
-                    <Td>
-                      <span className={`bx ${a.basedOn === 'designation' ? 'bx-purple' : 'bx-green'}`}>
-                        {a.basedOn === 'designation' ? 'Designation' : 'Division'}
-                      </span>
-                    </Td>
-                    <Td>
-                      <span style={{ fontSize: '.8rem', color: a.referenceName ? 'var(--text1)' : 'var(--text4)', fontWeight: a.referenceName ? 600 : 400 }}>
-                        {a.referenceName ?? '—'}
-                      </span>
-                    </Td>
-                    <Td style={{ textAlign: 'center' }}>
-                      <span className="bx bx-amber" style={{ fontSize: '.8rem' }}>
-                        {a.escalationPeriodDays} day{a.escalationPeriodDays !== 1 ? 's' : ''}
-                      </span>
-                    </Td>
-                    <Td style={{ textAlign: 'center' }}>
-                      {a.sendMailOnEscalation
-                        ? <Mail size={15} style={{ color: 'var(--p)', margin: '0 auto' }} />
-                        : <MailX size={15} style={{ color: 'var(--text4)', margin: '0 auto' }} />
-                      }
-                    </Td>
-                    <Td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <button
-                          onClick={() => openEdit(a)}
-                          title="Edit"
-                          style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', color: 'var(--p)', cursor: 'pointer' }}
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => openDelete(a)}
-                          title="Delete"
-                          style={{ width: 30, height: 30, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--danger-lt)', border: '1px solid rgba(220,38,38,.15)', color: 'var(--danger)', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+        <DataTable
+          data={filtered}
+          columns={columns}
+          rowKey={(a) => a.id}
+          noun="workflows"
+          emptyIcon={<GitBranch size={36} style={{ opacity: .15, color: 'var(--text3)' }} />}
+          emptyTitle="No approval workflows defined"
+          emptyDesc="Define approval workflows for HR modules."
+        />
       </div>
 
       {/* ════════ ADD / EDIT MODAL ════════ */}
@@ -337,86 +370,74 @@ export default function ApprovalsPage({ approvals, designations, divisions }: Pr
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Module name */}
-          <div className="fg">
-            <label>Module Name <span className="req">*</span></label>
-            <input
-              className="fi"
-              value={form.moduleName}
-              onChange={(e) => setField('moduleName', e.target.value)}
-              placeholder="e.g. HRMS Leave Management"
-              autoFocus
-            />
-            {errors.moduleName && <div className="fg-err">{errors.moduleName}</div>}
-          </div>
-
-          {/* Approval type */}
-          <div className="fg">
-            <label>Approval Type <span className="req">*</span></label>
-            <select className="fi" value={form.approvalType} onChange={(e) => setField('approvalType', e.target.value as ApprovalType)}>
-              {APPROVAL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          {/* Based On */}
-          <div className="fg">
-            <label>Based On <span className="req">*</span></label>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {(['designation', 'division'] as const).map((opt) => {
-                const active = form.basedOn === opt
-                return (
-                  <label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '7px 14px', borderRadius: 8, border: `1px solid ${active ? 'var(--p-mid)' : 'var(--border)'}`, background: active ? 'var(--p-lt)' : 'var(--bg2)', flex: 1 }}>
-                    <input
-                      type="radio"
-                      name="basedOn"
-                      checked={active}
-                      onChange={() => { setField('basedOn', opt); setField('referenceId', '') }}
-                      style={{ accentColor: 'var(--p)' }}
-                    />
-                    <span style={{ fontSize: '.82rem', fontWeight: 600, color: active ? 'var(--p)' : 'var(--text2)', textTransform: 'capitalize' }}>{opt}</span>
-                  </label>
-                )
-              })}
+          {/* Row 1: Module Name + Approval Type */}
+          <div className="g2">
+            <div className="fg">
+              <label>Module Name <span className="req">*</span></label>
+              <input className="fi" value={form.moduleName} onChange={(e) => setField('moduleName', e.target.value)} placeholder="e.g. HRMS Leave Management" autoFocus />
+              {errors.moduleName && <div className="fg-err">{errors.moduleName}</div>}
+            </div>
+            <div className="fg">
+              <label>Approval Type <span className="req">*</span></label>
+              <SelectSearch
+                value={form.approvalType}
+                onChange={(v) => setField('approvalType', v as ApprovalType)}
+                options={APPROVAL_TYPES.map((t) => ({ value: t, label: t }))}
+                placeholder="Select type…"
+              />
             </div>
           </div>
 
-          {/* Reference select */}
-          <div className="fg">
-            <label>{form.basedOn === 'designation' ? 'Designation' : 'Division'}</label>
-            <select className="fi" value={form.referenceId} onChange={(e) => setField('referenceId', e.target.value)}>
-              <option value="">— None —</option>
-              {refOptions.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
+          {/* Row 2: Based On + Reference */}
+          <div className="g2">
+            <div className="fg">
+              <label>Based On <span className="req">*</span></label>
+              <div style={{ display: 'flex', background: 'var(--bg2)', borderRadius: 9, padding: 3, gap: 2, border: '1px solid var(--border)', height: 36 }}>
+                {(['designation', 'division'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => { setField('basedOn', v); setField('referenceId', '') }}
+                    style={{
+                      flex: 1, borderRadius: 7, border: 'none', cursor: 'pointer',
+                      fontSize: '.78rem', fontWeight: 600, transition: 'all .15s',
+                      background: form.basedOn === v ? 'var(--surface)' : 'transparent',
+                      color: form.basedOn === v ? 'var(--text1)' : 'var(--text3)',
+                      boxShadow: form.basedOn === v ? '0 1px 3px rgba(0,0,0,.1)' : 'none',
+                    }}
+                  >
+                    {v === 'designation' ? 'Designation' : 'Division'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="fg">
+              <label>{form.basedOn === 'designation' ? 'Designation' : 'Division'}</label>
+              <SelectSearch
+                value={form.referenceId}
+                onChange={(v) => setField('referenceId', v)}
+                options={refOptions}
+                placeholder="— None —"
+              />
+            </div>
           </div>
 
-          {/* Escalation period */}
-          <div className="fg">
-            <label>Escalation Period (days) <span className="req">*</span></label>
-            <input
-              type="number"
-              className="fi"
-              value={form.escalationPeriodDays}
-              onChange={(e) => setField('escalationPeriodDays', e.target.value)}
-              min={0}
-              placeholder="e.g. 3"
-            />
-            {errors.escalationPeriodDays && <div className="fg-err">{errors.escalationPeriodDays}</div>}
-            <div className="fg-hint">Number of days before the approval is escalated.</div>
-          </div>
-
-          {/* Send mail on escalation */}
-          <div className="fg">
-            <label>Send Mail on Escalation</label>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {([true, false] as const).map((val) => {
-                const active = form.sendMailOnEscalation === val
-                return (
-                  <label key={String(val)} style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', padding: '7px 14px', borderRadius: 8, border: `1px solid ${active ? 'var(--p-mid)' : 'var(--border)'}`, background: active ? 'var(--p-lt)' : 'var(--bg2)', flex: 1 }}>
-                    <input type="radio" name="sendMail" checked={active} onChange={() => setField('sendMailOnEscalation', val)} style={{ accentColor: 'var(--p)' }} />
-                    <span style={{ fontSize: '.82rem', fontWeight: 600, color: active ? 'var(--p)' : 'var(--text2)' }}>{val ? 'Yes' : 'No'}</span>
-                  </label>
-                )
-              })}
+          {/* Row 3: Escalation Period + Send Mail */}
+          <div className="g2">
+            <div className="fg">
+              <label>Escalation Period (days) <span className="req">*</span></label>
+              <input type="number" className="fi" value={form.escalationPeriodDays} onChange={(e) => setField('escalationPeriodDays', e.target.value)} min={0} placeholder="e.g. 3" />
+              {errors.escalationPeriodDays && <div className="fg-err">{errors.escalationPeriodDays}</div>}
+              <div className="fg-hint">Days before escalation triggers.</div>
+            </div>
+            <div className="fg">
+              <label style={{ visibility: 'hidden' }}>_</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <Checkbox checked={form.sendMailOnEscalation} onChange={() => setField('sendMailOnEscalation', !form.sendMailOnEscalation)}>
+                  Send mail on escalation
+                </Checkbox>
+                <div className="fg-hint">Notify approver by email when escalation expires.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -443,6 +464,35 @@ export default function ApprovalsPage({ approvals, designations, divisions }: Pr
           Are you sure you want to delete the approval workflow for{' '}
           <strong style={{ color: 'var(--text1)' }}>{deleteTarget?.moduleName}</strong>
           {deleteTarget && ` (${deleteTarget.approvalType})`}? This action cannot be undone.
+        </p>
+      </Modal>
+
+      {/* ════════ TOGGLE MODAL ════════ */}
+      <Modal
+        open={toggleTarget !== null}
+        onClose={() => setToggleTarget(null)}
+        title={toggleTarget?.isActive ? 'Deactivate Workflow' : 'Activate Workflow'}
+        size="sm"
+        variant={toggleTarget?.isActive ? 'danger' : undefined}
+        icon={toggleTarget?.isActive ? <ToggleLeft size={15} /> : <ToggleRight size={15} />}
+        footer={
+          <>
+            <button className="btn btn-ghost" onClick={() => setToggleTarget(null)}>Cancel</button>
+            <button
+              className={`btn ${toggleTarget?.isActive ? 'btn-danger' : 'btn-p'}`}
+              disabled={toggleProcessing}
+              onClick={handleToggle}
+            >
+              {toggleProcessing ? 'Saving…' : toggleTarget?.isActive ? 'Yes, Deactivate' : 'Yes, Activate'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ fontSize: '.85rem', color: 'var(--text2)', lineHeight: 1.65 }}>
+          {toggleTarget?.isActive
+            ? <>Deactivate approval workflow <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.moduleName}</strong>? It will be marked inactive.</>
+            : <>Activate approval workflow <strong style={{ color: 'var(--text1)' }}>{toggleTarget?.moduleName}</strong>? It will be marked active.</>
+          }
         </p>
       </Modal>
     </>

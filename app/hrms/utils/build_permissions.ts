@@ -15,6 +15,8 @@ export interface HrmsBuiltPermissions {
   permissions:      HrmsPermissions
   addonPermissions: HrmsAddonPermissions
   addonNameIndex:   HrmsAddonNameIndex
+  /** Module keys sorted by DB sortOrder, filtered to org-enabled modules only */
+  moduleOrder:      string[]
 }
 
 /**
@@ -32,7 +34,10 @@ export async function buildHrmsPermissions(
   const addonNameIndex: HrmsAddonNameIndex     = {}
 
   const [modules, orgModuleConfigs] = await Promise.all([
-    Module.query().where('is_active', true).preload('addons', (q) => q.where('is_active', true)),
+    Module.query()
+      .where('is_active', true)
+      .preload('addons', (q) => q.where('is_active', true).orderBy('sort_order', 'asc'))
+      .orderBy('sort_order', 'asc'),
     OrganizationModule.query().where('org_id', org.id).where('enabled', true),
   ])
 
@@ -60,6 +65,11 @@ export async function buildHrmsPermissions(
     for (const a of m.addons) addonNameById[a.id] = a.name
   }
 
+  // Module keys sorted by sortOrder, filtered to org-enabled modules
+  const moduleOrder = modules
+    .filter((m) => moduleAllowed(m.id))
+    .map((m) => m.key)
+
   if (employee.profileId) {
     const profile = await OrganizationProfile.query()
       .where('id', employee.profileId)
@@ -74,16 +84,9 @@ export async function buildHrmsPermissions(
         if (!moduleKey) continue
         if (!moduleAllowed(perm.moduleId)) continue
 
-        const mp = perm.permissions['module']
-        const modulePerm: HrmsPermEntry = {
-          view:   Boolean(mp?.v),
-          add:    Boolean(mp?.a),
-          edit:   Boolean(mp?.e),
-          delete: Boolean(mp?.d),
-        }
-        permissions[moduleKey] = modulePerm
+        const moduleObj = modules.find((m) => m.id === perm.moduleId)
 
-        // First pass: explicitly stored addon entries
+        // First pass: process explicit addon ID keys (numeric string keys)
         for (const [rawKey, entry] of Object.entries(perm.permissions)) {
           if (rawKey === 'module') continue
           const addonId   = Number(rawKey)
@@ -101,18 +104,37 @@ export async function buildHrmsPermissions(
           addonNameIndex[addonName] = idStr
         }
 
-        // Second pass: cascade module-level perm to addons with no explicit entry
-        const moduleObj = modules.find((m) => m.id === perm.moduleId)
-        for (const addon of moduleObj?.addons ?? []) {
-          const idStr = String(addon.id)
-          if (addonPermissions[idStr] !== undefined) continue
-          const addonName = addonNameById[addon.id]
-          if (!addonName) continue
-          if (!addonAllowed(addon.id)) continue
-
-          addonPermissions[idStr] = { ...modulePerm }
-          addonNameIndex[addonName] = idStr
+        // Second pass: handle legacy "module" key — cascade to all org-enabled addons not already set
+        const modulePerm = perm.permissions['module']
+        if (modulePerm) {
+          for (const addon of moduleObj?.addons ?? []) {
+            if (!addonAllowed(addon.id)) continue
+            const addonName = addonNameById[addon.id]
+            if (!addonName) continue
+            const idStr = String(addon.id)
+            if (!(idStr in addonPermissions)) {
+              addonPermissions[idStr] = {
+                view:   Boolean(modulePerm.v),
+                add:    Boolean(modulePerm.a),
+                edit:   Boolean(modulePerm.e),
+                delete: Boolean(modulePerm.d),
+              }
+              addonNameIndex[addonName] = idStr
+            }
+          }
         }
+
+        // Derive module-level perm from the union of all its addon perms
+        const derived: HrmsPermEntry = { view: false, add: false, edit: false, delete: false }
+        for (const addon of moduleObj?.addons ?? []) {
+          const ap = addonPermissions[String(addon.id)]
+          if (!ap) continue
+          if (ap.view)   derived.view   = true
+          if (ap.add)    derived.add    = true
+          if (ap.edit)   derived.edit   = true
+          if (ap.delete) derived.delete = true
+        }
+        permissions[moduleKey] = derived
       }
     }
   } else {
@@ -138,5 +160,6 @@ export async function buildHrmsPermissions(
     permissions,
     addonPermissions,
     addonNameIndex,
+    moduleOrder,
   }
 }
