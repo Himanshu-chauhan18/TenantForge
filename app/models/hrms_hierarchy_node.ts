@@ -2,6 +2,7 @@ import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
 import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
 import OrganizationUser from '#models/organization_user'
+import HrmsDivision from '#models/hrms_division'
 
 export default class HrmsHierarchyNode extends BaseModel {
   static table = 'hrms_hierarchy_nodes'
@@ -11,6 +12,9 @@ export default class HrmsHierarchyNode extends BaseModel {
 
   @column()
   declare orgId: number
+
+  @column()
+  declare divisionId: number | null
 
   @column()
   declare parentId: number | null
@@ -35,6 +39,9 @@ export default class HrmsHierarchyNode extends BaseModel {
 
   @belongsTo(() => OrganizationUser, { foreignKey: 'employeeId' })
   declare employee: BelongsTo<typeof OrganizationUser>
+
+  @belongsTo(() => HrmsDivision, { foreignKey: 'divisionId' })
+  declare division: BelongsTo<typeof HrmsDivision>
 
   @hasMany(() => HrmsHierarchyNode, { foreignKey: 'parentId' })
   declare children: HasMany<typeof HrmsHierarchyNode>

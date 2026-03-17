@@ -30,6 +30,7 @@ export interface OrgProfile {
   name: string
   description: string | null
   dataAccess: 'all' | 'organization' | 'self' | 'custom'
+  isDefault: boolean
   permissions: OrgProfilePermission[]
   createdAt: string
 }
@@ -46,6 +47,23 @@ export interface OrgUser {
   companyEmail: string
   isActive: boolean
   createdAt: string
+  divisionId: number | null
+  departmentId: number | null
+  designationId: number | null
+  locationId: number | null
+}
+
+export interface HrmsMasterItem {
+  id: number
+  code: string
+  name: string
+}
+
+export interface HrmsLists {
+  divisions: HrmsMasterItem[]
+  departments: HrmsMasterItem[]
+  designations: HrmsMasterItem[]
+  locations: HrmsMasterItem[]
 }
 
 export interface FiscalYear {

@@ -3,6 +3,7 @@ import OrganizationUser from '#models/organization_user'
 import OrganizationProfile from '#models/organization_profile'
 import OrganizationProfilePermission from '#models/organization_profile_permission'
 import type { PermissionsJson } from '#models/organization_profile_permission'
+import SettingsRepository from '#hrms/repositories/settings_repository'
 import hash from '@adonisjs/core/services/hash'
 import db from '@adonisjs/lucid/services/db'
 
@@ -67,6 +68,7 @@ export default class OrganizationService {
         name: def.name,
         description: def.description,
         dataAccess: def.dataAccess,
+        isDefault: true,
       })
 
       if (def.name === 'Super Admin') superAdminProfile = profile
@@ -86,6 +88,38 @@ export default class OrganizationService {
     }
 
     return superAdminProfile
+  }
+
+  // ── Seed default HRMS master data for a newly created org ────────────────────
+  // Returns IDs needed to assign the super admin to the right defaults.
+  private async seedDefaultHrmsData(orgId: number, orgData: OrgCreateData): Promise<{
+    divisionId: number
+    departmentId: number
+    designationId: number
+    locationId: number
+  }> {
+    const settings = new SettingsRepository()
+
+    const division   = await settings.createDivision(orgId, { name: 'General' })
+    const department = await settings.createDepartment(orgId, 'General')
+
+    await settings.createDesignation(orgId, 'Manager')
+    await settings.createDesignation(orgId, 'Employee')
+    const adminDesignation = await settings.createDesignation(orgId, 'Admin')
+
+    const location = await settings.createLocation(orgId, {
+      name:    'Head Office',
+      country: orgData.country ?? 'India',
+      city:    orgData.city    ?? '',
+      address: orgData.address ?? '',
+    })
+
+    return {
+      divisionId:    division.id,
+      departmentId:  department.id,
+      designationId: adminDesignation.id,
+      locationId:    location.id,
+    }
   }
 
   async list(filters: OrgFilters) {
@@ -121,7 +155,10 @@ export default class OrganizationService {
     // Seed default profiles + permissions, get back the Super Admin profile
     const superAdminProfile = await this.seedDefaultProfiles(org.id)
 
-    // Create super admin user for org, assigned to the Super Admin profile
+    // Seed default HRMS master data (division, department, designations, location)
+    const hrmsDefaults = await this.seedDefaultHrmsData(org.id, step1)
+
+    // Create super admin user for org, assigned to the Super Admin profile + HRMS defaults
     const passwordHash = await hash.make(superAdmin.password)
     await OrganizationUser.create({
       orgId: org.id,
@@ -135,6 +172,10 @@ export default class OrganizationService {
       passwordHash,
       sendWelcomeMail: superAdmin.sendWelcomeMail ?? false,
       isActive: true,
+      divisionId:    hrmsDefaults.divisionId,
+      departmentId:  hrmsDefaults.departmentId,
+      designationId: hrmsDefaults.designationId,
+      locationId:    hrmsDefaults.locationId,
     })
 
     return org

@@ -31,15 +31,19 @@ export default function hrmsRoutes() {
 
       // ── Roles & Permissions ────────────────────────────────────────────────
       router.group(() => {
-        router.get('/organization/roles', [HrmsRolesController, 'index']).as('hrms.org.roles')
+        router.get('/organization/roles',                         [HrmsRolesController, 'index']).as('hrms.org.roles')
+        router.post('/organization/roles',                        [HrmsRolesController, 'store']).as('hrms.org.roles.store')
+        router.put('/organization/roles/:id',                     [HrmsRolesController, 'update']).as('hrms.org.roles.update')
+        router.delete('/organization/roles/:id',                  [HrmsRolesController, 'destroy']).as('hrms.org.roles.destroy')
+        router.get('/organization/roles/:id/permissions',         [HrmsRolesController, 'showPermissions']).as('hrms.org.roles.show-permissions')
+        router.put('/organization/roles/:id/permissions',         [HrmsRolesController, 'updatePermissions']).as('hrms.org.roles.permissions')
       }).use(middleware.hrmsAddon('Roles & Permissions'))
 
       // ── Hierarchy ──────────────────────────────────────────────────────────
       router.group(() => {
-        router.get('/organization/hierarchy',        [HrmsHierarchyController, 'index']).as('hrms.org.hierarchy')
-        router.post('/organization/hierarchy',       [HrmsHierarchyController, 'store']).as('hrms.org.hierarchy.store')
-        router.put('/organization/hierarchy/:id',    [HrmsHierarchyController, 'update']).as('hrms.org.hierarchy.update')
-        router.delete('/organization/hierarchy/:id', [HrmsHierarchyController, 'destroy']).as('hrms.org.hierarchy.destroy')
+        router.get('/organization/hierarchy',                  [HrmsHierarchyController, 'index']).as('hrms.org.hierarchy')
+        router.get('/organization/hierarchy/chart',            [HrmsHierarchyController, 'chart']).as('hrms.org.hierarchy.chart')
+        router.patch('/organization/hierarchy/:id/set-parent', [HrmsHierarchyController, 'setParent']).as('hrms.org.hierarchy.set-parent')
       }).use(middleware.hrmsAddon('Settings - Hierarchy'))
 
       // ── Divisions ──────────────────────────────────────────────────────────

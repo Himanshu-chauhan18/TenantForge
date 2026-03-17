@@ -6,6 +6,7 @@ import {
   divisionStep1Validator,
   locationValidator,
   nameOnlyValidator,
+  departmentValidator,
   holidayValidator,
   noticePeriodValidator,
   approvalValidator,
@@ -119,8 +120,9 @@ export default class HrmsSettingsController {
 
   // ── Departments ──────────────────────────────────────────────────────────────
   async departmentsIndex({ inertia, hrmsOrg }: HttpContext) {
-    const [departments, employees, designations, locations, grades] = await Promise.all([
+    const [departments, divisions, employees, designations, locations, grades] = await Promise.all([
       repo.listDepartments(hrmsOrg.id),
+      repo.listDivisions(hrmsOrg.id),
       OrganizationUser.query().where('org_id', hrmsOrg.id).where('is_active', true).orderBy('full_name'),
       repo.listDesignations(hrmsOrg.id),
       repo.listLocations(hrmsOrg.id),
@@ -128,6 +130,7 @@ export default class HrmsSettingsController {
     ])
     return inertia.render('hrms/organization/settings/departments', {
       departments: departments.map((d) => d.serialize()),
+      divisions: divisions.map((d) => ({ id: d.id, name: d.name })),
       employees: employees.map((e) => ({ id: e.id, fullName: e.fullName, employeeCode: e.employeeCode, departmentId: e.departmentId, designationId: e.designationId, locationId: e.locationId, gradeId: e.gradeId })),
       designations: designations.map((d) => ({ id: d.id, name: d.name })),
       locations: locations.map((l) => ({ id: l.id, name: l.name })),
@@ -144,14 +147,18 @@ export default class HrmsSettingsController {
     return response.redirect('/hrms/organization/settings/departments')
   }
   async departmentsStore({ request, response, hrmsOrg, session }: HttpContext) {
-    const data = await request.validateUsing(nameOnlyValidator)
-    await repo.createDepartment(hrmsOrg.id, data.name)
+    const data = await request.validateUsing(departmentValidator)
+    const divisions = await repo.listDivisions(hrmsOrg.id)
+    const divisionId = divisions.length === 1 ? divisions[0].id : (data.divisionId ?? null)
+    await repo.createDepartment(hrmsOrg.id, data.name, divisionId)
     session.flash('success', 'Department created.')
     return response.redirect('/hrms/organization/settings/departments')
   }
   async departmentsUpdate({ params, request, response, hrmsOrg, session }: HttpContext) {
-    const data = await request.validateUsing(nameOnlyValidator)
-    await repo.updateDepartment(params.id, hrmsOrg.id, data.name)
+    const data = await request.validateUsing(departmentValidator)
+    const divisions = await repo.listDivisions(hrmsOrg.id)
+    const divisionId = divisions.length === 1 ? divisions[0].id : (data.divisionId ?? null)
+    await repo.updateDepartment(params.id, hrmsOrg.id, data.name, divisionId)
     session.flash('success', 'Department updated.')
     return response.redirect('/hrms/organization/settings/departments')
   }

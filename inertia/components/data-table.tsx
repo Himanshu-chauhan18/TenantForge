@@ -10,7 +10,7 @@
  *   All floating panels (per-page, column-visibility) use `position: fixed` with
  *   viewport-relative coordinates so they escape .card { overflow: clip }.
  */
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import {
   useReactTable,
   getCoreRowModel,
@@ -128,23 +128,61 @@ interface FixedDropdownProps {
 }
 
 export function FixedDropdown({ anchorRef, open, onClose, align = 'right', minWidth = 160, noPadding = false, children }: FixedDropdownProps) {
-  const [pos, setPos] = useState<{ top: number; side: number } | null>(null)
+  const [pos, setPos] = useState<{ top: number; side: number; maxH: number } | null>(null)
   const [localOpen, setLocalOpen] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+
+  const calcPos = useCallback(() => {
+    if (!anchorRef.current) return
+    const r   = anchorRef.current.getBoundingClientRect()
+    const vw  = window.innerWidth
+    const vh  = window.innerHeight
+    const GAP = 6
+    const PAD = 8  // keep away from viewport edges
+
+    // Vertical: prefer below, flip above if not enough room
+    const spaceBelow = vh - r.bottom - GAP
+    const spaceAbove = r.top - GAP
+    const openBelow  = spaceBelow >= 120 || spaceBelow >= spaceAbove
+
+    const panelH   = panelRef.current?.offsetHeight ?? 300
+    const maxH     = Math.min(Math.max(openBelow ? spaceBelow : spaceAbove, 120) - PAD, vh - 80)
+    const top      = openBelow ? r.bottom + GAP : Math.max(PAD, r.top - GAP - Math.min(panelH, maxH))
+
+    // Horizontal: clamp so panel doesn't overflow either edge
+    let side: number
+    if (align === 'right') {
+      // `right` css = vw - r.right, but clamp so left edge ≥ PAD
+      const rightCss = vw - r.right
+      const leftEdge = r.right - minWidth
+      side = leftEdge < PAD ? vw - (minWidth + PAD) : rightCss
+    } else {
+      side = Math.min(r.left, vw - minWidth - PAD)
+      side = Math.max(side, PAD)
+    }
+
+    setPos({ top, side, maxH })
+  }, [anchorRef, align, minWidth])
 
   useEffect(() => {
     if (open) {
       if (timerRef.current) clearTimeout(timerRef.current)
-      if (anchorRef.current) {
-        const r = anchorRef.current.getBoundingClientRect()
-        setPos({ top: r.bottom + 6, side: align === 'right' ? window.innerWidth - r.right : r.left })
-      }
+      calcPos()
       setLocalOpen(true)
+      window.addEventListener('scroll', calcPos, true)
+      window.addEventListener('resize', calcPos)
     } else {
+      window.removeEventListener('scroll', calcPos, true)
+      window.removeEventListener('resize', calcPos)
       timerRef.current = setTimeout(() => setLocalOpen(false), 130)
     }
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [open, align, anchorRef])
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      window.removeEventListener('scroll', calcPos, true)
+      window.removeEventListener('resize', calcPos)
+    }
+  }, [open, calcPos])
 
   if (!localOpen || !pos) return null
 
@@ -158,7 +196,8 @@ export function FixedDropdown({ anchorRef, open, onClose, align = 'right', minWi
     boxShadow: '0 10px 36px rgba(0,0,0,.15)',
     padding: noPadding ? 0 : '6px 4px',
     minWidth,
-    overflow: 'hidden',
+    maxHeight: pos.maxH,
+    overflowY: 'auto',
   }
   if (align === 'right') style.right = pos.side
   else style.left = pos.side
@@ -166,7 +205,7 @@ export function FixedDropdown({ anchorRef, open, onClose, align = 'right', minWi
   return (
     <>
       <div style={{ position: 'fixed', inset: 0, zIndex: 9998 }} onClick={onClose} />
-      <div style={style} className={`fd-panel${!open ? ' fd-out' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div ref={panelRef} style={style} className={`fd-panel${!open ? ' fd-out' : ''}`} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </>

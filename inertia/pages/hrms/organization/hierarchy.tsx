@@ -1,650 +1,957 @@
-import { useState, useCallback } from 'react'
-import { useForm, router } from '@inertiajs/react'
-import {
-  GitBranch, Plus, Pencil, Trash2, ChevronRight,
-  ChevronDown, User, Layers, Save, AlertTriangle,
-} from 'lucide-react'
+import { useState, useCallback, useMemo, memo, useRef, useEffect } from 'react'
+import { router } from '@inertiajs/react'
 import { Modal } from '~/components/modal'
+import { SelectSearch } from '~/components/select-search'
+import {
+  ReactFlow, Background, BackgroundVariant, Controls,
+  useNodesState, useEdgesState, Handle, Position, MarkerType,
+  useReactFlow, ReactFlowProvider,
+  type Node, type Edge, type NodeProps, type OnNodeDrag,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import {
+  Building2, Layers, Filter, Settings2, Printer, Download,
+  UserPlus, Pencil, Unlink, Save, AlertTriangle, User,
+  Plus, Minus, Maximize2, Minimize2, Target, Move, Network, Users,
+} from 'lucide-react'
 
-// ── Types ───────────────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Employee {
   id: number
   fullName: string
   employeeCode: string | null
+  divisionId: number | null
+  departmentId: number | null
+  designationId: number | null
+  reportingToId: number | null
+  designationName: string | null
+  departmentName: string | null
+}
+interface Division   { id: number; code: string; name: string }
+interface Department { id: number; code: string; name: string }
+interface Props { employees: Employee[]; divisions: Division[]; departments: Department[] }
+
+// ── Chart constants ────────────────────────────────────────────────────────────
+
+const NODE_W   = 242
+const CARD_H   = 88
+const BTN_R    = 14
+const BTN_TOP  = CARD_H + 6
+const V_GAP    = 84
+const H_GAP    = 48
+
+const AVATAR_COLORS = [
+  '#0D9488','#7C3AED','#0284C7','#D97706','#E11D48',
+  '#059669','#DC2626','#2563EB','#9333EA','#0891B2',
+]
+function avatarColor(id: number) { return AVATAR_COLORS[id % AVATAR_COLORS.length] }
+function initials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
 }
 
-interface HierarchyNode {
-  id: number
-  title: string
-  department?: string | null
-  parentId?: number | null
-  employeeId?: number | null
-  sortOrder?: number
-  employee?: { fullName: string; employeeCode?: string | null } | null
-  children?: HierarchyNode[]
-}
+interface MoveConfirm { empId: number; empName: string; targetId: number; targetName: string }
 
-interface Props {
-  nodes: HierarchyNode[]
-  employees: Employee[]
-}
+// ── Layout builder ─────────────────────────────────────────────────────────────
 
-// ── Node form shape ──────────────────────────────────────────────────────────────
+function buildLayout(employees: Employee[], collapsedIds: Set<number>) {
+  const byId = new Map(employees.map((e) => [e.id, e]))
 
-interface NodeForm {
-  title: string
-  department: string
-  parentId: string
-  employeeId: string
-  sortOrder: string
-}
-
-// ── Build tree from flat list ────────────────────────────────────────────────────
-
-function buildTree(nodes: HierarchyNode[]): HierarchyNode[] {
-  const map = new Map<number, HierarchyNode & { children: HierarchyNode[] }>()
-  nodes.forEach((n) => map.set(n.id, { ...n, children: [] }))
-
-  const roots: HierarchyNode[] = []
-  map.forEach((node) => {
-    if (node.parentId && map.has(node.parentId)) {
-      map.get(node.parentId)!.children!.push(node)
-    } else {
-      roots.push(node)
-    }
+  // Build children map using reportingToId
+  const childrenOf = new Map<number | null, number[]>()
+  employees.forEach((e) => {
+    const pid = e.reportingToId && byId.has(e.reportingToId) ? e.reportingToId : null
+    if (!childrenOf.has(pid)) childrenOf.set(pid, [])
+    childrenOf.get(pid)!.push(e.id)
   })
+  // Sort children alphabetically
+  childrenOf.forEach((arr) => arr.sort((a, b) => (byId.get(a)?.fullName ?? '').localeCompare(byId.get(b)?.fullName ?? '')))
 
-  // Sort by sortOrder within each level
-  const sortChildren = (list: HierarchyNode[]) => {
-    list.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-    list.forEach((n) => n.children && sortChildren(n.children))
+  // Hidden nodes (collapsed subtrees)
+  const hiddenIds = new Set<number>()
+  function markHidden(id: number) {
+    ;(childrenOf.get(id) ?? []).forEach((c) => { hiddenIds.add(c); markHidden(c) })
   }
-  sortChildren(roots)
+  collapsedIds.forEach((id) => markHidden(id))
 
-  return roots
+  // Subtree width calculation
+  const swOf = new Map<number, number>()
+  function sw(id: number): number {
+    if (collapsedIds.has(id)) { swOf.set(id, NODE_W); return NODE_W }
+    const ch = (childrenOf.get(id) ?? []).filter((c) => !hiddenIds.has(c))
+    if (!ch.length) { swOf.set(id, NODE_W); return NODE_W }
+    const total = ch.reduce((s, c) => s + sw(c), 0) + H_GAP * (ch.length - 1)
+    const w = Math.max(NODE_W, total); swOf.set(id, w); return w
+  }
+  ;(childrenOf.get(null) ?? []).forEach((r) => sw(r))
+
+  // Position assignment
+  const posOf = new Map<number, { x: number; y: number }>()
+  function place(id: number, cx: number, y: number) {
+    posOf.set(id, { x: cx - NODE_W / 2, y })
+    if (collapsedIds.has(id)) return
+    const ch = (childrenOf.get(id) ?? []).filter((c) => !hiddenIds.has(c))
+    if (!ch.length) return
+    const total = ch.reduce((s, c) => s + (swOf.get(c) ?? NODE_W), 0) + H_GAP * (ch.length - 1)
+    let x = cx - total / 2
+    ch.forEach((c) => { const w = swOf.get(c) ?? NODE_W; place(c, x + w / 2, y + CARD_H + V_GAP); x += w + H_GAP })
+  }
+  const roots = childrenOf.get(null) ?? []
+  let rx = 0
+  roots.forEach((r) => { const w = swOf.get(r) ?? NODE_W; place(r, rx + w / 2, 0); rx += w + H_GAP * 2 })
+
+  const visible = employees.filter((e) => !hiddenIds.has(e.id))
+
+  const rfNodes: Node[] = visible.map((e) => ({
+    id: String(e.id),
+    type: 'org',
+    position: posOf.get(e.id) ?? { x: 0, y: 0 },
+    data: {
+      emp: e,
+      hasChildren: (childrenOf.get(e.id) ?? []).filter((c) => !hiddenIds.has(c)).length > 0,
+      isCollapsed: collapsedIds.has(e.id),
+      isDropTarget: false,
+      modifyMode: false,
+      onToggle: () => {},
+      onAddSub: () => {},
+      onSetReporting: () => {},
+      onDetach: () => {},
+    },
+    width: NODE_W,
+    height: CARD_H + BTN_R * 2 + 10,
+    draggable: true,
+    selectable: false,
+  }))
+
+  const rfEdges: Edge[] = visible
+    .filter((e) => e.reportingToId != null && byId.has(e.reportingToId) && !hiddenIds.has(e.reportingToId))
+    .map((e) => ({
+      id: `e${e.reportingToId}-${e.id}`,
+      source: String(e.reportingToId),
+      target: String(e.id),
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+      type: 'step',
+      style: { stroke: '#d1d5db', strokeWidth: 1.5 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: '#d1d5db', width: 12, height: 12 },
+    }))
+
+  return { rfNodes, rfEdges, posOf, childrenOf }
 }
 
-// ── Connector lines constants ────────────────────────────────────────────────────
+function getDescendantIds(empId: number, childrenOf: Map<number | null, number[]>): Set<number> {
+  const result = new Set<number>()
+  const stack = [empId]
+  while (stack.length) {
+    const cur = stack.pop()!
+    ;(childrenOf.get(cur) ?? []).forEach((c) => { result.add(c); stack.push(c) })
+  }
+  return result
+}
 
-const CONNECTOR_COLOR = 'var(--border2)'
+// ── Org Node Card ─────────────────────────────────────────────────────────────
 
-// ── Single Node Card ─────────────────────────────────────────────────────────────
+interface OrgNodeData extends Record<string, unknown> {
+  emp: Employee
+  hasChildren: boolean
+  isCollapsed: boolean
+  isDropTarget: boolean
+  modifyMode: boolean
+  onToggle: (id: number) => void
+  onAddSub: (emp: Employee) => void
+  onSetReporting: (emp: Employee) => void
+  onDetach: (emp: Employee) => void
+}
 
-function NodeCard({
-  node,
-  depth,
-  allNodes,
-  onEdit,
-  onDelete,
-  isLast,
-}: {
-  node: HierarchyNode
-  depth: number
-  allNodes: HierarchyNode[]
-  onEdit: (node: HierarchyNode) => void
-  onDelete: (node: HierarchyNode) => void
-  isLast: boolean
-}) {
-  const [collapsed, setCollapsed] = useState(false)
-  const hasChildren = node.children && node.children.length > 0
-
-  const depthColors = [
-    { accent: '#0D9488', bg: 'rgba(13,148,136,.06)', border: 'rgba(13,148,136,.2)' },
-    { accent: '#7C3AED', bg: 'rgba(124,58,237,.06)', border: 'rgba(124,58,237,.2)' },
-    { accent: '#0284C7', bg: 'rgba(2,132,199,.06)',  border: 'rgba(2,132,199,.2)' },
-    { accent: '#D97706', bg: 'rgba(217,119,6,.06)',  border: 'rgba(217,119,6,.2)' },
-    { accent: '#E11D48', bg: 'rgba(225,29,72,.06)',  border: 'rgba(225,29,72,.2)' },
-  ]
-  const dc = depthColors[Math.min(depth, depthColors.length - 1)]
+const OrgNode = memo(function OrgNode({ data }: NodeProps) {
+  const d = data as OrgNodeData
+  const { emp, hasChildren, isCollapsed, isDropTarget, modifyMode } = d
+  const [hovered, setHovered] = useState(false)
+  const color = avatarColor(emp.id)
+  const abbr  = initials(emp.fullName)
 
   return (
-    <div style={{ position: 'relative' }}>
-      {/* Vertical connector from parent */}
-      {depth > 0 && (
-        <>
-          {/* Vertical line */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: -28,
-            width: 1,
-            height: isLast ? 22 : '100%',
-            background: CONNECTOR_COLOR,
-          }} />
-          {/* Horizontal elbow */}
-          <div style={{
-            position: 'absolute',
-            top: 22,
-            left: -28,
-            width: 20,
-            height: 1,
-            background: CONNECTOR_COLOR,
-          }} />
-        </>
-      )}
+    <div
+      style={{ width: NODE_W, position: 'relative' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <Handle id="top" type="target" position={Position.Top}
+        style={{ background: 'transparent', border: 'none', width: 1, height: 1, top: 0 }} />
 
-      {/* Node card */}
+      {/* Card */}
       <div style={{
-        display: 'flex', alignItems: 'stretch', gap: 0,
-        marginBottom: hasChildren && !collapsed ? 0 : 8,
+        width: NODE_W, height: CARD_H,
+        background: isDropTarget
+          ? `linear-gradient(135deg,${color}14,${color}07)`
+          : hovered ? 'var(--bg2, #f9fafb)' : 'var(--surface, #fff)',
+        border: `1.5px solid ${isDropTarget ? color : hovered ? color + '60' : 'rgba(0,0,0,.1)'}`,
+        borderRadius: 14,
+        display: 'flex', alignItems: 'center', gap: 12, padding: '0 14px',
+        boxShadow: hovered
+          ? `0 4px 20px rgba(0,0,0,.1), 0 0 0 3px ${color}18`
+          : '0 2px 10px rgba(0,0,0,.07)',
+        position: 'relative', overflow: 'hidden',
+        transition: 'box-shadow .18s, border-color .18s, background .18s',
       }}>
-        {/* Collapse toggle */}
-        {hasChildren && (
-          <button
-            type="button"
-            onClick={() => setCollapsed((v) => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 28, flexShrink: 0,
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--text4)', padding: 0,
-            }}
-            title={collapsed ? 'Expand' : 'Collapse'}
-          >
-            {collapsed
-              ? <ChevronRight size={14} />
-              : <ChevronDown size={14} />
-            }
-          </button>
-        )}
-        {!hasChildren && <div style={{ width: 28, flexShrink: 0 }} />}
+        {/* Color left bar */}
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: color, borderRadius: '14px 0 0 14px' }} />
 
-        {/* Main card body */}
-        <div style={{
-          flex: 1,
-          background: dc.bg,
-          border: `1px solid ${dc.border}`,
-          borderRadius: 11,
-          overflow: 'hidden',
-          transition: 'box-shadow .15s, border-color .15s',
-        }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLElement
-            el.style.boxShadow = `0 4px 16px ${dc.accent}18`
-            el.style.borderColor = dc.accent + '40'
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLElement
-            el.style.boxShadow = ''
-            el.style.borderColor = dc.border
-          }}
-        >
-          {/* Depth stripe */}
-          <div style={{ height: 2, background: dc.accent }} />
-
-          <div style={{ display: 'flex', alignItems: 'center', padding: '10px 14px', gap: 10 }}>
-            {/* Icon */}
-            <div style={{
-              width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-              background: dc.accent + '16', border: `1px solid ${dc.accent}25`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: dc.accent,
-            }}>
-              {depth === 0 ? <Layers size={15} /> : <GitBranch size={15} />}
-            </div>
-
-            {/* Title + metadata */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--fd)', fontSize: '.88rem', fontWeight: 800, color: 'var(--text1)', marginBottom: 2 }}>
-                {node.title}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                {node.department && (
-                  <span className="bx bx-teal bx-no-dot" style={{ fontSize: '.62rem' }}>
-                    {node.department}
-                  </span>
-                )}
-                {node.employee && (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    fontSize: '.65rem', color: 'var(--text3)', fontWeight: 600,
-                  }}>
-                    <User size={11} style={{ flexShrink: 0 }} />
-                    {node.employee.fullName}
-                    {node.employee.employeeCode && (
-                      <span style={{ color: 'var(--text4)', letterSpacing: '.04em' }}>
-                        ({node.employee.employeeCode})
-                      </span>
-                    )}
-                  </span>
-                )}
-                {node.sortOrder !== undefined && node.sortOrder !== null && (
-                  <span style={{ fontSize: '.62rem', color: 'var(--text4)' }}>
-                    Order: {node.sortOrder}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Children count */}
-            {hasChildren && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                padding: '2px 8px', borderRadius: 20, flexShrink: 0,
-                background: dc.accent + '12', border: `1px solid ${dc.accent}20`,
-                fontSize: '.65rem', fontWeight: 700, color: dc.accent,
-              }}>
-                {node.children!.length} {node.children!.length === 1 ? 'child' : 'children'}
-              </span>
-            )}
-
-            {/* Actions */}
-            <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-              <button
-                type="button"
-                className="ibtn"
-                title="Edit node"
-                onClick={() => onEdit(node)}
-                style={{ width: 30, height: 30, borderRadius: 7 }}
-              >
-                <Pencil size={13} />
-              </button>
-              <button
-                type="button"
-                className="ibtn"
-                title="Delete node"
-                onClick={() => onDelete(node)}
-                style={{ width: 30, height: 30, borderRadius: 7, color: 'var(--danger)' }}
-              >
-                <Trash2 size={13} />
-              </button>
-            </div>
+        {/* Avatar */}
+        <div style={{ paddingLeft: 8, flexShrink: 0 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: '50%',
+            background: color + '1c', border: `2px solid ${color}38`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color, fontWeight: 700, fontSize: '.9rem',
+          }}>
+            {abbr}
           </div>
         </div>
+
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontWeight: 700, fontSize: '.86rem', color: 'var(--text1)',
+            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {emp.fullName}
+          </div>
+          {emp.designationName && (
+            <div style={{
+              fontSize: '.7rem', color, fontWeight: 600,
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', marginTop: 2,
+            }}>
+              {emp.designationName}
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 3, flexWrap: 'nowrap' }}>
+            {emp.departmentName && (
+              <span style={{
+                fontSize: '.64rem', color: 'var(--text3)',
+                background: 'var(--bg2)', padding: '1px 6px', borderRadius: 20,
+                border: '1px solid var(--border)', whiteSpace: 'nowrap',
+                maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>
+                {emp.departmentName}
+              </span>
+            )}
+            {emp.employeeCode && (
+              <span style={{ fontSize: '.62rem', color: 'var(--text4)', whiteSpace: 'nowrap' }}>
+                {emp.employeeCode}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Hover modify actions */}
+        {modifyMode && hovered && (
+          <div style={{
+            position: 'absolute', top: 6, right: 8,
+            display: 'flex', gap: 4, zIndex: 20,
+          }}>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.stopPropagation(); d.onAddSub(emp) }}
+              title="Add subordinate"
+              style={actionBtnStyle('#0D9488')}
+            >
+              <UserPlus size={11} />
+            </button>
+            <button
+              type="button"
+              onMouseDown={(e) => { e.stopPropagation(); d.onSetReporting(emp) }}
+              title="Change reporting manager"
+              style={actionBtnStyle('#2563EB')}
+            >
+              <Pencil size={11} />
+            </button>
+            {emp.reportingToId && (
+              <button
+                type="button"
+                onMouseDown={(e) => { e.stopPropagation(); d.onDetach(emp) }}
+                title="Detach from hierarchy"
+                style={actionBtnStyle('#ef4444')}
+              >
+                <Unlink size={11} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Children */}
-      {hasChildren && !collapsed && (
-        <div style={{ paddingLeft: 28, marginTop: 6, marginBottom: 8, position: 'relative' }}>
-          {/* Continuous vertical line for children group */}
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: 27,
-            width: 1,
-            height: '100%',
-            background: CONNECTOR_COLOR,
-            pointerEvents: 'none',
-          }} />
-          {node.children!.map((child, i) => (
-            <NodeCard
-              key={child.id}
-              node={child}
-              depth={depth + 1}
-              allNodes={allNodes}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              isLast={i === node.children!.length - 1}
-            />
-          ))}
-        </div>
+      <Handle id="bottom" type="source" position={Position.Bottom}
+        style={{ background: 'transparent', border: 'none', width: 1, height: 1, bottom: 0 }} />
+
+      {/* Collapse toggle */}
+      {hasChildren && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); d.onToggle(emp.id) }}
+          style={{
+            position: 'absolute', top: BTN_TOP, left: '50%', transform: 'translateX(-50%)',
+            width: BTN_R * 2, height: BTN_R * 2, borderRadius: '50%',
+            background: color, border: '2.5px solid #fff',
+            boxShadow: `0 2px 10px ${color}55`,
+            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', zIndex: 10, padding: 0,
+          }}
+        >
+          {isCollapsed ? <Plus size={11} strokeWidth={2.5} /> : <Minus size={11} strokeWidth={2.5} />}
+        </button>
       )}
     </div>
   )
-}
+})
 
-// ── Node Modal ────────────────────────────────────────────────────────────────────
-
-function NodeModal({
-  open,
-  onClose,
-  editing,
-  allNodes,
-  employees,
-  processing,
-  data,
-  setData,
-  errors,
-  onSubmit,
-}: {
-  open: boolean
-  onClose: () => void
-  editing: HierarchyNode | null
-  allNodes: HierarchyNode[]
-  employees: Employee[]
-  processing: boolean
-  data: NodeForm
-  setData: (key: keyof NodeForm, value: string) => void
-  errors: Partial<Record<keyof NodeForm, string>>
-  onSubmit: (e: React.FormEvent) => void
-}) {
-  // Exclude self and descendants from parent options
-  function getDescendantIds(nodeId: number, nodes: HierarchyNode[]): Set<number> {
-    const ids = new Set<number>([nodeId])
-    const queue = [nodeId]
-    while (queue.length > 0) {
-      const cur = queue.shift()!
-      nodes.filter((n) => n.parentId === cur).forEach((n) => {
-        ids.add(n.id)
-        queue.push(n.id)
-      })
-    }
-    return ids
+function actionBtnStyle(color: string): React.CSSProperties {
+  return {
+    width: 24, height: 24, borderRadius: 7, border: 'none',
+    background: color + '18', color,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    cursor: 'pointer', flexShrink: 0,
+    boxShadow: `0 1px 4px ${color}30`,
   }
-
-  const excluded = editing ? getDescendantIds(editing.id, allNodes) : new Set<number>()
-  const parentOptions = allNodes.filter((n) => !excluded.has(n.id))
-
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={editing ? 'Edit Node' : 'Add Node'}
-      icon={<GitBranch size={15} />}
-      footer={
-        <>
-          <button type="button" className="btn btn-ghost" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            type="submit"
-            className="btn btn-p"
-            disabled={processing}
-            onClick={onSubmit as any}
-            form="node-form"
-          >
-            <Save size={13} />
-            {processing ? 'Saving…' : editing ? 'Update Node' : 'Add Node'}
-          </button>
-        </>
-      }
-    >
-      <form id="node-form" onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div className="fg">
-          <label>Node Title <span className="req">*</span></label>
-          <input
-            className="fi"
-            type="text"
-            value={data.title}
-            onChange={(e) => setData('title', e.target.value)}
-            placeholder="e.g. Engineering Division, HR Department"
-            autoFocus
-          />
-          {errors.title && <span className="fg-err">{errors.title}</span>}
-        </div>
-
-        <div className="fg">
-          <label>Department / Unit Name</label>
-          <input
-            className="fi"
-            type="text"
-            value={data.department}
-            onChange={(e) => setData('department', e.target.value)}
-            placeholder="e.g. Engineering, Human Resources"
-          />
-          {errors.department && <span className="fg-err">{errors.department}</span>}
-          <span className="fg-hint">Optional — the functional unit this node belongs to</span>
-        </div>
-
-        <div className="g2">
-          <div className="fg">
-            <label>Parent Node</label>
-            <select
-              className="fi fi-sel"
-              value={data.parentId}
-              onChange={(e) => setData('parentId', e.target.value)}
-            >
-              <option value="">Root level (no parent)</option>
-              {parentOptions.map((n) => (
-                <option key={n.id} value={n.id}>{n.title}</option>
-              ))}
-            </select>
-            {errors.parentId && <span className="fg-err">{errors.parentId}</span>}
-          </div>
-
-          <div className="fg">
-            <label>Sort Order</label>
-            <input
-              className="fi"
-              type="number"
-              min={0}
-              value={data.sortOrder}
-              onChange={(e) => setData('sortOrder', e.target.value)}
-              placeholder="0"
-            />
-            {errors.sortOrder && <span className="fg-err">{errors.sortOrder}</span>}
-            <span className="fg-hint">Lower numbers appear first</span>
-          </div>
-        </div>
-
-        <div className="fg">
-          <label>Assign Employee (Head of node)</label>
-          <select
-            className="fi fi-sel"
-            value={data.employeeId}
-            onChange={(e) => setData('employeeId', e.target.value)}
-          >
-            <option value="">Not assigned</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {emp.fullName}{emp.employeeCode ? ` (${emp.employeeCode})` : ''}
-              </option>
-            ))}
-          </select>
-          {errors.employeeId && <span className="fg-err">{errors.employeeId}</span>}
-          <span className="fg-hint">Optionally assign an employee as the head of this unit</span>
-        </div>
-      </form>
-    </Modal>
-  )
 }
 
-// ── Delete Confirm Modal ──────────────────────────────────────────────────────────
+const NODE_TYPES = { org: OrgNode }
 
-function DeleteModal({
-  open,
-  onClose,
-  node,
-  onConfirm,
+// ── Chart Canvas ───────────────────────────────────────────────────────────────
+
+function ChartInner({
+  employees, modifyMode,
+  onAddSub, onSetReporting, onDetach,
 }: {
-  open: boolean
-  onClose: () => void
-  node: HierarchyNode | null
-  onConfirm: () => void
+  employees: Employee[]
+  modifyMode: boolean
+  onAddSub: (emp: Employee) => void
+  onSetReporting: (emp: Employee) => void
+  onDetach: (emp: Employee) => void
 }) {
-  return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Delete Node"
-      size="sm"
-      icon={<Trash2 size={15} />}
-      variant="danger"
-      footer={
-        <>
-          <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn-danger" onClick={onConfirm}>
-            <Trash2 size={13} /> Delete
-          </button>
-        </>
-      }
-    >
-      <p style={{ fontSize: '.85rem', color: 'var(--text2)', marginBottom: 10 }}>
-        Are you sure you want to delete <strong>{node?.title}</strong>?
-      </p>
-      <div className="alert alert-warn" style={{ marginBottom: 0 }}>
-        <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-        <span style={{ fontSize: '.78rem' }}>
-          All child nodes under this node may also be affected. This action cannot be undone.
-        </span>
-      </div>
-    </Modal>
+  const { fitView } = useReactFlow()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [collapsedIds, setCollapsedIds] = useState(new Set<number>())
+  const [moveConfirm, setMoveConfirm] = useState<MoveConfirm | null>(null)
+  const [moveOpen, setMoveOpen] = useState(false)
+
+  const { rfNodes: layoutNodes, rfEdges, posOf, childrenOf } = useMemo(
+    () => buildLayout(employees, collapsedIds),
+    [employees, collapsedIds]
   )
-}
 
-// ── Main Component ──────────────────────────────────────────────────────────────
+  const [nodes, setNodes, onNodesChange] = useNodesState(layoutNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(rfEdges)
 
-export default function HierarchyPage({ nodes, employees }: Props) {
-  const tree = buildTree(nodes)
+  useEffect(() => { setNodes(layoutNodes) }, [layoutNodes, setNodes])
+  useEffect(() => { setEdges(rfEdges) }, [rfEdges, setEdges])
 
-  const [addOpen,    setAddOpen]    = useState(false)
-  const [editNode,   setEditNode]   = useState<HierarchyNode | null>(null)
-  const [deleteNode, setDeleteNode] = useState<HierarchyNode | null>(null)
+  const toggleCollapse = useCallback((id: number) => {
+    setCollapsedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }, [])
 
-  const { data, setData, post, put, processing, errors, reset } = useForm<NodeForm>({
-    title:      '',
-    department: '',
-    parentId:   '',
-    employeeId: '',
-    sortOrder:  '0',
-  })
+  // Inject callbacks into every node's data
+  useEffect(() => {
+    setNodes((nds) => nds.map((n) => ({
+      ...n,
+      data: { ...n.data, modifyMode, onToggle: toggleCollapse, onAddSub, onSetReporting, onDetach },
+    })))
+  }, [modifyMode, toggleCollapse, onAddSub, onSetReporting, onDetach, setNodes])
 
-  const openAdd = useCallback(() => {
-    reset()
-    setEditNode(null)
-    setAddOpen(true)
-  }, [reset])
+  // Drag-to-reparent
+  const dropTargetId = useRef<string | null>(null)
 
-  const openEdit = useCallback((node: HierarchyNode) => {
-    setData({
-      title:      node.title ?? '',
-      department: node.department ?? '',
-      parentId:   node.parentId ? String(node.parentId) : '',
-      employeeId: node.employeeId ? String(node.employeeId) : '',
-      sortOrder:  node.sortOrder !== undefined ? String(node.sortOrder) : '0',
-    })
-    setEditNode(node)
-    setAddOpen(true)
-  }, [setData])
-
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault()
-    if (editNode) {
-      put(`/hrms/organization/hierarchy/${editNode.id}`, {
-        onSuccess: () => { setAddOpen(false); setEditNode(null) },
-      })
-    } else {
-      post('/hrms/organization/hierarchy', {
-        onSuccess: () => { setAddOpen(false); reset() },
-      })
+  const onNodeDrag: OnNodeDrag = useCallback((_e, dn) => {
+    const cx = dn.position.x + NODE_W / 2, cy = dn.position.y + CARD_H / 2
+    let found: string | null = null
+    for (const n of nodes) {
+      if (n.id === dn.id) continue
+      if (cx >= n.position.x && cx <= n.position.x + NODE_W && cy >= n.position.y && cy <= n.position.y + CARD_H) {
+        found = n.id; break
+      }
     }
-  }, [editNode, put, post, reset])
+    if (found !== dropTargetId.current) {
+      dropTargetId.current = found
+      setNodes((nds) => nds.map((n) => ({ ...n, data: { ...n.data, isDropTarget: n.id === found } })))
+    }
+  }, [nodes, setNodes])
 
-  const handleDelete = useCallback(() => {
-    if (!deleteNode) return
-    router.delete(`/hrms/organization/hierarchy/${deleteNode.id}`, {
-      onSuccess: () => setDeleteNode(null),
-    })
-  }, [deleteNode])
+  const onNodeDragStop: OnNodeDrag = useCallback((_e, dn) => {
+    const cx = dn.position.x + NODE_W / 2, cy = dn.position.y + CARD_H / 2
+    let targetNode: Node | null = null
+    for (const n of nodes) {
+      if (n.id === dn.id) continue
+      if (cx >= n.position.x && cx <= n.position.x + NODE_W && cy >= n.position.y && cy <= n.position.y + CARD_H) {
+        targetNode = n; break
+      }
+    }
+    dropTargetId.current = null
+    setNodes((nds) => nds.map((n) => {
+      const snap = posOf.get(Number(n.id))
+      return { ...n, position: snap ?? n.position, data: { ...n.data, isDropTarget: false } }
+    }))
+    if (!targetNode) return
+    const dId = Number(dn.id), tId = Number(targetNode.id)
+    const dEmp = employees.find((e) => e.id === dId)
+    const tEmp = employees.find((e) => e.id === tId)
+    if (!dEmp || !tEmp) return
+    const descendants = getDescendantIds(dId, childrenOf)
+    if (descendants.has(tId) || dEmp.reportingToId === tId) return
+    setMoveConfirm({ empId: dId, empName: dEmp.fullName, targetId: tId, targetName: tEmp.fullName })
+    setMoveOpen(true)
+  }, [nodes, setNodes, employees, posOf, childrenOf])
+
+  const handleMove = useCallback(() => {
+    if (!moveConfirm) return
+    router.patch(
+      `/hrms/organization/hierarchy/${moveConfirm.empId}/reporting`,
+      { reportingToId: moveConfirm.targetId },
+      { onSuccess: () => { setMoveOpen(false); setMoveConfirm(null) } }
+    )
+  }, [moveConfirm])
+
+  const toggleFullscreen = useCallback(() => {
+    const el = containerRef.current; if (!el) return
+    if (!document.fullscreenElement) el.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {})
+    else document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    const h = () => setIsFullscreen(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', h)
+    return () => document.removeEventListener('fullscreenchange', h)
+  }, [])
 
   return (
     <>
+      <div
+        ref={containerRef}
+        style={{
+          height: isFullscreen ? '100vh' : 'calc(100vh - 230px)',
+          minHeight: 520,
+          borderRadius: isFullscreen ? 0 : 14,
+          overflow: 'hidden',
+          border: '1.5px solid var(--border)',
+          background: 'var(--surface)',
+          position: 'relative',
+        }}
+      >
+        <ReactFlow
+          nodes={nodes} edges={edges}
+          onNodesChange={onNodesChange} onEdgesChange={onEdgesChange}
+          nodeTypes={NODE_TYPES}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
+          fitView fitViewOptions={{ padding: 0.22, maxZoom: 1 }}
+          minZoom={0.06} maxZoom={2}
+          nodesDraggable nodesConnectable={false} elementsSelectable={false}
+          proOptions={{ hideAttribution: true }}
+          style={{ background: 'transparent' }}
+          deleteKeyCode={null}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} color="rgba(0,0,0,.1)" />
+
+          {/* Toolbar overlay */}
+          <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 10, display: 'flex', gap: 6 }}>
+            <ChartBtn onClick={() => fitView({ padding: 0.22, duration: 400 })}>
+              <Target size={13} /> Center
+            </ChartBtn>
+            <ChartBtn onClick={() => setCollapsedIds(new Set())}>
+              <Plus size={13} /> Expand All
+            </ChartBtn>
+            <ChartBtn onClick={toggleFullscreen}>
+              {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              {isFullscreen ? 'Exit' : 'Fullscreen'}
+            </ChartBtn>
+          </div>
+
+          <Controls showInteractive={false} style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)' }} />
+        </ReactFlow>
+      </div>
+
+      {/* Move confirm modal */}
+      <Modal
+        open={moveOpen}
+        onClose={() => { setMoveOpen(false); setMoveConfirm(null) }}
+        title="Move Employee"
+        size="sm"
+        icon={<Move size={15} />}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => { setMoveOpen(false); setMoveConfirm(null) }}>Cancel</button>
+            <button className="btn btn-p" onClick={handleMove}><Move size={13} /> Confirm</button>
+          </div>
+        }
+      >
+        {moveConfirm && (
+          <div style={{ padding: '4px 0' }}>
+            <p style={{ fontSize: '.85rem', color: 'var(--text2)', marginBottom: 12 }}>
+              Set <strong>{moveConfirm.empName}</strong>'s reporting manager to <strong>{moveConfirm.targetName}</strong>?
+            </p>
+            <div style={{ display: 'flex', gap: 8, padding: '10px 12px', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', borderRadius: 9, alignItems: 'center' }}>
+              <Network size={13} style={{ color: 'var(--p)', flexShrink: 0 }} />
+              <span style={{ fontSize: '.78rem', color: 'var(--text2)' }}>Subordinates will move along with them.</span>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </>
+  )
+}
+
+function ChartBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '6px 13px', borderRadius: 8,
+        background: 'var(--surface)', color: 'var(--text2)',
+        border: '1.5px solid var(--border)',
+        cursor: 'pointer', fontSize: '.74rem', fontWeight: 700,
+        boxShadow: '0 1px 4px rgba(0,0,0,.08)',
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--bg2)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = 'var(--surface)' }}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ── Main Page ──────────────────────────────────────────────────────────────────
+
+export default function HierarchyPage({ employees, divisions, departments }: Props) {
+  // Filter
+  const [filterDiv,  setFilterDiv]  = useState('')
+  const [filterDept, setFilterDept] = useState('')
+  const [applied,    setApplied]    = useState(false)
+  const [modifyMode, setModifyMode] = useState(false)
+
+  // Modals
+  const [reportingFor,   setReportingFor]   = useState<Employee | null>(null)
+  const [detachFor,      setDetachFor]       = useState<Employee | null>(null)
+  const [assignSubFor,   setAssignSubFor]    = useState<Employee | null>(null)
+  const [newReportingId, setNewReportingId]  = useState('')
+  const [newSubId,       setNewSubId]        = useState('')
+
+  // Departments filtered to selected division's employees
+  const divisionDepts = useMemo(() => {
+    if (!filterDiv) return []
+    const deptIds = new Set(
+      employees
+        .filter((e) => e.divisionId === Number(filterDiv) && e.departmentId)
+        .map((e) => e.departmentId as number)
+    )
+    return departments.filter((d) => deptIds.has(d.id))
+  }, [filterDiv, employees, departments])
+
+  // Filtered employees for the canvas
+  const filteredEmployees = useMemo(() => {
+    if (!applied || !filterDiv) return []
+    return employees.filter((e) => {
+      if (e.divisionId !== Number(filterDiv)) return false
+      if (filterDept && e.departmentId !== Number(filterDept)) return false
+      return true
+    })
+  }, [applied, filterDiv, filterDept, employees])
+
+  function applyFilter() {
+    if (!filterDiv) return
+    setApplied(true)
+    setModifyMode(false)
+  }
+
+  function handleDownload() {
+    const filteredIds = new Set(filteredEmployees.map((e) => e.id))
+    const rows = [['Employee Code', 'Name', 'Designation', 'Department', 'Reports To']]
+    filteredEmployees.forEach((emp) => {
+      const mgr = emp.reportingToId && filteredIds.has(emp.reportingToId)
+        ? employees.find((e) => e.id === emp.reportingToId) : null
+      rows.push([
+        emp.employeeCode ?? '',
+        emp.fullName,
+        emp.designationName ?? '',
+        emp.departmentName ?? '',
+        mgr?.fullName ?? '',
+      ])
+    })
+    const csv = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `hierarchy-${divisions.find((d) => String(d.id) === filterDiv)?.name ?? 'export'}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Stable modal openers (passed into chart)
+  const handleSetReporting = useCallback((emp: Employee) => { setReportingFor(emp); setNewReportingId('') }, [])
+  const handleDetach        = useCallback((emp: Employee) => { setDetachFor(emp) }, [])
+  const handleAssignSub     = useCallback((emp: Employee) => { setAssignSubFor(emp); setNewSubId('') }, [])
+
+  function confirmSetReporting() {
+    if (!reportingFor || !newReportingId) return
+    router.patch(
+      `/hrms/organization/hierarchy/${reportingFor.id}/reporting`,
+      { reportingToId: newReportingId },
+      { onSuccess: () => { setReportingFor(null); setNewReportingId('') } }
+    )
+  }
+
+  function confirmDetach() {
+    if (!detachFor) return
+    router.patch(
+      `/hrms/organization/hierarchy/${detachFor.id}/reporting`,
+      { reportingToId: '' },
+      { onSuccess: () => setDetachFor(null) }
+    )
+  }
+
+  function confirmAssignSub() {
+    if (!assignSubFor || !newSubId) return
+    router.patch(
+      `/hrms/organization/hierarchy/${newSubId}/reporting`,
+      { reportingToId: String(assignSubFor.id) },
+      { onSuccess: () => { setAssignSubFor(null); setNewSubId('') } }
+    )
+  }
+
+  const selectedDiv  = divisions.find((d) => String(d.id) === filterDiv)
+  const hasResults   = applied && filteredEmployees.length > 0
+
+  return (
+    <>
+      {/* Print styles */}
+      <style>{`@media print { .no-print { display: none !important; } }`}</style>
+
       {/* ── Page Header ── */}
-      <div className="ph">
-        <div>
-          <div className="ph-title">Organization Hierarchy</div>
-          <div className="ph-sub">
-            Visual tree of your organizational structure — divisions, departments, and reporting lines
+      <div className="ph no-print">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <div className="ph-title">Organization Hierarchy</div>
+            <div className="ph-sub">Drag cards to reparent · auto-built from employee reporting relationships</div>
           </div>
-        </div>
-        <div className="ph-right">
-          <button className="btn btn-p" onClick={openAdd}>
-            <Plus size={14} /> Add Node
-          </button>
-        </div>
-      </div>
-
-      {/* ── Stats strip ── */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
-        {[
-          { label: 'Total Nodes',   value: nodes.length,                                                         color: '#0D9488' },
-          { label: 'Root Nodes',    value: nodes.filter((n) => !n.parentId).length,                              color: '#7C3AED' },
-          { label: 'With Employee', value: nodes.filter((n) => n.employeeId !== null && n.employeeId !== undefined).length, color: '#059669' },
-        ].map((s) => (
-          <div key={s.label} style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 14px', borderRadius: 10,
-            background: 'var(--surface)', border: '1px solid var(--border)',
-          }}>
-            <div style={{ fontFamily: 'var(--fd)', fontSize: '.95rem', fontWeight: 800, color: s.color }}>
-              {s.value}
-            </div>
-            <div style={{ fontSize: '.68rem', color: 'var(--text3)', fontWeight: 600 }}>{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* ── Tree ── */}
-      {tree.length === 0 ? (
-        <div className="card">
-          <div style={{
-            padding: '64px 24px', textAlign: 'center',
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
-          }}>
-            <div style={{
-              width: 72, height: 72, borderRadius: 20,
-              background: 'linear-gradient(135deg, var(--p-lt), var(--s-lt))',
-              border: '1px solid var(--p-mid)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--p)',
-            }}>
-              <GitBranch size={30} />
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--fd)', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text1)', marginBottom: 8 }}>
-                No hierarchy defined yet
-              </div>
-              <div style={{ fontSize: '.8rem', color: 'var(--text3)', maxWidth: 320, lineHeight: 1.65, marginBottom: 20 }}>
-                Start building your organizational structure by adding the first node — typically a division or top-level department.
-              </div>
-              <button className="btn btn-p" onClick={openAdd}>
-                <Plus size={14} /> Add First Node
+          {hasResults && (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => window.print()}>
+                <Printer size={14} /> Print
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={handleDownload}>
+                <Download size={14} /> Export CSV
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${modifyMode ? 'btn-p' : 'btn-outline-p'}`}
+                onClick={() => setModifyMode((m) => !m)}
+              >
+                <Settings2 size={14} />
+                {modifyMode ? 'Exit Modify' : 'Modify'}
               </button>
             </div>
-          </div>
+          )}
         </div>
-      ) : (
-        <div className="card">
-          <div className="card-h">
-            <div>
-              <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--p)', boxShadow: '0 0 0 3px var(--p-ring)', flexShrink: 0 }} />
-                Organizational Tree
-              </div>
-              <div className="card-sub">Click the arrows to expand or collapse branches</div>
+      </div>
+
+      {/* ── Filter Bar ── */}
+      <div className="card no-print" style={{ marginBottom: 14 }}>
+        <div className="card-b">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+            <div className="fg" style={{ marginBottom: 0 }}>
+              <label className="flbl">
+                <Building2 size={12} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle', color: 'var(--p)' }} />
+                Division <span className="req">*</span>
+              </label>
+              <SelectSearch
+                value={filterDiv}
+                onChange={(v) => { setFilterDiv(v); setFilterDept(''); setApplied(false) }}
+                placeholder="Select division…"
+                options={divisions.map((d) => ({ value: String(d.id), label: d.name, sub: d.code }))}
+              />
             </div>
-            <button className="btn btn-outline-p btn-sm" onClick={openAdd}>
-              <Plus size={13} /> Add Node
+            <div className="fg" style={{ marginBottom: 0 }}>
+              <label className="flbl">
+                <Layers size={12} style={{ display: 'inline', marginRight: 5, verticalAlign: 'middle', color: 'var(--p)' }} />
+                Department <span style={{ color: 'var(--text4)', fontWeight: 400 }}>(optional)</span>
+              </label>
+              <SelectSearch
+                value={filterDept}
+                onChange={(v) => { setFilterDept(v); setApplied(false) }}
+                placeholder={filterDiv ? 'All departments' : 'Select division first'}
+                options={divisionDepts.map((d) => ({ value: String(d.id), label: d.name, sub: d.code }))}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn btn-p"
+              onClick={applyFilter}
+              disabled={!filterDiv}
+              style={{ height: 38 }}
+            >
+              <Filter size={14} /> Apply
             </button>
           </div>
-          <div className="card-b">
-            <div style={{ paddingLeft: 8 }}>
-              {tree.map((node, i) => (
-                <NodeCard
-                  key={node.id}
-                  node={node}
-                  depth={0}
-                  allNodes={nodes}
-                  onEdit={openEdit}
-                  onDelete={setDeleteNode}
-                  isLast={i === tree.length - 1}
-                />
-              ))}
-            </div>
+        </div>
+      </div>
+
+      {/* ── Empty states ── */}
+      {!applied && (
+        <div className="card" style={{ padding: '72px 24px', textAlign: 'center' }}>
+          <div style={{
+            width: 68, height: 68, borderRadius: '50%',
+            background: 'var(--p-lt)', border: '1.5px solid var(--p-mid)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px', color: 'var(--p)',
+          }}>
+            <Network size={30} />
+          </div>
+          <div style={{ fontSize: '.96rem', fontWeight: 700, color: 'var(--text1)', marginBottom: 8 }}>
+            Select a division to view hierarchy
+          </div>
+          <div style={{ fontSize: '.8rem', color: 'var(--text4)', maxWidth: 400, margin: '0 auto', lineHeight: 1.6 }}>
+            The org chart is auto-built from employee profiles using their reporting relationships.
+            Pick a division — and optionally a department — then click Apply.
           </div>
         </div>
       )}
 
-      {/* ── Add/Edit Modal ── */}
-      <NodeModal
-        open={addOpen}
-        onClose={() => { setAddOpen(false); setEditNode(null) }}
-        editing={editNode}
-        allNodes={nodes}
-        employees={employees}
-        processing={processing}
-        data={data}
-        setData={(k, v) => setData(k, v)}
-        errors={errors}
-        onSubmit={handleSubmit}
-      />
+      {applied && filteredEmployees.length === 0 && (
+        <div className="card" style={{ padding: '72px 24px', textAlign: 'center' }}>
+          <div style={{
+            width: 68, height: 68, borderRadius: '50%',
+            background: 'var(--bg2)', border: '1.5px solid var(--border)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 20px', color: 'var(--text4)',
+          }}>
+            <Users size={30} />
+          </div>
+          <div style={{ fontSize: '.96rem', fontWeight: 700, color: 'var(--text1)', marginBottom: 8 }}>
+            No employees found
+          </div>
+          <div style={{ fontSize: '.8rem', color: 'var(--text4)' }}>
+            No active employees in this division{filterDept ? ' / department' : ''}.
+          </div>
+        </div>
+      )}
 
-      {/* ── Delete Confirm Modal ── */}
-      <DeleteModal
-        open={deleteNode !== null}
-        onClose={() => setDeleteNode(null)}
-        node={deleteNode}
-        onConfirm={handleDelete}
-      />
+      {/* ── Chart info bar + canvas ── */}
+      {hasResults && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          {/* Info bar */}
+          <div style={{
+            padding: '10px 16px',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: '.85rem', color: 'var(--text1)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Building2 size={14} style={{ color: 'var(--p)' }} />
+                {selectedDiv?.name}
+                {filterDept && (
+                  <span style={{ fontWeight: 400, color: 'var(--text3)', fontSize: '.78rem' }}>
+                    › {departments.find((d) => String(d.id) === filterDept)?.name}
+                  </span>
+                )}
+              </div>
+              <span style={{
+                fontSize: '.7rem', color: 'var(--text4)',
+                background: 'var(--surface)', padding: '2px 8px', borderRadius: 20,
+                border: '1px solid var(--border)',
+              }}>
+                {filteredEmployees.length} employees
+              </span>
+              {modifyMode && (
+                <span style={{
+                  fontSize: '.7rem', fontWeight: 700,
+                  color: 'var(--warn)', background: 'var(--warn-lt)',
+                  padding: '2px 8px', borderRadius: 20, border: '1px solid var(--warn)',
+                }}>
+                  Modify Mode — Hover cards to edit
+                </span>
+              )}
+            </div>
+            {modifyMode && (
+              <div style={{ fontSize: '.72rem', color: 'var(--text4)', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <UserPlus size={11} style={{ color: '#0D9488' }} /> Add sub
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Pencil size={11} style={{ color: '#2563EB' }} /> Change reporting
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Unlink size={11} style={{ color: '#ef4444' }} /> Detach
+                </span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Move size={11} style={{ color: 'var(--text3)' }} /> Drag to reparent
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* React Flow canvas */}
+          <ReactFlowProvider>
+            <ChartInner
+              employees={filteredEmployees}
+              modifyMode={modifyMode}
+              onAddSub={handleAssignSub}
+              onSetReporting={handleSetReporting}
+              onDetach={handleDetach}
+            />
+          </ReactFlowProvider>
+        </div>
+      )}
+
+      {/* ── Modal: Change Reporting Manager ── */}
+      <Modal
+        open={!!reportingFor}
+        onClose={() => { setReportingFor(null); setNewReportingId('') }}
+        title="Change Reporting Manager"
+        size="sm"
+        icon={<Pencil size={14} />}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-ghost" onClick={() => { setReportingFor(null); setNewReportingId('') }}>Cancel</button>
+            <button type="button" className="btn btn-p" onClick={confirmSetReporting} disabled={!newReportingId}>
+              <Save size={14} /> Update
+            </button>
+          </div>
+        }
+      >
+        {reportingFor && (
+          <div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 14px', background: 'var(--bg2)', borderRadius: 10,
+              border: '1px solid var(--border)', marginBottom: 18,
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                background: avatarColor(reportingFor.id) + '20',
+                border: `2px solid ${avatarColor(reportingFor.id)}35`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: '.8rem', color: avatarColor(reportingFor.id),
+              }}>
+                {initials(reportingFor.fullName)}
+              </div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: '.86rem', color: 'var(--text1)' }}>{reportingFor.fullName}</div>
+                {reportingFor.designationName && (
+                  <div style={{ fontSize: '.72rem', color: 'var(--p)' }}>{reportingFor.designationName}</div>
+                )}
+              </div>
+            </div>
+            <div className="fg" style={{ marginBottom: 0 }}>
+              <label className="flbl">New Reporting Manager</label>
+              <SelectSearch
+                value={newReportingId}
+                onChange={setNewReportingId}
+                placeholder="Search and select…"
+                options={employees
+                  .filter((e) => e.id !== reportingFor.id)
+                  .map((e) => ({
+                    value: String(e.id),
+                    label: e.fullName,
+                    sub: [e.designationName, e.employeeCode].filter(Boolean).join(' · ') || undefined,
+                  }))}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Modal: Detach ── */}
+      <Modal
+        open={!!detachFor}
+        onClose={() => setDetachFor(null)}
+        title="Remove from Hierarchy"
+        size="sm"
+        icon={<Unlink size={14} />}
+        variant="danger"
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-ghost" onClick={() => setDetachFor(null)}>Cancel</button>
+            <button type="button" className="btn btn-danger" onClick={confirmDetach}>
+              <Unlink size={14} /> Remove
+            </button>
+          </div>
+        }
+      >
+        {detachFor && (
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <AlertTriangle size={20} style={{ color: 'var(--warn)', flexShrink: 0, marginTop: 1 }} />
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '.88rem', color: 'var(--text1)', marginBottom: 6 }}>
+                Remove <strong>{detachFor.fullName}</strong> from the reporting structure?
+              </div>
+              <div style={{ fontSize: '.8rem', color: 'var(--text3)', lineHeight: 1.55 }}>
+                Their reporting manager will be cleared. Their subordinates remain but will become root-level nodes.
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── Modal: Assign Subordinate ── */}
+      <Modal
+        open={!!assignSubFor}
+        onClose={() => { setAssignSubFor(null); setNewSubId('') }}
+        title="Add Subordinate"
+        size="sm"
+        icon={<UserPlus size={14} />}
+        footer={
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-ghost" onClick={() => { setAssignSubFor(null); setNewSubId('') }}>Cancel</button>
+            <button type="button" className="btn btn-p" onClick={confirmAssignSub} disabled={!newSubId}>
+              <UserPlus size={14} /> Assign
+            </button>
+          </div>
+        }
+      >
+        {assignSubFor && (
+          <div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '12px 14px', background: 'var(--bg2)', borderRadius: 10,
+              border: '1px solid var(--border)', marginBottom: 18,
+            }}>
+              <div style={{
+                width: 38, height: 38, borderRadius: '50%', flexShrink: 0,
+                background: avatarColor(assignSubFor.id) + '20',
+                border: `2px solid ${avatarColor(assignSubFor.id)}35`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 700, fontSize: '.8rem', color: avatarColor(assignSubFor.id),
+              }}>
+                {initials(assignSubFor.fullName)}
+              </div>
+              <div>
+                <div style={{ fontSize: '.72rem', color: 'var(--text4)', marginBottom: 2 }}>Adding subordinate under</div>
+                <div style={{ fontWeight: 700, fontSize: '.86rem', color: 'var(--text1)' }}>{assignSubFor.fullName}</div>
+                {assignSubFor.designationName && (
+                  <div style={{ fontSize: '.72rem', color: 'var(--p)' }}>{assignSubFor.designationName}</div>
+                )}
+              </div>
+            </div>
+            <div className="fg" style={{ marginBottom: 0 }}>
+              <label className="flbl">Select Employee</label>
+              <SelectSearch
+                value={newSubId}
+                onChange={setNewSubId}
+                placeholder="Search and select employee…"
+                options={employees
+                  .filter((e) => e.id !== assignSubFor.id)
+                  .map((e) => ({
+                    value: String(e.id),
+                    label: e.fullName,
+                    sub: [e.designationName, e.employeeCode].filter(Boolean).join(' · ') || undefined,
+                  }))}
+              />
+            </div>
+          </div>
+        )}
+      </Modal>
     </>
   )
 }

@@ -323,16 +323,22 @@ export function OverviewTab({ org, leadOwners }: Props) {
     })
   }
 
-  async function loginAsSuperAdmin() {
+  function loginAsSuperAdmin() {
     if (!superAdmin) return
-    const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '')
-    const res = await fetch(`/orgbuilder/organizations/${org.id}/super-admin/impersonate`, {
+    const tab = window.open('', '_blank')
+    if (!tab) return
+    tab.document.write('<html><body style="font-family:sans-serif;padding:2rem;color:#555">Logging in…</body></html>')
+    const xsrf = decodeURIComponent(
+      document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? ''
+    )
+    fetch(`/orgbuilder/organizations/${org.id}/super-admin/impersonate`, {
       method: 'POST',
+      credentials: 'same-origin',
       headers: { 'X-XSRF-TOKEN': xsrf, 'Accept': 'application/json' },
     })
-    if (!res.ok) return
-    const { redirectUrl } = await res.json()
-    window.open(redirectUrl, '_blank')
+      .then((r) => r.ok ? r.json() : Promise.reject())
+      .then(({ redirectUrl }) => { tab.location.href = redirectUrl })
+      .catch(() => tab.close())
   }
 
   function handleResetPassword() {

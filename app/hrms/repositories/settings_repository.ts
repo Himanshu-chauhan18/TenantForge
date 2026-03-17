@@ -14,6 +14,7 @@ import HrmsCompanyDocument from '#models/hrms_company_document'
 import HrmsChecklist from '#models/hrms_checklist'
 import HrmsTemplate from '#models/hrms_template'
 import HrmsHierarchyNode from '#models/hrms_hierarchy_node'
+import OrganizationUser from '#models/organization_user'
 
 // ── Code auto-generation helpers ─────────────────────────────────────────────
 async function nextCode(table: string, prefix: string, orgId: number): Promise<string> {
@@ -96,14 +97,15 @@ export default class HrmsSettingsRepository {
     return HrmsDepartment.query().where('org_id', orgId).orderBy('code')
   }
 
-  async createDepartment(orgId: number, name: string) {
+  async createDepartment(orgId: number, name: string, divisionId?: number | null) {
     const code = await nextCode('hrms_departments', 'DEP', orgId)
-    return HrmsDepartment.create({ orgId, code, name, isActive: true })
+    return HrmsDepartment.create({ orgId, code, name, divisionId: divisionId ?? null, isActive: true })
   }
 
-  async updateDepartment(id: number, orgId: number, name: string) {
+  async updateDepartment(id: number, orgId: number, name: string, divisionId?: number | null) {
     const dep = await HrmsDepartment.query().where('id', id).where('org_id', orgId).firstOrFail()
     dep.name = name
+    dep.divisionId = divisionId ?? dep.divisionId
     await dep.save()
     return dep
   }
@@ -417,24 +419,89 @@ export default class HrmsSettingsRepository {
   }
 
   // ── Hierarchy ───────────────────────────────────────────────────────────────
+  async autoSyncHierarchyFromEmployees(
+    orgId: number,
+    divisionId: number,
+    employees: OrganizationUser[],
+    desMap: Map<number, string>,
+    deptMap: Map<number, string>
+  ) {
+    if (employees.length === 0) return
+
+    // Load all existing nodes, including parent_id so we can check current state
+    const existingNodes = await HrmsHierarchyNode.query()
+      .where('org_id', orgId)
+      .where('division_id', divisionId)
+      .select('id', 'employee_id', 'parent_id')
+
+    const empToNodeId = new Map<number, number>()
+    const nodeParentId = new Map<number, number | null>() // nodeId → current parentId
+    for (const n of existingNodes) {
+      if (n.employeeId) empToNodeId.set(n.employeeId, n.id)
+      nodeParentId.set(n.id, n.parentId)
+    }
+
+    // Pass 1: create nodes for employees who don't have one yet
+    for (const emp of employees) {
+      if (empToNodeId.has(emp.id)) continue
+      const title = (emp.designationId ? desMap.get(emp.designationId) : null) ?? emp.fullName
+      const department = (emp.departmentId ? deptMap.get(emp.departmentId) : null) ?? null
+      const node = await HrmsHierarchyNode.create({
+        orgId, divisionId, title, employeeId: emp.id, department, parentId: null, sortOrder: 0,
+      })
+      empToNodeId.set(emp.id, node.id)
+      nodeParentId.set(node.id, null)
+    }
+
+    // Pass 2: wire parents from reportingToId for every employee whose node has parentId = null
+    // (skips nodes that were manually positioned — their parentId is already set)
+    for (const emp of employees) {
+      if (!emp.reportingToId) continue
+      const nodeId = empToNodeId.get(emp.id)
+      const parentNodeId = empToNodeId.get(emp.reportingToId)
+      if (!nodeId || !parentNodeId) continue
+      // Only auto-wire when currently null — don't override manual placements
+      if (nodeParentId.get(nodeId) !== null) continue
+      const node = await HrmsHierarchyNode.find(nodeId)
+      if (node) { node.parentId = parentNodeId; await node.save() }
+    }
+  }
+
   async listHierarchy(orgId: number) {
     return HrmsHierarchyNode.query()
       .where('org_id', orgId)
       .preload('employee')
-      .preload('children', (q) => q.preload('employee').preload('children', (q2) => q2.preload('employee')))
-      .whereNull('parent_id')
+      .preload('division')
       .orderBy('sort_order')
   }
 
   async createHierarchyNode(orgId: number, data: Partial<HrmsHierarchyNode>) {
-    return HrmsHierarchyNode.create({ ...data, orgId })
+    const node = await HrmsHierarchyNode.create({ ...data, orgId })
+    await this.syncReportingTo(node)
+    return node
   }
 
   async updateHierarchyNode(id: number, orgId: number, data: Partial<HrmsHierarchyNode>) {
     const node = await HrmsHierarchyNode.query().where('id', id).where('org_id', orgId).firstOrFail()
     node.merge(data)
     await node.save()
+    await this.syncReportingTo(node)
     return node
+  }
+
+  private async syncReportingTo(node: HrmsHierarchyNode) {
+    if (!node.employeeId) return
+    let reportingToId: number | null = null
+    if (node.parentId) {
+      const parent = await HrmsHierarchyNode.query()
+        .where('id', node.parentId)
+        .select('employee_id')
+        .first()
+      reportingToId = parent?.employeeId ?? null
+    }
+    await OrganizationUser.query()
+      .where('id', node.employeeId)
+      .update({ reporting_to_id: reportingToId })
   }
 
   async deleteHierarchyNode(id: number, orgId: number) {

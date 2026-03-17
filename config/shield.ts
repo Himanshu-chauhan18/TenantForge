@@ -36,7 +36,12 @@ const shieldConfig = defineConfig({
      * Route patterns to exclude from CSRF checks.
      * Useful for external webhooks or API endpoints.
      */
-    exceptRoutes: [],
+    // Impersonate routes are excluded because they are already protected by the
+    // OrgBuilder admin auth() middleware — CSRF adds no additional security here.
+    exceptRoutes: [
+      '/orgbuilder/organizations/:id/users/:userId/impersonate',
+      '/orgbuilder/organizations/:id/super-admin/impersonate',
+    ],
 
     /**
      * Expose an encrypted XSRF-TOKEN cookie for frontend HTTP clients.

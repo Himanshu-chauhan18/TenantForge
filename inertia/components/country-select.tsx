@@ -33,13 +33,14 @@ export function CountrySelect({
   const timer   = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
+    if (!open) return
     const fn = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node))
         setOpen(false)
     }
     document.addEventListener('mousedown', fn)
     return () => document.removeEventListener('mousedown', fn)
-  }, [])
+  }, [open])
 
   // Close on scroll/resize so the fixed dropdown never drifts with the page
   useEffect(() => {

@@ -21,6 +21,9 @@ export default class OrganizationProfile extends BaseModel {
   @column()
   declare dataAccess: 'all' | 'organization' | 'self' | 'custom'
 
+  @column()
+  declare isDefault: boolean
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

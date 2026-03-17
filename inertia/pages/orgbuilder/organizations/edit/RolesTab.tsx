@@ -420,12 +420,14 @@ export function RolesTab({ org }: Props) {
               <button style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: 6, fontSize: '.72rem', fontWeight: 600, color: 'var(--p)', background: 'var(--p-lt)', border: '1px solid var(--p-mid)', cursor: 'pointer' }} onClick={() => openEdit(selectedProfile)}>
                 <Pencil size={11} /> Edit
               </button>
-              <button
-                style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 7px', borderRadius: 6, color: 'var(--text3)', background: 'transparent', border: '1px solid var(--border)', cursor: 'pointer' }}
-                onClick={() => setDeleteOpen(true)}
-                onMouseEnter={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.color = '#ef4444'; b.style.borderColor = '#fecaca'; b.style.background = 'rgba(239,68,68,.06)' }}
-                onMouseLeave={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.color = 'var(--text3)'; b.style.borderColor = 'var(--border)'; b.style.background = 'transparent' }}
-              ><Trash2 size={12} /></button>
+              {!selectedProfile.isDefault && (
+                <button
+                  style={{ display: 'inline-flex', alignItems: 'center', padding: '4px 7px', borderRadius: 6, color: 'var(--text3)', background: 'transparent', border: '1px solid var(--border)', cursor: 'pointer' }}
+                  onClick={() => setDeleteOpen(true)}
+                  onMouseEnter={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.color = '#ef4444'; b.style.borderColor = '#fecaca'; b.style.background = 'rgba(239,68,68,.06)' }}
+                  onMouseLeave={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.color = 'var(--text3)'; b.style.borderColor = 'var(--border)'; b.style.background = 'transparent' }}
+                ><Trash2 size={12} /></button>
+              )}
             </div>
           </div>
 
@@ -594,6 +596,7 @@ function AddonGroupAccordion({ grp, mKey, isOpen, onToggle, getPerm, setPerm, se
   setGroupAll: (mKey: string, names: string[], val: boolean) => void
 }) {
   const cbRef    = useRef<HTMLInputElement>(null)
+  const bodyRef  = useRef<HTMLDivElement>(null)
   const names    = grp.items.map((a) => a.name)
   const grantedCnt = names.filter((n) => { const p = getPerm(mKey, n); return p.canView && p.canAdd && p.canEdit && p.canDelete }).length
   const anyCnt   = names.filter((n) => { const p = getPerm(mKey, n); return p.canView || p.canAdd || p.canEdit || p.canDelete }).length
@@ -605,6 +608,28 @@ function AddonGroupAccordion({ grp, mKey, isOpen, onToggle, getPerm, setPerm, se
   useEffect(() => {
     if (cbRef.current) cbRef.current.indeterminate = someSel
   }, [someSel])
+
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    const el = bodyRef.current
+    if (!el) return
+    if (!mountedRef.current) {
+      el.style.maxHeight = isOpen ? 'none' : '0px'
+      el.style.overflow  = isOpen ? 'visible' : 'hidden'
+      mountedRef.current = true
+      return
+    }
+    if (isOpen) {
+      el.style.overflow  = 'hidden'
+      el.style.maxHeight = el.scrollHeight + 'px'
+      const onEnd = () => { el.style.maxHeight = 'none'; el.style.overflow = 'visible' }
+      el.addEventListener('transitionend', onEnd, { once: true })
+    } else {
+      el.style.overflow  = 'hidden'
+      el.style.maxHeight = el.scrollHeight + 'px'
+      requestAnimationFrame(() => requestAnimationFrame(() => { el.style.maxHeight = '0px' }))
+    }
+  }, [isOpen])
 
   const rowHeight = 40
 
@@ -643,8 +668,7 @@ function AddonGroupAccordion({ grp, mKey, isOpen, onToggle, getPerm, setPerm, se
         </div>
       </div>
 
-      {/* Addon rows — open: no max-height limit (no mount animation); close: animate to 0 */}
-      <div className="perm-acc-body" style={{ maxHeight: isOpen ? 'none' : '0px', overflow: isOpen ? 'visible' : 'hidden' }}>
+      <div ref={bodyRef} className="perm-acc-body">
         {grp.items.map((addon, idx) => {
           const fKey  = addon.name
           const perm  = getPerm(mKey, fKey)

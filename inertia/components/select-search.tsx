@@ -20,11 +20,13 @@ export function SelectSearch({
   onChange,
   options,
   placeholder = 'Select...',
+  inputStyle,
 }: {
   value: string
   onChange: (v: string) => void
   options: SelectOption[]
   placeholder?: string
+  inputStyle?: React.CSSProperties
 }) {
   const [open, setOpen]       = useState(false)
   const [search, setSearch]   = useState('')
@@ -87,6 +89,7 @@ export function SelectSearch({
   const dropdown = open && dropPos ? (
     <div
       ref={dropdownRef}
+      data-ss-dropdown="true"
       style={{
         position: 'fixed',
         top: dropPos.top,
@@ -162,7 +165,7 @@ export function SelectSearch({
       <button
         type="button"
         className="fi"
-        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', textAlign: 'left', ...inputStyle }}
         onClick={handleOpen}
       >
         <span style={{ flex: 1, color: selected ? 'var(--text1)' : 'var(--text4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

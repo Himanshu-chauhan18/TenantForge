@@ -1,6 +1,7 @@
-import { BaseModel, column, hasMany } from '@adonisjs/lucid/orm'
-import type { HasMany } from '@adonisjs/lucid/types/relations'
+import { BaseModel, belongsTo, column, hasMany } from '@adonisjs/lucid/orm'
+import type { BelongsTo, HasMany } from '@adonisjs/lucid/types/relations'
 import { DateTime } from 'luxon'
+import HrmsDivision from '#models/hrms_division'
 
 export default class HrmsDepartment extends BaseModel {
   static table = 'hrms_departments'
@@ -10,6 +11,9 @@ export default class HrmsDepartment extends BaseModel {
 
   @column()
   declare orgId: number
+
+  @column()
+  declare divisionId: number | null
 
   @column()
   declare code: string
@@ -25,4 +29,7 @@ export default class HrmsDepartment extends BaseModel {
 
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+
+  @belongsTo(() => HrmsDivision)
+  declare division: BelongsTo<typeof HrmsDivision>
 }

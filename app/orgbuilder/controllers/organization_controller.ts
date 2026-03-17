@@ -4,6 +4,7 @@ import hash from '@adonisjs/core/services/hash'
 import OrganizationService from '#orgbuilder/services/organization_service'
 import OrganizationRepository from '#orgbuilder/repositories/organization_repository'
 import LeadOwnerRepository from '#orgbuilder/repositories/lead_owner_repository'
+import SettingsRepository from '#hrms/repositories/settings_repository'
 import Organization from '#models/organization'
 import OrganizationUser from '#models/organization_user'
 import {
@@ -16,6 +17,7 @@ import {
 
 const orgService = new OrganizationService()
 const leadOwnerRepo = new LeadOwnerRepository()
+const settingsRepo = new SettingsRepository()
 
 export default class OrganizationController {
   async index({ request, inertia }: HttpContext) {
@@ -125,32 +127,56 @@ export default class OrganizationController {
   }
 
   async show({ params, inertia, response }: HttpContext) {
-    const [org, leadOwners] = await Promise.all([
-      orgService.getDetail(Number(params.id)),
+    const orgId = Number(params.id)
+    const [org, leadOwners, divisions, departments, designations, locations] = await Promise.all([
+      orgService.getDetail(orgId),
       leadOwnerRepo.list(),
+      settingsRepo.listDivisions(orgId),
+      settingsRepo.listDepartments(orgId),
+      settingsRepo.listDesignations(orgId),
+      settingsRepo.listLocations(orgId),
     ])
     if (!org) {
       return response.status(404).send('Organization not found')
+    }
+    const hrms = {
+      divisions:    divisions.map((r) => ({ id: r.id, code: r.code, name: r.name })),
+      departments:  departments.map((r) => ({ id: r.id, code: r.code, name: r.name })),
+      designations: designations.map((r) => ({ id: r.id, code: r.code, name: r.name })),
+      locations:    locations.map((r) => ({ id: r.id, code: r.code, name: r.name })),
     }
     // @ts-ignore - inertia page type inference issue
     return inertia.render('orgbuilder/organizations/edit', {
       org: org.serialize(),
       leadOwners: leadOwners.map((o) => o.serialize()),
+      hrms,
     })
   }
 
   async edit({ params, inertia, response }: HttpContext) {
-    const [org, leadOwners] = await Promise.all([
-      orgService.getDetail(Number(params.id)),
+    const orgId = Number(params.id)
+    const [org, leadOwners, divisions, departments, designations, locations] = await Promise.all([
+      orgService.getDetail(orgId),
       leadOwnerRepo.list(),
+      settingsRepo.listDivisions(orgId),
+      settingsRepo.listDepartments(orgId),
+      settingsRepo.listDesignations(orgId),
+      settingsRepo.listLocations(orgId),
     ])
     if (!org) {
       return response.status(404).send('Organization not found')
+    }
+    const hrms = {
+      divisions:    divisions.map((r) => ({ id: r.id, code: r.code, name: r.name })),
+      departments:  departments.map((r) => ({ id: r.id, code: r.code, name: r.name })),
+      designations: designations.map((r) => ({ id: r.id, code: r.code, name: r.name })),
+      locations:    locations.map((r) => ({ id: r.id, code: r.code, name: r.name })),
     }
     // @ts-ignore - inertia page type inference issue
     return inertia.render('orgbuilder/organizations/edit', {
       org: org.serialize(),
       leadOwners: leadOwners.map((o) => o.serialize()),
+      hrms,
     })
   }
 
@@ -374,8 +400,8 @@ export default class OrganizationController {
   }
 
   async storeUser({ params, request, response, session }: HttpContext) {
-    const { fullName, companyEmail, password, employeeCode, phone, gender, dateOfBirth, sendWelcomeMail, isActive, profileId } =
-      request.only(['fullName', 'companyEmail', 'password', 'employeeCode', 'phone', 'gender', 'dateOfBirth', 'sendWelcomeMail', 'isActive', 'profileId'])
+    const { fullName, companyEmail, password, employeeCode, phone, gender, dateOfBirth, sendWelcomeMail, isActive, profileId, divisionId, departmentId, designationId, locationId, reportingToId, reportingToType } =
+      request.only(['fullName', 'companyEmail', 'password', 'employeeCode', 'phone', 'gender', 'dateOfBirth', 'sendWelcomeMail', 'isActive', 'profileId', 'divisionId', 'departmentId', 'designationId', 'locationId', 'reportingToId', 'reportingToType'])
 
     if (!fullName || !companyEmail || !password) {
       session.flash('flashToasts', JSON.stringify(['Name, email, and password are required.']))
@@ -386,6 +412,21 @@ export default class OrganizationController {
     if (exists) {
       session.flash('flashToasts', JSON.stringify(['This email is already registered in an organization.']))
       return response.redirect().back()
+    }
+
+    // Resolve reportingToId: "By Role" sends a profile ID → resolve to first active user with that profile
+    let resolvedReportingToId: number | null = null
+    if (reportingToId) {
+      if (reportingToType === 'role') {
+        const reporter = await OrganizationUser.query()
+          .where('org_id', Number(params.id))
+          .where('profile_id', Number(reportingToId))
+          .where('is_active', true)
+          .first()
+        resolvedReportingToId = reporter?.id ?? null
+      } else {
+        resolvedReportingToId = Number(reportingToId)
+      }
     }
 
     const passwordHash = await hash.make(String(password))
@@ -401,6 +442,11 @@ export default class OrganizationController {
       dateOfBirth: dateOfBirth ? String(dateOfBirth).split('T')[0] : null,
       sendWelcomeMail: sendWelcomeMail === true || sendWelcomeMail === 'true' || sendWelcomeMail === '1',
       isActive: isActive !== false && isActive !== 'false' && isActive !== '0',
+      divisionId:    divisionId    ? Number(divisionId)    : null,
+      departmentId:  departmentId  ? Number(departmentId)  : null,
+      designationId: designationId ? Number(designationId) : null,
+      locationId:    locationId    ? Number(locationId)    : null,
+      reportingToId: resolvedReportingToId,
     })
 
     session.flash('success', `User "${String(fullName).trim()}" added successfully!`)
@@ -408,8 +454,8 @@ export default class OrganizationController {
   }
 
   async updateUser({ params, request, response, session }: HttpContext) {
-    const { fullName, employeeCode, phone, gender, dateOfBirth, isActive, password, profileId } =
-      request.only(['fullName', 'employeeCode', 'phone', 'gender', 'dateOfBirth', 'isActive', 'password', 'profileId'])
+    const { fullName, employeeCode, phone, gender, dateOfBirth, isActive, password, profileId, divisionId, departmentId, designationId, locationId, reportingToId, reportingToType } =
+      request.only(['fullName', 'employeeCode', 'phone', 'gender', 'dateOfBirth', 'isActive', 'password', 'profileId', 'divisionId', 'departmentId', 'designationId', 'locationId', 'reportingToId', 'reportingToType'])
 
     const user = await OrganizationUser.query()
       .where('id', params.userId)
@@ -421,6 +467,22 @@ export default class OrganizationController {
       return response.redirect().back()
     }
 
+    // Resolve reportingToId: "By Role" sends a profile ID → resolve to first active user with that profile
+    let resolvedReportingToId: number | null = null
+    if (reportingToId) {
+      if (reportingToType === 'role') {
+        const reporter = await OrganizationUser.query()
+          .where('org_id', params.id)
+          .where('profile_id', Number(reportingToId))
+          .where('is_active', true)
+          .whereNot('id', params.userId)
+          .first()
+        resolvedReportingToId = reporter?.id ?? null
+      } else {
+        resolvedReportingToId = Number(reportingToId)
+      }
+    }
+
     if (fullName) user.fullName = String(fullName).trim()
     user.profileId = profileId ? Number(profileId) : null
     user.employeeCode = employeeCode ? String(employeeCode).trim() : null
@@ -430,6 +492,11 @@ export default class OrganizationController {
       : null
     user.dateOfBirth = dateOfBirth ? String(dateOfBirth).split('T')[0] : null
     user.isActive = isActive !== false && isActive !== 'false' && isActive !== '0'
+    user.divisionId    = divisionId    ? Number(divisionId)    : null
+    user.departmentId  = departmentId  ? Number(departmentId)  : null
+    user.designationId = designationId ? Number(designationId) : null
+    user.locationId    = locationId    ? Number(locationId)    : null
+    user.reportingToId = resolvedReportingToId
 
     if (password && String(password).trim()) {
       user.passwordHash = await hash.make(String(password).trim())

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { router } from '@inertiajs/react'
-import { Layers, Plus, Check, X, Trash2, Pencil, Search, RefreshCw, Users, ToggleLeft, ToggleRight } from 'lucide-react'
+import { Layers, Plus, Check, X, Trash2, Pencil, Search, RefreshCw, Users, ToggleLeft, ToggleRight, Building2 } from 'lucide-react'
+import { SelectSearch } from '~/components/select-search'
 import { DataTable } from '~/components/data-table'
 import type { DTColumn, VisibilityState } from '~/components/data-table'
 import { Modal } from '~/components/modal'
@@ -15,6 +16,7 @@ interface Department {
   id: number
   code: string
   name: string
+  divisionId: number | null
   isActive: boolean
 }
 
@@ -32,6 +34,7 @@ interface Lookup { id: number; name: string }
 
 interface Props {
   departments: Department[]
+  divisions: Lookup[]
   employees: Employee[]
   designations: Lookup[]
   locations: Lookup[]
@@ -57,6 +60,7 @@ const buildColumns = (
   onAssign: (d: Department) => void,
   onToggle: (d: Department) => void,
   assignedCounts: Record<number, number>,
+  divisionMap: Record<number, string>,
 ): DTColumn<Department>[] => [
   {
     key: 'code',
@@ -78,7 +82,15 @@ const buildColumns = (
         <div style={{ width: 34, height: 34, borderRadius: 9, flexShrink: 0, background: 'var(--purple-lt)', border: '1px solid rgba(124,58,237,.18)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Layers size={14} style={{ color: 'var(--purple)' }} />
         </div>
-        <span style={{ fontWeight: 600, fontSize: '.83rem', color: 'var(--text1)' }}>{d.name}</span>
+        <div>
+          <div style={{ fontWeight: 600, fontSize: '.83rem', color: 'var(--text1)' }}>{d.name}</div>
+          {d.divisionId && divisionMap[d.divisionId] && (
+            <div style={{ fontSize: '.7rem', color: 'var(--text3)', display: 'flex', alignItems: 'center', gap: 3, marginTop: 1 }}>
+              <Building2 size={9} />
+              {divisionMap[d.divisionId]}
+            </div>
+          )}
+        </div>
       </div>
     ),
   },
@@ -139,7 +151,7 @@ const buildColumns = (
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-export default function DepartmentsPage({ departments, employees, designations, locations, grades }: Props) {
+export default function DepartmentsPage({ departments, divisions, employees, designations, locations, grades }: Props) {
   const [search,  setSearch]  = useState('')
   const [colVis,  setColVis]  = useState<VisibilityState>({})
   const [loading, setLoading] = useState(false)
@@ -147,6 +159,7 @@ export default function DepartmentsPage({ departments, employees, designations, 
   const [modalOpen,   setModalOpen]   = useState(false)
   const [editTarget,  setEditTarget]  = useState<Department | null>(null)
   const [name,        setName]        = useState('')
+  const [divisionId,  setDivisionId]  = useState<number | ''>('')
   const [nameError,   setNameError]   = useState('')
   const [processing,  setProcessing]  = useState(false)
 
@@ -158,6 +171,11 @@ export default function DepartmentsPage({ departments, employees, designations, 
 
   const [assignTarget,     setAssignTarget]     = useState<Department | null>(null)
   const [assignProcessing, setAssignProcessing] = useState(false)
+
+  const showDivisionSelect = divisions.length > 1
+  const singleDivision     = divisions.length === 1 ? divisions[0] : null
+
+  const divisionMap = divisions.reduce<Record<number, string>>((acc, d) => { acc[d.id] = d.name; return acc }, {})
 
   const filtered = search
     ? departments.filter((d) => {
@@ -184,12 +202,13 @@ export default function DepartmentsPage({ departments, employees, designations, 
 
   const assignEmps: AssignEmployee[] = employees.map((e) => ({ ...e, currentAssignmentId: e.departmentId }))
 
-  const columns  = buildColumns(openEdit, (d) => setDeleteTarget(d), openAssign, (d) => setToggleTarget(d), assignedCounts)
+  const columns  = buildColumns(openEdit, (d) => setDeleteTarget(d), openAssign, (d) => setToggleTarget(d), assignedCounts, divisionMap)
   const nextCode = computeNextCode(departments)
 
   function openAdd() {
     setEditTarget(null)
     setName('')
+    setDivisionId('')
     setNameError('')
     setModalOpen(true)
   }
@@ -197,6 +216,7 @@ export default function DepartmentsPage({ departments, employees, designations, 
   function openEdit(d: Department) {
     setEditTarget(d)
     setName(d.name)
+    setDivisionId(d.divisionId ?? '')
     setNameError('')
     setModalOpen(true)
   }
@@ -205,14 +225,16 @@ export default function DepartmentsPage({ departments, employees, designations, 
     if (!name.trim()) { setNameError('Department name is required'); return }
     setNameError('')
     setProcessing(true)
+    const payload: Record<string, any> = { name: name.trim() }
+    if (showDivisionSelect && divisionId !== '') payload.divisionId = divisionId
     if (editTarget) {
-      router.put(`/hrms/organization/settings/departments/${editTarget.id}`, { name: name.trim() }, {
+      router.put(`/hrms/organization/settings/departments/${editTarget.id}`, payload, {
         onSuccess: () => setModalOpen(false),
         onError:   () => setNameError('Failed to save. Please try again.'),
         onFinish:  () => setProcessing(false),
       })
     } else {
-      router.post('/hrms/organization/settings/departments', { name: name.trim() }, {
+      router.post('/hrms/organization/settings/departments', payload, {
         onSuccess: () => setModalOpen(false),
         onError:   () => setNameError('Failed to save. Please try again.'),
         onFinish:  () => setProcessing(false),
@@ -319,6 +341,25 @@ export default function DepartmentsPage({ departments, employees, designations, 
             <input className="fi" value={name} onChange={(e) => { setName(e.target.value); setNameError('') }} onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit() }} placeholder="e.g. Human Resources" autoFocus />
             {nameError && <div className="fg-err">{nameError}</div>}
           </div>
+
+          {/* Division — show select if multiple, info if single, nothing if none */}
+          {showDivisionSelect && (
+            <div className="fg">
+              <label><Building2 size={11} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />Division</label>
+              <SelectSearch
+                value={divisionId === '' ? '' : String(divisionId)}
+                onChange={(v) => setDivisionId(v === '' ? '' : Number(v))}
+                options={divisions.map((d) => ({ value: String(d.id), label: d.name }))}
+                placeholder="No division"
+              />
+            </div>
+          )}
+          {singleDivision && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 11px', borderRadius: 8, background: 'var(--p-lt)', border: '1px solid var(--p-mid)', fontSize: '.78rem', color: 'var(--p)' }}>
+              <Building2 size={13} />
+              <span>Auto-assigned to division: <strong>{singleDivision.name}</strong></span>
+            </div>
+          )}
         </div>
       </Modal>
 

@@ -194,12 +194,14 @@ export class HrmsCompanyDocumentSchema extends BaseModel {
 }
 
 export class HrmsDepartmentSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
+  static $columns = ['id', 'orgId', 'divisionId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt'] as const
   $columns = HrmsDepartmentSchema.$columns
   @column({ isPrimary: true })
   declare id: number
   @column()
   declare orgId: number
+  @column()
+  declare divisionId: number | null
   @column()
   declare code: string
   @column()
@@ -213,7 +215,7 @@ export class HrmsDepartmentSchema extends BaseModel {
 }
 
 export class HrmsDesignationSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'code', 'name', 'isActive', 'createdAt', 'updatedAt', 'jobDescription'] as const
+  static $columns = ['id', 'orgId', 'code', 'name', 'isActive', 'jobDescription', 'createdAt', 'updatedAt'] as const
   $columns = HrmsDesignationSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -225,12 +227,12 @@ export class HrmsDesignationSchema extends BaseModel {
   declare name: string
   @column()
   declare isActive: boolean | null
+  @column()
+  declare jobDescription: string | null
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
-  @column()
-  declare jobDescription: string | null
 }
 
 export class HrmsDivisionSchema extends BaseModel {
@@ -312,7 +314,7 @@ export class HrmsGradeSchema extends BaseModel {
 }
 
 export class HrmsHierarchyNodeSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'parentId', 'title', 'department', 'employeeId', 'sortOrder', 'createdAt', 'updatedAt'] as const
+  static $columns = ['id', 'orgId', 'parentId', 'title', 'department', 'employeeId', 'sortOrder', 'createdAt', 'updatedAt', 'divisionId'] as const
   $columns = HrmsHierarchyNodeSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -332,6 +334,8 @@ export class HrmsHierarchyNodeSchema extends BaseModel {
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: DateTime | null
+  @column()
+  declare divisionId: number | null
 }
 
 export class HrmsHolidaySchema extends BaseModel {
@@ -603,7 +607,7 @@ export class OrganizationProfilePermissionSchema extends BaseModel {
 }
 
 export class OrganizationProfileSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'name', 'description', 'dataAccess', 'createdAt', 'updatedAt'] as const
+  static $columns = ['id', 'orgId', 'name', 'description', 'dataAccess', 'isDefault', 'createdAt', 'updatedAt'] as const
   $columns = OrganizationProfileSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -615,6 +619,8 @@ export class OrganizationProfileSchema extends BaseModel {
   declare description: string | null
   @column()
   declare dataAccess: string
+  @column()
+  declare isDefault: boolean
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
   @column.dateTime({ autoCreate: true, autoUpdate: true })
@@ -622,7 +628,7 @@ export class OrganizationProfileSchema extends BaseModel {
 }
 
 export class OrganizationUserSchema extends BaseModel {
-  static $columns = ['id', 'orgId', 'profileId', 'employeeCode', 'fullName', 'gender', 'phone', 'dateOfBirth', 'companyEmail', 'passwordHash', 'sendWelcomeMail', 'isActive', 'createdAt', 'updatedAt', 'divisionId', 'departmentId', 'subDepartmentId', 'designationId', 'locationId', 'gradeId', 'sectionId', 'subSectionId'] as const
+  static $columns = ['id', 'orgId', 'profileId', 'reportingToId', 'employeeCode', 'fullName', 'isActive', 'gender', 'phone', 'dateOfBirth', 'companyEmail', 'passwordHash', 'sendWelcomeMail', 'divisionId', 'departmentId', 'subDepartmentId', 'designationId', 'locationId', 'gradeId', 'sectionId', 'subSectionId', 'createdAt', 'updatedAt'] as const
   $columns = OrganizationUserSchema.$columns
   @column({ isPrimary: true })
   declare id: number
@@ -631,9 +637,13 @@ export class OrganizationUserSchema extends BaseModel {
   @column()
   declare profileId: number | null
   @column()
+  declare reportingToId: number | null
+  @column()
   declare employeeCode: string | null
   @column()
   declare fullName: string
+  @column()
+  declare isActive: boolean | null
   @column()
   declare gender: string | null
   @column()
@@ -646,12 +656,6 @@ export class OrganizationUserSchema extends BaseModel {
   declare passwordHash: string
   @column()
   declare sendWelcomeMail: boolean | null
-  @column()
-  declare isActive: boolean | null
-  @column.dateTime({ autoCreate: true })
-  declare createdAt: DateTime
-  @column.dateTime({ autoCreate: true, autoUpdate: true })
-  declare updatedAt: DateTime | null
   @column()
   declare divisionId: number | null
   @column()
@@ -668,6 +672,10 @@ export class OrganizationUserSchema extends BaseModel {
   declare sectionId: number | null
   @column()
   declare subSectionId: number | null
+  @column.dateTime({ autoCreate: true })
+  declare createdAt: DateTime
+  @column.dateTime({ autoCreate: true, autoUpdate: true })
+  declare updatedAt: DateTime | null
 }
 
 export class OrganizationSchema extends BaseModel {

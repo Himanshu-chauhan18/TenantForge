@@ -10,8 +10,8 @@ import { TuyauProvider } from '@adonisjs/inertia/react'
 // Pages that render without any layout
 const AUTH_PAGES = ['auth/login', 'auth/signup', 'auth/totp-setup', 'auth/totp-verify']
 
-// HRMS pages that render without layout (their own full-page auth)
-const HRMS_AUTH_PAGES = ['hrms/auth/login']
+// HRMS pages that render without any layout
+const HRMS_NO_LAYOUT_PAGES = ['hrms/auth/login', 'hrms/organization/hierarchy/chart']
 
 // Eagerly load all pages — gives us direct module access to set layouts
 const pages = import.meta.glob('./pages/**/*.tsx', { eager: true })
@@ -25,8 +25,8 @@ createInertiaApp({
       throw new Error(`Inertia page not found: ${name}`)
     }
 
-    // No layout for auth pages (full-page standalone)
-    if (HRMS_AUTH_PAGES.includes(name) || AUTH_PAGES.includes(name)) {
+    // No layout for auth pages and standalone canvas pages
+    if (HRMS_NO_LAYOUT_PAGES.includes(name) || AUTH_PAGES.includes(name)) {
       page.default.layout = undefined
       return page
     }

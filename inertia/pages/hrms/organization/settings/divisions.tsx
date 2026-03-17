@@ -13,6 +13,7 @@ import { PhoneInput } from '~/components/phone-input'
 import { SelectCurrency } from '~/components/select-currency'
 import { SelectTimezone } from '~/components/select-timezone'
 import { SelectDateFormat } from '~/components/select-date-format'
+import { SelectTimeFormat } from '~/components/select-time-format'
 import { AssignEmployeeModal } from '~/components/assign-employee-modal'
 import type { AssignEmployee } from '~/components/assign-employee-modal'
 import type { CountryOption } from '~/components/country-select'
@@ -93,8 +94,6 @@ const EMPTY: FormState = {
   bankName: '', bankAgentCode: '', bankAccountNo: '', ifscCode: '',
   currency: '', dateFormat: '', timezone: '', timeFormat: '',
 }
-
-const TIME_FORMATS = [{ v: '12h', l: '12-Hour (AM/PM)' }, { v: '24h', l: '24-Hour' }]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -576,7 +575,7 @@ export default function DivisionsPage({ divisions, employees, departments, desig
                     </div>
                     <div className="fg">
                       <label>Time Format <span className="req">*</span></label>
-                      <select className="fi fi-sel" value={form.timeFormat} onChange={f('timeFormat')}><option value="">Select…</option>{TIME_FORMATS.map((t) => <option key={t.v} value={t.v}>{t.l}</option>)}</select>
+                      <SelectTimeFormat value={form.timeFormat} onChange={(v) => { setForm((p) => ({ ...p, timeFormat: v })); setErrors((p) => ({ ...p, timeFormat: undefined })) }} />
                       {errors.timeFormat && <div className="fg-err">{errors.timeFormat}</div>}
                     </div>
                   </div>

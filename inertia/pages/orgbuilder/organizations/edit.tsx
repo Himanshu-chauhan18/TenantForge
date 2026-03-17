@@ -3,7 +3,7 @@ import { DateTime } from 'luxon'
 import { Link, router } from '@inertiajs/react'
 import { ArrowLeft, ExternalLink, Trash2, AlertTriangle } from 'lucide-react'
 import { Modal } from '~/components/modal'
-import type { Org, LeadOwnerOption } from './edit/types'
+import type { Org, LeadOwnerOption, HrmsLists } from './edit/types'
 import { TABS, safeDate } from './edit/data'
 import { OverviewTab } from './edit/OverviewTab'
 import { BillingTab } from './edit/BillingTab'
@@ -16,11 +16,12 @@ import { FiscalTab } from './edit/FiscalTab'
 interface Props {
   org: Org
   leadOwners: LeadOwnerOption[]
+  hrms: HrmsLists
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function EditOrganization({ org, leadOwners }: Props) {
+export default function EditOrganization({ org, leadOwners, hrms }: Props) {
   const [activeTab,     setActiveTab]     = useState(() => {
     const p = new URLSearchParams(window.location.search).get('tab')
     return TABS.some((t) => t.key === p) ? p! : 'overview'
@@ -170,7 +171,7 @@ export default function EditOrganization({ org, leadOwners }: Props) {
       {/* ── Tab content ── */}
       {activeTab === 'overview' && <OverviewTab org={org} leadOwners={leadOwners} />}
       {activeTab === 'plan'     && <BillingTab org={org} />}
-      {activeTab === 'users'    && <UsersTab org={org} />}
+      {activeTab === 'users'    && <UsersTab org={org} hrms={hrms} />}
       {activeTab === 'modules'  && <ModulesTab org={org} />}
       {activeTab === 'fiscal'   && <FiscalTab org={org} />}
 

@@ -14,12 +14,19 @@ export const divisionStep1Validator = vine.compile(
     contactPhone: vine.string().trim().maxLength(20).optional(),
     address: vine.string().trim().optional(),
     email: vine.string().trim().email().optional(),
-    country: vine.string().trim().maxLength(100).optional(),
-    city: vine.string().trim().maxLength(100).optional(),
-    currency: vine.string().trim().maxLength(10).optional(),
-    dateFormat: vine.string().trim().maxLength(30).optional(),
-    timezone: vine.string().trim().maxLength(80).optional(),
-    timeFormat: vine.string().trim().maxLength(20).optional(),
+    country: vine.string().trim().minLength(1).maxLength(100),
+    city: vine.string().trim().minLength(1).maxLength(100),
+    currency: vine.string().trim().minLength(1).maxLength(10),
+    dateFormat: vine.string().trim().minLength(1).maxLength(30),
+    timezone: vine.string().trim().minLength(1).maxLength(80),
+    timeFormat: vine.string().trim().minLength(1).maxLength(20),
+  })
+)
+
+export const departmentValidator = vine.compile(
+  vine.object({
+    name: vine.string().trim().minLength(2).maxLength(255),
+    divisionId: vine.number().optional(),
   })
 )
 
@@ -109,17 +116,17 @@ export const companyUpdateValidator = vine.compile(
     website: vine.string().trim().maxLength(500).optional(),
     gstNo: vine.string().trim().maxLength(30).optional(),
     // Contact
-    phone: vine.string().trim().maxLength(20).optional(),
+    phone: vine.string().trim().minLength(1).maxLength(20).optional(),
     email: vine.string().trim().email().optional(),
-    country: vine.string().trim().maxLength(100).optional(),
-    city: vine.string().trim().maxLength(100).optional(),
+    country: vine.string().trim().minLength(1).maxLength(100).optional(),
+    city: vine.string().trim().minLength(1).maxLength(100).optional(),
     address: vine.string().trim().optional(),
     pincode: vine.string().trim().maxLength(20).optional(),
     // Locale
-    currency: vine.string().trim().maxLength(10).optional(),
-    timezone: vine.string().trim().maxLength(80).optional(),
-    dateFormat: vine.string().trim().maxLength(30).optional(),
-    timeFormat: vine.string().trim().maxLength(20).optional(),
+    currency: vine.string().trim().minLength(1).maxLength(10).optional(),
+    timezone: vine.string().trim().minLength(1).maxLength(80).optional(),
+    dateFormat: vine.string().trim().minLength(1).maxLength(30).optional(),
+    timeFormat: vine.string().trim().minLength(1).maxLength(20).optional(),
     // Fiscal
     fiscalName: vine.string().trim().maxLength(100).optional(),
     fiscalStart: vine.string().trim().optional(),
@@ -131,6 +138,7 @@ export const hierarchyNodeValidator = vine.compile(
   vine.object({
     title: vine.string().trim().minLength(2).maxLength(255),
     department: vine.string().trim().maxLength(255).optional(),
+    divisionId: vine.number().optional(),
     parentId: vine.number().optional(),
     employeeId: vine.number().optional(),
     sortOrder: vine.number().optional(),

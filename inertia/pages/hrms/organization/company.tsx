@@ -1,10 +1,14 @@
-import { useState, useEffect, useLayoutEffect, useRef } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, memo } from 'react'
 import { useForm } from '@inertiajs/react'
-import { Globe, Hash, Save, Info } from 'lucide-react'
+import { Globe, Hash, Save, Info, Phone } from 'lucide-react'
 import { CountrySelect, type CountryOption } from '~/components/country-select'
 import { CitySelect, type CityOption } from '~/components/city-select'
-import { SelectSearch, type SelectOption } from '~/components/select-search'
-import { RadioGroup } from '~/components/radio-group'
+import { SelectSearch } from '~/components/select-search'
+import { SelectCurrency } from '~/components/select-currency'
+import { SelectTimezone } from '~/components/select-timezone'
+import { SelectDateFormat } from '~/components/select-date-format'
+import { SelectTimeFormat } from '~/components/select-time-format'
+import { INDUSTRIES, COMPANY_SIZES, DATE_FORMATS } from '~/data/org-options'
 
 // ── Types ───────────────────────────────────────────────────────────────────────
 
@@ -20,95 +24,34 @@ const TABS = [
   { key: 'locale',  label: 'Locale Settings' },
 ]
 
-// ── Static option lists ──────────────────────────────────────────────────────────
+// ── Option lists from shared data ────────────────────────────────────────────────
 
-const INDUSTRY_OPTIONS: SelectOption[] = [
-  'Technology', 'Healthcare', 'Finance & Banking', 'Manufacturing',
-  'Retail & E-commerce', 'Education', 'Real Estate', 'Hospitality',
-  'Logistics & Supply Chain', 'Media & Entertainment', 'Consulting',
-  'Agriculture', 'Construction', 'Energy & Utilities', 'Other',
-].map((v) => ({ value: v, label: v }))
-
-const SIZE_OPTIONS: SelectOption[] = [
-  { value: '1–10',     label: '1–10 employees' },
-  { value: '11–50',    label: '11–50 employees' },
-  { value: '51–200',   label: '51–200 employees' },
-  { value: '201–500',  label: '201–500 employees' },
-  { value: '501–1000', label: '501–1000 employees' },
-  { value: '1001–5000',label: '1001–5000 employees' },
-  { value: '5000+',    label: '5000+ employees' },
-]
-
-const CURRENCY_OPTIONS: SelectOption[] = [
-  { value: 'INR', label: 'Indian Rupee',      sub: '₹' },
-  { value: 'USD', label: 'US Dollar',         sub: '$' },
-  { value: 'EUR', label: 'Euro',              sub: '€' },
-  { value: 'GBP', label: 'British Pound',     sub: '£' },
-  { value: 'AED', label: 'UAE Dirham',        sub: 'د.إ' },
-  { value: 'SGD', label: 'Singapore Dollar',  sub: 'S$' },
-  { value: 'JPY', label: 'Japanese Yen',      sub: '¥' },
-  { value: 'CAD', label: 'Canadian Dollar',   sub: 'C$' },
-  { value: 'AUD', label: 'Australian Dollar', sub: 'A$' },
-  { value: 'CHF', label: 'Swiss Franc',       sub: 'Fr' },
-]
-
-const TIMEZONE_OPTIONS: SelectOption[] = [
-  { value: 'Asia/Kolkata',        label: 'Asia/Kolkata',        sub: 'IST (UTC+5:30)' },
-  { value: 'UTC',                 label: 'UTC',                 sub: 'Coordinated Universal Time' },
-  { value: 'America/New_York',    label: 'America/New_York',    sub: 'EST/EDT' },
-  { value: 'America/Chicago',     label: 'America/Chicago',     sub: 'CST/CDT' },
-  { value: 'America/Los_Angeles', label: 'America/Los_Angeles', sub: 'PST/PDT' },
-  { value: 'Europe/London',       label: 'Europe/London',       sub: 'GMT/BST' },
-  { value: 'Europe/Paris',        label: 'Europe/Paris',        sub: 'CET/CEST' },
-  { value: 'Europe/Berlin',       label: 'Europe/Berlin',       sub: 'CET/CEST' },
-  { value: 'Asia/Dubai',          label: 'Asia/Dubai',          sub: 'GST (UTC+4)' },
-  { value: 'Asia/Tokyo',          label: 'Asia/Tokyo',          sub: 'JST (UTC+9)' },
-  { value: 'Asia/Singapore',      label: 'Asia/Singapore',      sub: 'SGT (UTC+8)' },
-  { value: 'Asia/Shanghai',       label: 'Asia/Shanghai',       sub: 'CST (UTC+8)' },
-  { value: 'Australia/Sydney',    label: 'Australia/Sydney',    sub: 'AEST/AEDT' },
-]
-
-const DATE_FORMAT_OPTIONS: SelectOption[] = [
-  { value: 'dd/mm/yyyy', label: 'DD/MM/YYYY', sub: '31/12/2025' },
-  { value: 'mm/dd/yyyy', label: 'MM/DD/YYYY', sub: '12/31/2025' },
-  { value: 'yyyy/mm/dd', label: 'YYYY/MM/DD', sub: '2025/12/31' },
-  { value: 'dd-mm-yyyy', label: 'DD-MM-YYYY', sub: '31-12-2025' },
-  { value: 'mm-dd-yyyy', label: 'MM-DD-YYYY', sub: '12-31-2025' },
-  { value: 'yyyy-mm-dd', label: 'YYYY-MM-DD', sub: '2025-12-31' },
-]
-
-const TIME_FORMAT_OPTIONS = [
-  { value: '12', label: '12-hour', desc: 'e.g. 2:30 PM' },
-  { value: '24', label: '24-hour', desc: 'e.g. 14:30' },
-]
+const INDUSTRY_OPTIONS = INDUSTRIES.map((v) => ({ value: v, label: v }))
+const SIZE_OPTIONS      = COMPANY_SIZES.map((v) => ({ value: v, label: `${v} employees` }))
 
 // ── Helpers ──────────────────────────────────────────────────────────────────────
 
-// Normalise a raw DB value to the canonical option value via case-insensitive
-// lookup.  Returns the option's own .value (correctly cased) when found, or the
-// original raw string when no option matches.
-function matchOption(options: SelectOption[], raw: string): string {
-  if (!raw) return ''
-  const exact = options.find((o) => o.value === raw)
-  if (exact) return exact.value
-  const ci = options.find((o) => o.value.toLowerCase() === raw.toLowerCase())
-  return ci ? ci.value : raw
-}
-
-// Map every reasonable stored variant of the time-format flag to '12' or '24'
-// (matching the DB ENUM values exactly).
-function normalizeTimeFormat(raw: string): string {
-  if (!raw) return '12'
-  const v = raw.toLowerCase().replace(/[^0-9a-z]/g, '')  // strip dashes/spaces
-  if (v.includes('24') || v === 'h24') return '24'
-  return '12'  // '12h', '12hour', 'h12', '12', anything else → 12h default
-}
-
-// Ensures the currently-stored value always appears in the options list so
-// SelectSearch can display it even if it doesn't match any predefined entry.
-function withCurrent(options: SelectOption[], value: string): SelectOption[] {
+// Ensure a stored value always appears in the list (handles DB values that don't
+// match a canonical option after data migration / option-list changes).
+function withCurrent<T extends { value: string; label: string }>(options: T[], value: string): T[] {
   if (!value || options.some((o) => o.value === value)) return options
-  return [{ value, label: value }, ...options]
+  return [{ ...options[0], value, label: value } as T, ...options]
+}
+
+// Map stored timeFormat variants to '12h' | '24h' (values SelectTimeFormat expects).
+function normalizeTimeFormat(raw: string): string {
+  if (!raw) return '12h'
+  const v = raw.toLowerCase().replace(/[^0-9a-z]/g, '')
+  return v.includes('24') || v === 'h24' ? '24h' : '12h'
+}
+
+// Case-insensitive match against DATE_FORMATS; falls back to first format.
+function matchDateFormat(raw: string): string {
+  if (!raw) return DATE_FORMATS[0].value
+  const exact = DATE_FORMATS.find((f) => f.value === raw)
+  if (exact) return exact.value
+  const ci = DATE_FORMATS.find((f) => f.value.toLowerCase() === raw.toLowerCase())
+  return ci ? ci.value : DATE_FORMATS[0].value
 }
 
 // ── Field component ──────────────────────────────────────────────────────────────
@@ -237,8 +180,20 @@ function CompanyInfoTab({ company }: { company: Record<string, any> }) {
 
 // ── Contact Details Tab ──────────────────────────────────────────────────────────
 
-function ContactDetailsTab({ company }: { company: Record<string, any> }) {
-  const { data, setData, put, processing, errors } = useForm({
+const ContactDetailsTab = memo(function ContactDetailsTab({
+  company,
+  selectedCountry,
+  selectedCity,
+  onCountryChange,
+  onCityChange,
+}: {
+  company: Record<string, any>
+  selectedCountry: CountryOption | null
+  selectedCity: CityOption | null
+  onCountryChange: (o: CountryOption | null) => void
+  onCityChange: (o: CityOption | null) => void
+}) {
+  const { data, setData, put, processing, errors, setError, clearErrors } = useForm({
     phone:   String(company.phone   || ''),
     email:   String(company.email   || ''),
     country: String(company.country || ''),
@@ -247,71 +202,86 @@ function ContactDetailsTab({ company }: { company: Record<string, any> }) {
     pincode: String(company.pincode || ''),
   })
 
-  const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(null)
-  const [selectedCity,    setSelectedCity]    = useState<CityOption | null>(null)
-
-  // Pre-populate CountrySelect from the saved string value on mount
-  useEffect(() => {
-    const savedCountry = company.country as string
-    if (!savedCountry) return
-    fetch(`/api/countries?search=${encodeURIComponent(savedCountry)}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: CountryOption[]) => {
-        const match = list.find(
-          (c) => c.name.toLowerCase() === savedCountry.toLowerCase()
-        )
-        if (match) setSelectedCountry(match)
-      })
-      .catch(() => {})
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Pre-populate CitySelect once the country object is available
-  useEffect(() => {
-    const savedCity = company.city as string
-    if (!selectedCountry || !savedCity) return
-    fetch(`/api/cities?country_id=${selectedCountry.id}&search=${encodeURIComponent(savedCity)}`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list: CityOption[]) => {
-        const match = list.find(
-          (c) => c.name.toLowerCase() === savedCity.toLowerCase()
-        )
-        if (match) setSelectedCity(match)
-      })
-      .catch(() => {})
-  }, [selectedCountry]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const isIndia = data.country.toLowerCase().trim() === 'india'
-
   function handleCountryChange(o: CountryOption | null) {
-    setSelectedCountry(o)
-    setSelectedCity(null)
+    onCountryChange(o)
+    onCityChange(null)
+    clearErrors('country')
     setData((d) => ({ ...d, country: o?.name ?? '', city: '', pincode: '' }))
   }
 
   function handleCityChange(o: CityOption | null) {
-    setSelectedCity(o)
+    onCityChange(o)
+    clearErrors('city')
     setData('city', o?.name ?? '')
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // Client-side required validation
+    let valid = true
+    if (!data.country.trim()) { setError('country', 'Country is required.'); valid = false }
+    if (!data.city.trim())    { setError('city',    'City is required.');    valid = false }
+    if (!data.phone.trim())   { setError('phone',   'Phone is required.');   valid = false }
+    if (!data.email.trim())   { setError('email',   'Email is required.');   valid = false }
+    if (!valid) return
     put('/hrms/organization/company')
   }
+
+  // Phone prefix derived from selected country
+  const phonePrefix = selectedCountry
+    ? `${selectedCountry.emoji}  +${selectedCountry.phonecode}`
+    : null
 
   return (
     <form onSubmit={handleSubmit}>
       <div className="g3" style={{ marginBottom: 14 }}>
-        <Field label="Phone Number" error={errors.phone}>
-          <input
-            className="fi"
-            type="tel"
-            value={data.phone}
-            onChange={(e) => setData('phone', e.target.value)}
-            placeholder="+91 98765 43210"
+
+        {/* Country */}
+        <Field label="Country" required error={errors.country}>
+          <CountrySelect
+            value={selectedCountry}
+            onChange={handleCountryChange}
           />
         </Field>
 
-        <Field label="Company Email" hint="Official contact email address" error={errors.email}>
+        {/* City */}
+        <Field label="City" required error={errors.city}>
+          <CitySelect
+            value={selectedCity}
+            onChange={handleCityChange}
+            countryId={selectedCountry?.id ?? null}
+          />
+        </Field>
+
+        {/* Phone with country prefix */}
+        <Field label="Phone Number" required error={errors.phone}>
+          <div className="fi" style={{ display: 'flex', alignItems: 'center', padding: 0, overflow: 'hidden' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0,
+              padding: '0 10px', alignSelf: 'stretch',
+              background: 'var(--bg2)',
+              borderRight: '1.5px solid var(--border)',
+              fontSize: '.8rem', fontWeight: 600, color: 'var(--text2)',
+              whiteSpace: 'nowrap',
+            }}>
+              {phonePrefix ?? <Phone size={13} style={{ color: 'var(--text4)' }} />}
+            </div>
+            <input
+              style={{
+                flex: 1, padding: '9px 12px',
+                background: 'transparent', border: 'none', outline: 'none',
+                fontSize: '.82rem', color: 'var(--text1)',
+              }}
+              type="tel"
+              value={data.phone}
+              onChange={(e) => setData('phone', e.target.value)}
+              placeholder={selectedCountry ? '98765 43210' : '+1 555 000 0000'}
+            />
+          </div>
+        </Field>
+
+        {/* Email */}
+        <Field label="Company Email" required hint="Official contact email address" error={errors.email}>
           <input
             className="fi"
             type="email"
@@ -321,34 +291,18 @@ function ContactDetailsTab({ company }: { company: Record<string, any> }) {
           />
         </Field>
 
-        <Field label="Country" error={errors.country}>
-          <CountrySelect
-            value={selectedCountry}
-            onChange={handleCountryChange}
+        {/* Postal code — shown for all countries */}
+        <Field label="Postal / PIN Code" error={errors.pincode}>
+          <input
+            className="fi"
+            type="text"
+            inputMode="numeric"
+            value={data.pincode}
+            onChange={(e) => setData('pincode', e.target.value)}
+            placeholder="e.g. 400069"
+            maxLength={10}
           />
         </Field>
-
-        <Field label="City" error={errors.city}>
-          <CitySelect
-            value={selectedCity}
-            onChange={handleCityChange}
-            countryId={selectedCountry?.id ?? null}
-          />
-        </Field>
-
-        {isIndia && (
-          <Field label="PIN Code" hint="6-digit Indian postal code" error={errors.pincode}>
-            <input
-              className="fi"
-              type="text"
-              inputMode="numeric"
-              value={data.pincode}
-              onChange={(e) => setData('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
-              placeholder="400069"
-              maxLength={6}
-            />
-          </Field>
-        )}
       </div>
 
       <Field label="Full Address" hint="Street address, area, state" error={errors.address}>
@@ -370,61 +324,83 @@ function ContactDetailsTab({ company }: { company: Record<string, any> }) {
       </div>
     </form>
   )
-}
+})
 
 // ── Locale Settings Tab ──────────────────────────────────────────────────────────
 
-function LocaleSettingsTab({ company }: { company: Record<string, any> }) {
-  const { data, setData, put, processing, errors } = useForm({
-    currency:   matchOption(CURRENCY_OPTIONS,     String(company.currency   || '')),
-    timezone:   matchOption(TIMEZONE_OPTIONS,     String(company.timezone   || '')),
-    dateFormat: matchOption(DATE_FORMAT_OPTIONS,  String(company.dateFormat || '')),
+const LocaleSettingsTab = memo(function LocaleSettingsTab({
+  company,
+  selectedCountry,
+}: {
+  company: Record<string, any>
+  selectedCountry: CountryOption | null
+}) {
+  const { data, setData, put, processing, errors, setError, clearErrors } = useForm({
+    currency:   String(company.currency   || ''),
+    timezone:   String(company.timezone   || ''),
+    dateFormat: matchDateFormat(String(company.dateFormat || '')),
     timeFormat: normalizeTimeFormat(String(company.timeFormat || '')),
   })
 
+  // When country changes and it has a single currency, auto-select it
+  useEffect(() => {
+    if (selectedCountry?.currency) {
+      setData('currency', selectedCountry.currency)
+      clearErrors('currency')
+    }
+  }, [selectedCountry?.currency]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // Client-side required validation
+    let valid = true
+    if (!data.currency.trim())   { setError('currency',   'Currency is required.');    valid = false }
+    if (!data.timezone.trim())   { setError('timezone',   'Timezone is required.');    valid = false }
+    if (!data.dateFormat.trim()) { setError('dateFormat', 'Date format is required.'); valid = false }
+    if (!data.timeFormat.trim()) { setError('timeFormat', 'Time format is required.'); valid = false }
+    if (!valid) return
     put('/hrms/organization/company')
   }
 
   return (
     <form onSubmit={handleSubmit}>
-      <div className="g3" style={{ marginBottom: 14 }}>
-        <Field label="Currency" hint="Default for payroll & expenses" error={errors.currency}>
-          <SelectSearch
+      <div className="g3" style={{ marginBottom: 20 }}>
+
+        {/* Currency — scoped to selected country */}
+        <Field label="Currency" required hint="Default for payroll & expenses" error={errors.currency}>
+          <SelectCurrency
             value={data.currency}
-            onChange={(v) => setData('currency', v)}
-            options={withCurrent(CURRENCY_OPTIONS, data.currency)}
-            placeholder="Select currency…"
+            onChange={(v) => { setData('currency', v); clearErrors('currency') }}
+            country={selectedCountry}
           />
         </Field>
 
-        <Field label="Timezone" error={errors.timezone}>
-          <SelectSearch
+        {/* Timezone — scoped to selected country */}
+        <Field label="Timezone" required error={errors.timezone}>
+          <SelectTimezone
             value={data.timezone}
-            onChange={(v) => setData('timezone', v)}
-            options={withCurrent(TIMEZONE_OPTIONS, data.timezone)}
-            placeholder="Select timezone…"
-          />
-        </Field>
-
-        <Field label="Date Format" error={errors.dateFormat}>
-          <SelectSearch
-            value={data.dateFormat}
-            onChange={(v) => setData('dateFormat', v)}
-            options={withCurrent(DATE_FORMAT_OPTIONS, data.dateFormat)}
-            placeholder="Select date format…"
+            onChange={(v) => { setData('timezone', v); clearErrors('timezone') }}
+            country={selectedCountry}
           />
         </Field>
       </div>
 
-      <Field label="Time Format" hint="How time is displayed across the system" error={errors.timeFormat}>
-        <div style={{ paddingTop: 6 }}>
-          <RadioGroup
-            name="timeFormat"
+      {/* Date Format — card-style picker */}
+      <Field label="Date Format" required error={errors.dateFormat}>
+        <div style={{ marginTop: 6 }}>
+          <SelectDateFormat
+            value={data.dateFormat}
+            onChange={(v) => { setData('dateFormat', v); clearErrors('dateFormat') }}
+          />
+        </div>
+      </Field>
+
+      {/* Time Format — card-style picker */}
+      <Field label="Time Format" required hint="How time is displayed across the system" error={errors.timeFormat} className="mt-3">
+        <div style={{ marginTop: 6 }}>
+          <SelectTimeFormat
             value={data.timeFormat}
-            onChange={(v) => setData('timeFormat', v)}
-            options={TIME_FORMAT_OPTIONS}
+            onChange={(v) => { setData('timeFormat', v); clearErrors('timeFormat') }}
           />
         </div>
       </Field>
@@ -437,12 +413,47 @@ function LocaleSettingsTab({ company }: { company: Record<string, any> }) {
       </div>
     </form>
   )
-}
+})
 
 // ── Main Component ──────────────────────────────────────────────────────────────
 
 export default function CompanyPage({ company }: Props) {
   const [activeTab, setActiveTab] = useState('info')
+
+  // Shared country/city state — needed by both Contact tab (pickers) and
+  // Locale tab (for scoping currency & timezone to the selected country).
+  const [selectedCountry, setSelectedCountry] = useState<CountryOption | null>(null)
+  const [selectedCity,    setSelectedCity]    = useState<CityOption    | null>(null)
+
+  // Pre-populate country from saved value on mount
+  useEffect(() => {
+    const savedCountry = company.country as string
+    if (!savedCountry) return
+    fetch(`/api/countries?search=${encodeURIComponent(savedCountry)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: CountryOption[]) => {
+        const match = list.find(
+          (c) => c.name.toLowerCase() === savedCountry.toLowerCase()
+        )
+        if (match) setSelectedCountry(match)
+      })
+      .catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pre-populate city once country is resolved
+  useEffect(() => {
+    const savedCity = company.city as string
+    if (!selectedCountry || !savedCity) return
+    fetch(`/api/cities?country_id=${selectedCountry.id}&search=${encodeURIComponent(savedCity)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list: CityOption[]) => {
+        const match = list.find(
+          (c) => c.name.toLowerCase() === savedCity.toLowerCase()
+        )
+        if (match) setSelectedCity(match)
+      })
+      .catch(() => {})
+  }, [selectedCountry]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sliding tab indicator
   const tabSegRef  = useRef<HTMLDivElement>(null)
@@ -586,9 +597,24 @@ export default function CompanyPage({ company }: Props) {
           </div>
         </div>
         <div className="card-b">
-          {activeTab === 'info'    && <CompanyInfoTab    company={company} />}
-          {activeTab === 'contact' && <ContactDetailsTab company={company} />}
-          {activeTab === 'locale'  && <LocaleSettingsTab company={company} />}
+          {activeTab === 'info' && (
+            <CompanyInfoTab company={company} />
+          )}
+          {activeTab === 'contact' && (
+            <ContactDetailsTab
+              company={company}
+              selectedCountry={selectedCountry}
+              selectedCity={selectedCity}
+              onCountryChange={setSelectedCountry}
+              onCityChange={setSelectedCity}
+            />
+          )}
+          {activeTab === 'locale' && (
+            <LocaleSettingsTab
+              company={company}
+              selectedCountry={selectedCountry}
+            />
+          )}
         </div>
       </div>
     </>

@@ -3,6 +3,7 @@ import {
   Users, Plus, Search, X, Filter, SlidersHorizontal,
   RefreshCw, Pencil, QrCode, LogIn, Activity, CheckCircle2,
   UserX, ChevronDown, Download, Eye, EyeOff, ShieldCheck, Lock,
+  Building2, MapPin, Briefcase, Layers, UserCog,
 } from 'lucide-react'
 import { router } from '@inertiajs/react'
 import QRCode from 'qrcode'
@@ -14,7 +15,7 @@ import { DatePicker } from '~/components/date-picker'
 import { Checkbox } from '~/components/checkbox'
 import { PhoneInput } from '~/components/phone-input'
 import type { CountryOption } from '~/components/country-select'
-import type { Org, OrgUser } from './types'
+import type { Org, OrgUser, HrmsLists } from './types'
 import { safeDate, avColor, initials } from './data'
 import { RolesTab } from './RolesTab'
 
@@ -25,12 +26,12 @@ const USER_TABS = [
   { key: 'roles', label: 'Roles & Profiles' },
 ]
 
-const COLS_KEY    = 'tf-org-users-cols-v1'
+const COLS_KEY    = 'tf-org-users-cols-v2'
 const PP_OPTIONS  = [10, 25, 50, 100]
 
 type BulkConfirm = { op: 'activate' | 'deactivate'; count: number } | null
 
-interface Props { org: Org }
+interface Props { org: Org; hrms: HrmsLists }
 
 // ── Blank form ─────────────────────────────────────────────────────────────────
 
@@ -49,11 +50,14 @@ const BLANK_FORM = {
   employeeCode: '', phone: '', gender: '',
   dateOfBirth: '', sendWelcomeMail: false, isActive: true,
   profileId: '',
+  divisionId: '', departmentId: '', designationId: '', locationId: '',
+  reportingToType: 'user' as 'user' | 'role',
+  reportingToId: '',
 }
 
 // ── Root component ─────────────────────────────────────────────────────────────
 
-export function UsersTab({ org }: Props) {
+export function UsersTab({ org, hrms }: Props) {
   const [subTab, setSubTab] = useState<'list' | 'roles'>('list')
 
   const tabSegRef  = useRef<HTMLDivElement>(null)
@@ -95,15 +99,39 @@ export function UsersTab({ org }: Props) {
         </div>
       </div>
 
-      {subTab === 'list'  && <UserListTab org={org} />}
+      {subTab === 'list'  && <UserListTab org={org} hrms={hrms} />}
       {subTab === 'roles' && <RolesTab org={org} />}
     </div>
   )
 }
 
+// ── Shared helper: impersonate via fetch → navigate pre-opened tab ────────────
+// Opens the tab synchronously (avoids popup-blocker) then POSTs to set the
+// hrms_session; on success navigates the waiting tab to the HRMS URL.
+
+async function impersonateToNewTab(url: string) {
+  // Must open synchronously inside the click handler to avoid popup blocking
+  const tab = window.open('', '_blank')
+  if (!tab) return
+  tab.document.write('<html><body style="font-family:sans-serif;padding:2rem;color:#555">Logging in…</body></html>')
+
+  const xsrf = decodeURIComponent(
+    document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? ''
+  )
+  const res = await fetch(url, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'X-XSRF-TOKEN': xsrf, 'Accept': 'application/json' },
+  })
+
+  if (!res.ok) { tab.close(); return }
+  const { redirectUrl } = await res.json()
+  tab.location.href = redirectUrl
+}
+
 // ── User List Tab ─────────────────────────────────────────────────────────────
 
-function UserListTab({ org }: { org: Org }) {
+function UserListTab({ org, hrms }: { org: Org; hrms: HrmsLists }) {
   const users    = org.orgUsers || []
   const profiles = org.profiles || []
 
@@ -129,20 +157,24 @@ function UserListTab({ org }: { org: Org }) {
   }, [])
 
   // Search & filter
-  const [search,       setSearch]       = useState('')
-  const [filterOpen,   setFilterOpen]   = useState(false)
-  const [filterStatus, setFilterStatus] = useState('')
-  const [filterProfile, setFilterProfile] = useState('')
+  const [search,            setSearch]            = useState('')
+  const [filterOpen,        setFilterOpen]        = useState(false)
+  const [filterStatus,      setFilterStatus]      = useState('')
+  const [filterProfile,     setFilterProfile]     = useState('')
+  const [filterDivision,    setFilterDivision]    = useState('')
+  const [filterDepartment,  setFilterDepartment]  = useState('')
+  const [filterDesignation, setFilterDesignation] = useState('')
+  const [filterLocation,    setFilterLocation]    = useState('')
 
   // Per-page
   const [perPage,    setPerPage]    = useState(10)
   const [ppOpen,     setPpOpen]     = useState(false)
   const ppBtnRef = useRef<HTMLButtonElement>(null)
 
-  // Column visibility
+  // Column visibility — division, location, designation hidden by default
   const [colVis,     setColVis]     = useState<VisibilityState>(() => {
     try { const s = localStorage.getItem(COLS_KEY); if (s) return JSON.parse(s) } catch {}
-    return {}
+    return { division: false, location: false, designation: false }
   })
   const [colVisOpen, setColVisOpen] = useState(false)
 
@@ -209,9 +241,13 @@ function UserListTab({ org }: { org: Org }) {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     return users.filter((u) => {
-      if (filterStatus === 'active'   && !u.isActive) return false
-      if (filterStatus === 'inactive' && u.isActive)  return false
-      if (filterProfile && String(u.profileId) !== filterProfile) return false
+      if (filterStatus      === 'active'   && !u.isActive) return false
+      if (filterStatus      === 'inactive' && u.isActive)  return false
+      if (filterProfile     && String(u.profileId)     !== filterProfile)     return false
+      if (filterDivision    && String(u.divisionId)    !== filterDivision)    return false
+      if (filterDepartment  && String(u.departmentId)  !== filterDepartment)  return false
+      if (filterDesignation && String(u.designationId) !== filterDesignation) return false
+      if (filterLocation    && String(u.locationId)    !== filterLocation)    return false
       if (!q) return true
       return (
         u.fullName.toLowerCase().includes(q) ||
@@ -219,11 +255,18 @@ function UserListTab({ org }: { org: Org }) {
         (u.employeeCode || '').toLowerCase().includes(q)
       )
     })
-  }, [users, search, filterStatus, filterProfile])
+  }, [users, search, filterStatus, filterProfile, filterDivision, filterDepartment, filterDesignation, filterLocation])
 
-  const activeFilterCount = [filterStatus, filterProfile].filter(Boolean).length
+  const activeFilterCount = [filterStatus, filterProfile, filterDivision, filterDepartment, filterDesignation, filterLocation].filter(Boolean).length
   const hasActiveFilters  = activeFilterCount > 0
-  function clearFilters() { setFilterStatus(''); setFilterProfile('') }
+  function clearFilters() {
+    setFilterStatus('')
+    setFilterProfile('')
+    setFilterDivision('')
+    setFilterDepartment('')
+    setFilterDesignation('')
+    setFilterLocation('')
+  }
 
   // ── Profile options ───────────────────────────────────────────────────────
 
@@ -253,6 +296,7 @@ function UserListTab({ org }: { org: Org }) {
 
   function handleAddUser() {
     if (!addForm.fullName.trim() || !addForm.companyEmail.trim() || !addForm.password.trim()) return
+    if (!addForm.divisionId || !addForm.departmentId || !addForm.designationId || !addForm.locationId) return
     setAddLoading(true)
     router.post(`/orgbuilder/organizations/${org.id}/users`, {
       fullName:        addForm.fullName.trim(),
@@ -265,6 +309,12 @@ function UserListTab({ org }: { org: Org }) {
       sendWelcomeMail: addForm.sendWelcomeMail,
       isActive:        addForm.isActive,
       profileId:       addForm.profileId || undefined,
+      divisionId:      addForm.divisionId,
+      departmentId:    addForm.departmentId,
+      designationId:   addForm.designationId,
+      locationId:      addForm.locationId,
+      reportingToType: addForm.reportingToId ? addForm.reportingToType : undefined,
+      reportingToId:   addForm.reportingToId || undefined,
     }, {
       onSuccess: () => { setAddOpen(false); setAddForm(BLANK_FORM); setAddLoading(false) },
       onError:   () => setAddLoading(false),
@@ -285,23 +335,36 @@ function UserListTab({ org }: { org: Org }) {
       dateOfBirth:     u.dateOfBirth || '',
       sendWelcomeMail: false,
       isActive:        u.isActive,
-      profileId:       u.profileId ? String(u.profileId) : '',
+      profileId:       u.profileId    ? String(u.profileId)    : '',
+      divisionId:      u.divisionId   ? String(u.divisionId)   : '',
+      departmentId:    u.departmentId ? String(u.departmentId) : '',
+      designationId:   u.designationId ? String(u.designationId) : '',
+      locationId:      u.locationId   ? String(u.locationId)   : '',
+      reportingToType: 'user',
+      reportingToId:   '',
     })
     setShowEditPw(false)
   }
 
   function handleEditUser() {
     if (!editUser || !editForm.fullName.trim()) return
+    if (!editForm.divisionId || !editForm.departmentId || !editForm.designationId || !editForm.locationId) return
     setEditLoading(true)
     router.put(`/orgbuilder/organizations/${org.id}/users/${editUser.id}`, {
-      fullName:     editForm.fullName.trim(),
-      employeeCode: editForm.employeeCode || undefined,
-      phone:        editForm.phone.trim() || undefined,
-      gender:       editForm.gender || undefined,
-      dateOfBirth:  editForm.dateOfBirth || undefined,
-      isActive:     editForm.isActive,
-      password:     editForm.password.trim() || undefined,
-      profileId:    editForm.profileId || undefined,
+      fullName:        editForm.fullName.trim(),
+      employeeCode:    editForm.employeeCode || undefined,
+      phone:           editForm.phone.trim() || undefined,
+      gender:          editForm.gender || undefined,
+      dateOfBirth:     editForm.dateOfBirth || undefined,
+      isActive:        editForm.isActive,
+      password:        editForm.password.trim() || undefined,
+      profileId:       editForm.profileId || undefined,
+      divisionId:      editForm.divisionId,
+      departmentId:    editForm.departmentId,
+      designationId:   editForm.designationId,
+      locationId:      editForm.locationId,
+      reportingToType: editForm.reportingToId ? editForm.reportingToType : undefined,
+      reportingToId:   editForm.reportingToId || undefined,
     }, {
       onSuccess: () => { setEditUser(null); setEditLoading(false) },
       onError:   () => setEditLoading(false),
@@ -310,15 +373,8 @@ function UserListTab({ org }: { org: Org }) {
 
   // ── Login as user (impersonation) ─────────────────────────────────────────
 
-  async function loginAsUser(userId: number) {
-    const xsrf = decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('XSRF-TOKEN='))?.split('=')[1] ?? '')
-    const res = await fetch(`/orgbuilder/organizations/${org.id}/users/${userId}/impersonate`, {
-      method: 'POST',
-      headers: { 'X-XSRF-TOKEN': xsrf, 'Accept': 'application/json' },
-    })
-    if (!res.ok) return
-    const { redirectUrl } = await res.json()
-    window.open(redirectUrl, '_blank')
+  function loginAsUser(userId: number) {
+    impersonateToNewTab(`/orgbuilder/organizations/${org.id}/users/${userId}/impersonate`)
   }
 
   // ── Bulk actions ──────────────────────────────────────────────────────────
@@ -373,7 +429,39 @@ function UserListTab({ org }: { org: Org }) {
     },
     {
       key: 'department', label: 'Department', sortable: false,
-      render: () => <span style={{ fontSize: '.75rem', color: 'var(--text4)', fontStyle: 'italic' }}>Not assigned</span>,
+      render: (u) => {
+        const dept = hrms.departments.find((d) => d.id === u.departmentId)
+        return dept
+          ? <span style={{ fontSize: '.78rem', color: 'var(--text2)', fontWeight: 500 }}>{dept.name}</span>
+          : <span style={{ fontSize: '.75rem', color: 'var(--text4)', fontStyle: 'italic' }}>—</span>
+      },
+    },
+    {
+      key: 'division', label: 'Division', sortable: false,
+      render: (u) => {
+        const div = hrms.divisions.find((d) => d.id === u.divisionId)
+        return div
+          ? <span style={{ fontSize: '.78rem', color: 'var(--text2)', fontWeight: 500 }}>{div.name}</span>
+          : <span style={{ fontSize: '.75rem', color: 'var(--text4)', fontStyle: 'italic' }}>—</span>
+      },
+    },
+    {
+      key: 'designation', label: 'Designation', sortable: false,
+      render: (u) => {
+        const des = hrms.designations.find((d) => d.id === u.designationId)
+        return des
+          ? <span style={{ fontSize: '.78rem', color: 'var(--text2)', fontWeight: 500 }}>{des.name}</span>
+          : <span style={{ fontSize: '.75rem', color: 'var(--text4)', fontStyle: 'italic' }}>—</span>
+      },
+    },
+    {
+      key: 'location', label: 'Location', sortable: false,
+      render: (u) => {
+        const loc = hrms.locations.find((l) => l.id === u.locationId)
+        return loc
+          ? <span style={{ fontSize: '.78rem', color: 'var(--text2)', fontWeight: 500 }}>{loc.name}</span>
+          : <span style={{ fontSize: '.75rem', color: 'var(--text4)', fontStyle: 'italic' }}>—</span>
+      },
     },
     {
       key: 'joined', label: 'Joined', sortable: false,
@@ -541,8 +629,8 @@ function UserListTab({ org }: { org: Org }) {
       />
 
       {/* ── Filter panel ── */}
-      <FixedDropdown anchorRef={filterBtnRef} open={filterOpen} onClose={() => setFilterOpen(false)} minWidth={270} align="left" noPadding>
-        <div style={{ width: 270 }}>
+      <FixedDropdown anchorRef={filterBtnRef} open={filterOpen} onClose={() => setFilterOpen(false)} minWidth={280} align="left" noPadding>
+        <div style={{ width: 280 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px 10px', borderBottom: '1px solid var(--border)' }}>
             <div style={{ fontWeight: 700, fontSize: '.82rem', color: 'var(--text1)', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Filter size={13} style={{ color: 'var(--p)' }} /> Filters
@@ -561,6 +649,38 @@ function UserListTab({ org }: { org: Org }) {
                 <ShieldCheck size={11} /> Profile
               </label>
               <SelectSearch value={filterProfile} onChange={setFilterProfile} options={profileOptions} placeholder="All profiles" />
+            </div>
+            <div className="fg" style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                <Layers size={11} /> Division
+              </label>
+              <SelectSearch value={filterDivision} onChange={setFilterDivision}
+                options={[{ value: '', label: 'All Divisions' }, ...hrms.divisions.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="All divisions" />
+            </div>
+            <div className="fg" style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                <Building2 size={11} /> Department
+              </label>
+              <SelectSearch value={filterDepartment} onChange={setFilterDepartment}
+                options={[{ value: '', label: 'All Departments' }, ...hrms.departments.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="All departments" />
+            </div>
+            <div className="fg" style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                <Briefcase size={11} /> Designation
+              </label>
+              <SelectSearch value={filterDesignation} onChange={setFilterDesignation}
+                options={[{ value: '', label: 'All Designations' }, ...hrms.designations.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="All designations" />
+            </div>
+            <div className="fg" style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: '.72rem', fontWeight: 600, color: 'var(--text2)', display: 'flex', alignItems: 'center', gap: 5, marginBottom: 6 }}>
+                <MapPin size={11} /> Location
+              </label>
+              <SelectSearch value={filterLocation} onChange={setFilterLocation}
+                options={[{ value: '', label: 'All Locations' }, ...hrms.locations.map((l) => ({ value: String(l.id), label: l.name }))]}
+                placeholder="All locations" />
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px 14px', marginTop: 4, borderTop: '1px solid var(--border)' }}>
@@ -624,14 +744,18 @@ function UserListTab({ org }: { org: Org }) {
         footer={
           <>
             <button className="btn btn-ghost" onClick={() => setAddOpen(false)}>Cancel</button>
-            <button className="btn btn-p" disabled={addLoading || !addForm.fullName.trim() || !addForm.companyEmail.trim() || !addForm.password.trim()} onClick={handleAddUser}>
+            <button className="btn btn-p"
+              disabled={addLoading || !addForm.fullName.trim() || !addForm.companyEmail.trim() || !addForm.password.trim()
+                || !addForm.divisionId || !addForm.departmentId || !addForm.designationId || !addForm.locationId}
+              onClick={handleAddUser}>
               {addLoading ? 'Adding…' : <><Plus size={13} /> Add User</>}
             </button>
           </>
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Row 1 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Full Name <span className="req">*</span></label>
               <input className="fi" value={addForm.fullName} onChange={(e) => setAddForm((f) => ({ ...f, fullName: e.target.value }))} placeholder="e.g. Ravi Kumar" />
@@ -640,16 +764,17 @@ function UserListTab({ org }: { org: Org }) {
               <label>Company Email <span className="req">*</span></label>
               <input className="fi" type="email" value={addForm.companyEmail} onChange={(e) => setAddForm((f) => ({ ...f, companyEmail: e.target.value }))} placeholder="ravi@acme.com" />
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Employee Code</label>
               <div style={{ position: 'relative' }}>
                 <Lock size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text3)', pointerEvents: 'none', zIndex: 1 }} />
                 <input className="fi" value={addForm.employeeCode} readOnly style={{ paddingLeft: 30, background: 'var(--bg)', color: 'var(--text2)', cursor: 'not-allowed', fontFamily: 'monospace', letterSpacing: '.08em', fontWeight: 700 }} />
               </div>
-              <div className="fg-hint">Auto-generated · sequential · read-only</div>
+              <div className="fg-hint">Auto-generated · read-only</div>
             </div>
+          </div>
+          {/* Row 2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Password <span className="req">*</span></label>
               <div style={{ position: 'relative' }}>
@@ -659,8 +784,6 @@ function UserListTab({ org }: { org: Org }) {
                 </button>
               </div>
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Profile / Role</label>
               <SelectSearch
@@ -678,7 +801,35 @@ function UserListTab({ org }: { org: Org }) {
               />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Row 3 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="fg">
+              <label>Division <span className="req">*</span></label>
+              <SelectSearch value={addForm.divisionId} onChange={(v) => setAddForm((f) => ({ ...f, divisionId: v }))}
+                options={[{ value: '', label: 'Select division' }, ...hrms.divisions.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select division" />
+            </div>
+            <div className="fg">
+              <label>Department <span className="req">*</span></label>
+              <SelectSearch value={addForm.departmentId} onChange={(v) => setAddForm((f) => ({ ...f, departmentId: v }))}
+                options={[{ value: '', label: 'Select department' }, ...hrms.departments.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select department" />
+            </div>
+            <div className="fg">
+              <label>Designation <span className="req">*</span></label>
+              <SelectSearch value={addForm.designationId} onChange={(v) => setAddForm((f) => ({ ...f, designationId: v }))}
+                options={[{ value: '', label: 'Select designation' }, ...hrms.designations.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select designation" />
+            </div>
+          </div>
+          {/* Row 4 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="fg">
+              <label>Location <span className="req">*</span></label>
+              <SelectSearch value={addForm.locationId} onChange={(v) => setAddForm((f) => ({ ...f, locationId: v }))}
+                options={[{ value: '', label: 'Select location' }, ...hrms.locations.map((l) => ({ value: String(l.id), label: l.name }))]}
+                placeholder="Select location" />
+            </div>
             <div className="fg">
               <label>Phone</label>
               <PhoneInput value={addForm.phone} onChange={(v) => setAddForm((f) => ({ ...f, phone: v }))} phonecode={orgCountry?.phonecode} emoji={orgCountry?.emoji} />
@@ -686,6 +837,47 @@ function UserListTab({ org }: { org: Org }) {
             <div className="fg">
               <label>Date of Birth</label>
               <DatePicker value={addForm.dateOfBirth} onChange={(v) => setAddForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="Select date of birth" />
+            </div>
+          </div>
+          {/* Row 5 — Reporting To */}
+          <div className="fg">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <UserCog size={12} style={{ color: 'var(--text3)' }} /> Reporting To
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 8, alignItems: 'start' }}>
+              {/* Toggle */}
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 36, flexShrink: 0 }}>
+                {(['user', 'role'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setAddForm((f) => ({ ...f, reportingToType: t, reportingToId: '' }))}
+                    style={{
+                      padding: '0 14px', fontSize: '.75rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'var(--t)',
+                      background: addForm.reportingToType === t ? 'var(--p)' : 'var(--surface)',
+                      color: addForm.reportingToType === t ? '#fff' : 'var(--text2)',
+                    }}
+                  >
+                    {t === 'user' ? 'By User' : 'By Role'}
+                  </button>
+                ))}
+              </div>
+              {/* Select */}
+              {addForm.reportingToType === 'role' ? (
+                <SelectSearch
+                  value={addForm.reportingToId}
+                  onChange={(v) => setAddForm((f) => ({ ...f, reportingToId: v }))}
+                  options={[{ value: '', label: 'No reporting role' }, ...profiles.map((p) => ({ value: String(p.id), label: p.name }))]}
+                  placeholder="Select role…"
+                />
+              ) : (
+                <SelectSearch
+                  value={addForm.reportingToId}
+                  onChange={(v) => setAddForm((f) => ({ ...f, reportingToId: v }))}
+                  options={[{ value: '', label: 'No reporting user' }, ...users.map((u) => ({ value: String(u.id), label: `${u.fullName}${u.employeeCode ? ` (${u.employeeCode})` : ''}` }))]}
+                  placeholder="Select user…"
+                />
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 20 }}>
@@ -707,14 +899,18 @@ function UserListTab({ org }: { org: Org }) {
         footer={
           <>
             <button className="btn btn-ghost" onClick={() => setEditUser(null)}>Cancel</button>
-            <button className="btn btn-p" disabled={editLoading || !editForm.fullName.trim()} onClick={handleEditUser}>
+            <button className="btn btn-p"
+              disabled={editLoading || !editForm.fullName.trim()
+                || !editForm.divisionId || !editForm.departmentId || !editForm.designationId || !editForm.locationId}
+              onClick={handleEditUser}>
               {editLoading ? 'Saving…' : 'Save Changes'}
             </button>
           </>
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Row 1 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Employee Code</label>
               <div style={{ position: 'relative' }}>
@@ -727,12 +923,13 @@ function UserListTab({ org }: { org: Org }) {
               <label>Full Name <span className="req">*</span></label>
               <input className="fi" value={editForm.fullName} onChange={(e) => setEditForm((f) => ({ ...f, fullName: e.target.value }))} />
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Company Email</label>
               <input className="fi" value={editForm.companyEmail} disabled style={{ opacity: .6, cursor: 'not-allowed' }} />
             </div>
+          </div>
+          {/* Row 2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>New Password <span style={{ fontSize: '.7rem', color: 'var(--text4)' }}>(blank = unchanged)</span></label>
               <div style={{ position: 'relative' }}>
@@ -742,8 +939,6 @@ function UserListTab({ org }: { org: Org }) {
                 </button>
               </div>
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div className="fg">
               <label>Profile / Role</label>
               <SelectSearch
@@ -761,7 +956,35 @@ function UserListTab({ org }: { org: Org }) {
               />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          {/* Row 3 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="fg">
+              <label>Division <span className="req">*</span></label>
+              <SelectSearch value={editForm.divisionId} onChange={(v) => setEditForm((f) => ({ ...f, divisionId: v }))}
+                options={[{ value: '', label: 'Select division' }, ...hrms.divisions.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select division" />
+            </div>
+            <div className="fg">
+              <label>Department <span className="req">*</span></label>
+              <SelectSearch value={editForm.departmentId} onChange={(v) => setEditForm((f) => ({ ...f, departmentId: v }))}
+                options={[{ value: '', label: 'Select department' }, ...hrms.departments.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select department" />
+            </div>
+            <div className="fg">
+              <label>Designation <span className="req">*</span></label>
+              <SelectSearch value={editForm.designationId} onChange={(v) => setEditForm((f) => ({ ...f, designationId: v }))}
+                options={[{ value: '', label: 'Select designation' }, ...hrms.designations.map((d) => ({ value: String(d.id), label: d.name }))]}
+                placeholder="Select designation" />
+            </div>
+          </div>
+          {/* Row 4 */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div className="fg">
+              <label>Location <span className="req">*</span></label>
+              <SelectSearch value={editForm.locationId} onChange={(v) => setEditForm((f) => ({ ...f, locationId: v }))}
+                options={[{ value: '', label: 'Select location' }, ...hrms.locations.map((l) => ({ value: String(l.id), label: l.name }))]}
+                placeholder="Select location" />
+            </div>
             <div className="fg">
               <label>Phone</label>
               <PhoneInput value={editForm.phone} onChange={(v) => setEditForm((f) => ({ ...f, phone: v }))} phonecode={orgCountry?.phonecode} emoji={orgCountry?.emoji} />
@@ -769,6 +992,47 @@ function UserListTab({ org }: { org: Org }) {
             <div className="fg">
               <label>Date of Birth</label>
               <DatePicker value={editForm.dateOfBirth} onChange={(v) => setEditForm((f) => ({ ...f, dateOfBirth: v }))} placeholder="Select date of birth" />
+            </div>
+          </div>
+          {/* Row 5 — Reporting To */}
+          <div className="fg">
+            <label style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <UserCog size={12} style={{ color: 'var(--text3)' }} /> Reporting To
+            </label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: 8, alignItems: 'start' }}>
+              {/* Toggle */}
+              <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', height: 36, flexShrink: 0 }}>
+                {(['user', 'role'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setEditForm((f) => ({ ...f, reportingToType: t, reportingToId: '' }))}
+                    style={{
+                      padding: '0 14px', fontSize: '.75rem', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'var(--t)',
+                      background: editForm.reportingToType === t ? 'var(--p)' : 'var(--surface)',
+                      color: editForm.reportingToType === t ? '#fff' : 'var(--text2)',
+                    }}
+                  >
+                    {t === 'user' ? 'By User' : 'By Role'}
+                  </button>
+                ))}
+              </div>
+              {/* Select */}
+              {editForm.reportingToType === 'role' ? (
+                <SelectSearch
+                  value={editForm.reportingToId}
+                  onChange={(v) => setEditForm((f) => ({ ...f, reportingToId: v }))}
+                  options={[{ value: '', label: 'No reporting role' }, ...profiles.map((p) => ({ value: String(p.id), label: p.name }))]}
+                  placeholder="Select role…"
+                />
+              ) : (
+                <SelectSearch
+                  value={editForm.reportingToId}
+                  onChange={(v) => setEditForm((f) => ({ ...f, reportingToId: v }))}
+                  options={[{ value: '', label: 'No reporting user' }, ...users.filter((u) => u.id !== editUser?.id).map((u) => ({ value: String(u.id), label: `${u.fullName}${u.employeeCode ? ` (${u.employeeCode})` : ''}` }))]}
+                  placeholder="Select user…"
+                />
+              )}
             </div>
           </div>
           <Checkbox checked={editForm.isActive} onChange={() => setEditForm((f) => ({ ...f, isActive: !f.isActive }))}>Active</Checkbox>

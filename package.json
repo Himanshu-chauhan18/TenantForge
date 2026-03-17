@@ -91,6 +91,7 @@
     "@types/qrcode": "^1.5.6",
     "@types/speakeasy": "^2.0.10",
     "@vinejs/vine": "^4.3.0",
+    "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.6.2",
     "edge.js": "^6.5.0",
     "lucide-react": "^0.576.0",

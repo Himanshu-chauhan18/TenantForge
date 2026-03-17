@@ -31,13 +31,14 @@ export function CitySelect({
   const disabled = !countryId
 
   useEffect(() => {
+    if (!open) return
     const fn = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node) && !dropRef.current?.contains(e.target as Node))
         setOpen(false)
     }
     document.addEventListener('mousedown', fn)
     return () => document.removeEventListener('mousedown', fn)
-  }, [])
+  }, [open])
 
   // Reset when country changes
   useEffect(() => { setOptions([]); setSearch(''); setOpen(false) }, [countryId])

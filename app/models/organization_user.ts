@@ -64,6 +64,9 @@ export default class OrganizationUser extends BaseModel {
   declare subSectionId: number | null
 
   @column()
+  declare reportingToId: number | null
+
+  @column()
   declare isActive: boolean
 
   @column.dateTime({ autoCreate: true })
@@ -74,4 +77,7 @@ export default class OrganizationUser extends BaseModel {
 
   @belongsTo(() => OrganizationProfile, { foreignKey: 'profileId' })
   declare profile: BelongsTo<typeof OrganizationProfile>
+
+  @belongsTo(() => OrganizationUser, { foreignKey: 'reportingToId' })
+  declare reportingTo: BelongsTo<typeof OrganizationUser>
 }
